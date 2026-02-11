@@ -1,4 +1,4 @@
-﻿package com.bear.app;
+package com.bear.app;
 
 public final class BearCli {
     private BearCli() {

@@ -1,4 +1,4 @@
-﻿# bear
+# bear
 
 Multi-module Java 17 Gradle project for the `bear` CLI.
 

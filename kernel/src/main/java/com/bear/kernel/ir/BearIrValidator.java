@@ -1,4 +1,4 @@
-﻿package com.bear.kernel.ir;
+package com.bear.kernel.ir;
 
 import java.util.ArrayList;
 import java.util.List;

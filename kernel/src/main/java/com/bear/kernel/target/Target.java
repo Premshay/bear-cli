@@ -1,4 +1,4 @@
-﻿package com.bear.kernel.target;
+package com.bear.kernel.target;
 
 import com.bear.kernel.ir.BearIr;
 

@@ -1,4 +1,4 @@
-﻿package com.bear.kernel;
+package com.bear.kernel;
 
 import com.bear.kernel.ir.BearIr;
 import com.bear.kernel.ir.BearIrValidator;

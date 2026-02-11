@@ -1,4 +1,4 @@
-﻿package com.bear.app;
+package com.bear.app;
 
 import org.junit.jupiter.api.Test;
 
