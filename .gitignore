@@ -1,6 +1,8 @@
 .gradle/
+.gradle-user-home/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+.tmp-wrapper-extract/
 *.class
 out/
 

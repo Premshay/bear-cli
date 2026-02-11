@@ -40,7 +40,7 @@ Implement Phase 1 core model + strict validation:
 5. Wire `bear validate <file>` to parse -> validate -> emit canonical form
 
 Notes:
-- This repo currently does not include a Gradle wrapper; running builds requires a local Gradle install.
+- Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
 
 ---
 
@@ -93,3 +93,5 @@ All of the following must be true:
 
 Append short bullet points only.  
 No essays. No philosophy.
+
+- Added Gradle wrapper scripts + wrapper jar.

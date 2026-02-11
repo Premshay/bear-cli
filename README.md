@@ -1,11 +1,54 @@
 # BEAR (bear-cli)
 
-Multi-module Java 17 Gradle project for the `bear` CLI.
+Multi-module Java (17 target) Gradle project for the `bear` CLI.
 
-- Start here: `doc/START_HERE.md`
+BEAR is a deterministic enforcement layer for AI-assisted (or human) backend code changes.
+It introduces a small BEAR IR (block intermediate representation) and compiles it into:
+- non-editable skeletons
+- capability ports (effects boundaries)
+- deterministic tests (idempotency + invariants)
+- a single `bear check` enforcement gate suitable for CI
+
+Start here: `doc/START_HERE.md`
 
 - `kernel`: deterministic core. Contains BEAR IR parsing (YAML), validation, normalization, and target abstractions. This module is trusted seed code and is never BEAR-generated.
 - `app`: CLI wrapper. Exposes `bear validate`, `bear compile`, and `bear check`. BEAR may later self-host parts of `app`, but never `kernel`.
+
+## Quickstart (dev)
+
+Prereqs:
+- JDK installed (`java -version`)
+
+Run the CLI via Gradle (recommended during development).
+
+Windows (PowerShell):
+```powershell
+.\gradlew.bat :app:run --args="--help"
+.\gradlew.bat :app:run --args="validate"
+```
+
+macOS/Linux (bash/zsh):
+```sh
+./gradlew :app:run --args="--help"
+./gradlew :app:run --args="validate"
+```
+
+If Gradle fails due to Windows file locking / permissions in your default Gradle home, set a custom per-user home once:
+```powershell
+$env:GRADLE_USER_HOME = "$env:LOCALAPPDATA\bear-gradle-home"
+.\gradlew.bat --no-daemon :app:run --args="--help"
+```
+
+## Local install (run without Gradle)
+
+Build an installable CLI distribution:
+```powershell
+.\gradlew.bat :app:installDist
+```
+
+Then run the generated launcher directly:
+- Windows: `app\build\install\bear\bin\bear.bat --help`
+- macOS/Linux: `app/build/install/bear/bin/bear --help`
 
 Docs:
 - `doc/STATE.md` (current focus + next steps)
