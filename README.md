@@ -2,12 +2,22 @@
 
 Multi-module Java (17 target) Gradle project for the `bear` CLI.
 
-BEAR is a deterministic enforcement layer for AI-assisted (or human) backend code changes.
+BEAR is a deterministic constraint compiler for AI-assisted (or human) backend code changes.
 It introduces a small BEAR IR (block intermediate representation) and compiles it into:
 - non-editable skeletons
-- capability ports (effects boundaries)
+- structured capability ports (effects boundaries)
 - deterministic tests (idempotency + invariants)
 - a single `bear check` enforcement gate suitable for CI
+
+v0 guarantees:
+- Structural contract and effect-boundary enforcement
+- Deterministic invariant/idempotency test gating
+- Drift detection for generated artifacts
+
+v0 non-guarantees:
+- Business correctness beyond declared invariants
+- Real DB/concurrency/transaction semantics
+- Runtime enforcement beyond test harness
 
 Start here: `doc/START_HERE.md`
 
@@ -53,6 +63,7 @@ Then run the generated launcher directly:
 Docs:
 - `doc/STATE.md` (current focus + next steps)
 - `doc/ARCHITECTURE.md` (what BEAR is + v0 scope)
+- `doc/IR_SPEC.md` (canonical v0 IR model + validation rules)
 - `doc/ROADMAP.md` (v0 phases + definition of done)
 - `doc/PROJECT_LOG.md` (background + major decisions)
 - `doc/FUTURE.md` (explicitly out-of-scope ideas)

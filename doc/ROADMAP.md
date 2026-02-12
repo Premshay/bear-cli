@@ -8,6 +8,19 @@ v0 uses:
 - Effects expressed as structured ports
 - No capability blocks
 - No block-to-block composition
+- No behavior DSL
+
+v0 guarantees:
+- Structural contract enforcement (inputs/outputs)
+- Structural effect boundary enforcement via generated structured ports
+- Deterministic invariant and idempotency test gating
+- Drift detection on generated artifacts
+
+v0 non-guarantees:
+- Business correctness beyond declared invariants
+- Real database/concurrency/transaction semantics
+- Runtime enforcement beyond test harness
+- General behavioral verification
 
 ---
 
@@ -42,6 +55,7 @@ Goal: Deterministic parsing + validation + normalization.
 - [ ] Define `EffectPortModel`
   - port name
   - list of ops
+- [ ] Lock `doc/IR_SPEC.md` as the canonical v0 IR model
 
 ### Parsing
 
@@ -176,6 +190,10 @@ Clear before/after demonstration.
 
 - Capability blocks in IR
 - Block-to-block composition
+- Behavior DSL
+- requires/ensures language
+- State delta modeling
+- Infrastructure simulation
 - Spec → IR lowering
 - LLM inside BEAR core
 - Cross-service modeling

@@ -4,8 +4,9 @@ If you are an AI coding assistant (or a human picking up the repo), start here:
 
 1. Read `doc/STATE.md` (source of truth for current work + next steps).
 2. Read `doc/START_HERE.md`.
-3. If this is a fresh session, use `doc/PROMPT_BOOTSTRAP.md` (paste the SHORT section first).
-4. If you need historical rationale, read `doc/PROJECT_LOG.md`.
+3. Read `doc/IR_SPEC.md` for canonical v0 IR structure and constraints.
+4. If this is a fresh session, use `doc/PROMPT_BOOTSTRAP.md` (paste the SHORT section first).
+5. If you need historical rationale, read `doc/PROJECT_LOG.md`.
 
 Guardrails (v0):
 - Keep `kernel/` deterministic and small (trusted seed). No LLM/agent logic in core.

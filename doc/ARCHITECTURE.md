@@ -1,116 +1,135 @@
 # BEAR v0 Architecture
 
-## What BEAR is
-BEAR is a deterministic enforcement layer for AI-assisted (or human) code changes in backend systems.
+## Core Purpose
+BEAR is a deterministic constraint compiler.
 
-BEAR introduces a small, machine-checkable intermediate representation (BEAR IR) for "blocks" and compiles it into:
-- non-editable skeletons and ports (capability boundaries)
-- deterministic tests (invariants, idempotency)
-- a single `bear check` gate suitable for CI
+It exists because:
+- Agent-generated code is non-deterministic.
+- Natural language specifications are loose.
+- Production systems require deterministic enforcement.
 
-BEAR core contains no LLM logic and does not depend on any specific agent tool.
+BEAR introduces a rigid, machine-checkable intermediate representation (BEAR IR) that:
+- constrains what a block is allowed to do
+- compiles into structural boundaries and deterministic tests
+- prevents architectural drift through regeneration and enforcement gates
 
-## Core principles
+BEAR is not a full verifier.
+BEAR does not simulate infrastructure behavior.
+BEAR is not a behavior DSL.
+
+## Core Principles
 1. Deterministic core
-   - Validation, normalization, and code generation must be deterministic and reproducible.
-
+   - Validation, normalization, and code generation are deterministic and reproducible.
 2. Agent-agnostic
-   - BEAR must work with Copilot, Codex, or no agent at all.
-   - Any agent instructions are separate from BEAR core.
+   - BEAR works with Copilot, Codex, or no agent at all.
+   - Agent instructions stay outside BEAR core.
+3. Cage, not code
+   - BEAR generates boundaries (ports), skeletons, and test gates.
+   - Business logic lives in a separate implementation file.
+4. Minimal enforceable semantics
+   - v0 enforces only a narrow, mechanically testable surface.
 
-3. "Cage, not code"
-   - BEAR generates boundaries (ports), skeletons, and gates.
-   - Business logic is implemented in a separate implementation file (two-file approach).
+## What BEAR Guarantees in v0
+If a block passes `bear check`, then:
+- it respects declared input/output contract structure
+- it cannot call undeclared capability operations, via generated structured port interfaces
+- it satisfies declared invariant templates under generated tests
+- it respects declared idempotency semantics under generated tests
+- generated artifacts are unchanged from deterministic regeneration (drift detection)
 
-4. Small, enforceable semantics
-   - v0 focuses on a minimal set of enforceable guarantees:
-     - allowed effects (capability allowlist)
-     - idempotency (by key)
-     - one invariant template: non-negative numeric field
+## What BEAR Does Not Guarantee in v0
+- business correctness beyond declared invariants
+- real database semantics
+- concurrency correctness
+- transaction semantics
+- runtime enforcement beyond test harness
+- general behavioral verification
 
-## Repository structure (bear-cli)
+BEAR v0 is structural enforcement plus deterministic guardrails.
+
+## Repository Structure (bear-cli)
 This repo is a Gradle multi-module project.
 
-- kernel/
-  - Trusted seed.
-  - Contains BEAR IR parsing/validation/normalization and the target abstraction.
-  - Must not depend on generated code.
-  - Must remain small and stable.
+- `kernel/`
+  - trusted seed
+  - BEAR IR parsing, strict validation, deterministic normalization, target abstractions
+  - must not depend on generated code
+- `app/`
+  - CLI wrapper exposing `bear validate`, `bear compile`, `bear check`
+  - depends on `kernel`
+  - contains no LLM logic
 
-- app/
-  - CLI wrapper that exposes commands.
-  - Depends on kernel.
-  - No LLM logic.
+## BEAR IR v0 Scope
+A BEAR IR file defines a single logic block.
 
-## BEAR IR v0 scope
-BEAR IR describes a single block:
+Model:
+- `block.name`
+- `block.kind` with only `logic` allowed in v0
+- `block.contract.inputs` and `block.contract.outputs`
+- `block.effects.allow` as structured ports (`port` + `ops[]`), not free strings
+- `block.idempotency` with key referencing an input field
+- `block.invariants` with only `non_negative(field=<outputField>)`
 
-- name, kind
-- contract: inputs/outputs (simple types: string, decimal, enum)
-- effects.allow: allowlisted capability operations (e.g., storage.readAccount)
-- idempotency: key field + optional target effect
-- invariants: only `non_negative(field=...)` in v0
+IR must be:
+- strictly validated
+- deterministically normalized
+- rejected on unknown keys or invalid references
+- intentionally limited in expressive power
 
-No system graphs. No cross-service modeling.
+Reference: `doc/IR_SPEC.md`.
 
-## Target scope (v0)
+## v0 Scope Lock
+In scope:
+- JVM (Java) target only
+- single logic block per IR file
+- structured ports for effects
+
+Out of scope:
+- capability blocks in IR
+- block-to-block graph modeling/composition
+- behavior DSL
+- requires/ensures language
+- state delta modeling
+- infrastructure simulation
+- spec -> IR lowering automation
+- embedded LLM logic in BEAR core
+- multi-target support
+
+## Target Scope (v0)
 Only one target is supported:
+- JVM target generating Java sources and JUnit 5 tests for Gradle projects
 
-- JVM target
-  - Generates Java sources and JUnit 5 tests.
-  - Integrates with Gradle projects.
-
-No other languages in v0.
-
-## Demo scope (bear-account-demo repo)
-The demo proves BEAR on a small "bank account" domain.
-
-Only these operations exist:
-- Deposit(accountId, amount, currency, txId)
-- Withdraw(accountId, amount, currency, txId)
-- GetBalance(accountId)
-
-Only these guarantees are enforced in v0:
-- idempotency by txId
-- non-negative balance (or non-negative output balance field)
-- effects restricted to declared storage port methods
-
-The demo must show:
-- a naive implementation fails `bear check`
-- a corrected implementation passes `bear check`
-
-## Non-goals for v0
-Explicitly out of scope:
-- Spec -> IR lowering automation
-- LLM-driven implementation inside BEAR
-- Cross-service/system flow modeling
-- UI/frontend support
-- Plugin architecture
-- Multi-language targets
-- Rich invariant catalog or domain ontologies
-- Formal verification
-
-## Definition of done (v0)
-v0 is done when the following are true:
-
-1. `bear validate` validates and normalizes BEAR IR files deterministically.
-2. `bear compile` generates deterministic artifacts for JVM:
-   - non-editable skeleton(s)
-   - capability port interface(s) derived from effects.allow
-   - JUnit tests for:
-     - idempotency (if declared)
-     - non_negative invariant
-3. Two-file approach is enforced:
-   - generated skeleton is never edited
-   - implementation file is where logic lives
-4. `bear check --project <path>` runs:
-   - validate + compile
+## Enforcement Pipeline
+1. Natural language spec -> BEAR IR (agent-assisted or manual)
+2. BEAR IR -> skeleton + structured ports + tests (deterministic compile)
+3. Implementation file authored by agent/human
+4. `bear check` runs:
+   - validate
+   - compile
    - project tests
-   and fails deterministically on violations.
-5. In bear-demo:
-   - naive Withdraw fails `bear check`
-   - fixed Withdraw passes `bear check`
+   - drift detection
 
-## Future ideas (parking lot)
-Keep future ideas in FUTURE.md. Do not implement them in v0.
-****
+Two-file approach:
+- generated skeleton is non-editable
+- implementation file is editable
+
+## Demo Scope (bear-account-demo)
+The v0 proof is:
+- naive Withdraw implementation fails `bear check`
+- corrected Withdraw implementation passes `bear check`
+
+If work does not move toward this proof, it is scope drift.
+
+## Definition of Done (v0)
+v0 is done when:
+1. `bear validate` deterministically validates and normalizes BEAR IR.
+2. `bear compile` deterministically generates JVM artifacts:
+   - non-editable skeleton
+   - structured port interfaces derived from declared effects
+   - JUnit tests for idempotency (if declared) and `non_negative`
+3. Two-file enforcement is active (skeleton regenerated, impl preserved).
+4. `bear check --project <path>` fails deterministically on violations.
+5. Demo proves naive Withdraw fails and corrected Withdraw passes.
+
+## Future Ideas
+Keep future ideas in `doc/FUTURE.md`. Do not implement them in v0.

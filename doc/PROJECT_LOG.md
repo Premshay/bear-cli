@@ -118,6 +118,12 @@ v0 includes:
 
 v0 excludes:
 - Spec -> IR automation
+- Capability blocks in IR
+- Block graph/composition modeling
+- Behavior DSL
+- requires/ensures language
+- State delta modeling
+- Infrastructure simulation
 - Cross-service modeling
 - Multi-language targets
 - Plugin architecture
@@ -153,11 +159,11 @@ BEAR proves value under iteration, not under first implementation.
 
 ## 6. Early Self-Hosting Decision
 
-We want BEAR to generate parts of BEAR as soon as possible.
+Self-hosting remains a future direction and is not part of v0 delivery.
 
 Constraint:
 - Kernel remains trusted seed.
-- Only pure logic blocks are self-hosted early.
+- Any future self-hosting must start with pure deterministic logic blocks.
 
 First candidate:
 NormalizeIr block.
@@ -186,7 +192,7 @@ effects.allow defines allowed capability operations.
 These are:
 - Explicit.
 - Declarative.
-- Enforced via generated port interfaces.
+- Enforced via generated structured port interfaces (`port` + `ops[]`), not free strings.
 
 This is not full static analysis.
 It is structural boundary enforcement.
@@ -285,6 +291,23 @@ Generated skeleton + ports + tests
 Agent / human implementation
     ->
 bear check (deterministic enforcement)
+
+---
+
+## 14. Clarification Update (2026-02-12)
+
+v0 framing was tightened to remove ambiguity:
+- BEAR is a deterministic constraint compiler.
+- BEAR v0 is structural enforcement plus deterministic guardrails.
+- v0 explicitly documents both guarantees and non-guarantees.
+- IR remains intentionally limited; no behavior DSL or broader behavioral semantics.
+
+Out-of-scope for v0 remains explicit:
+- capability blocks in IR
+- block graph/composition modeling
+- requires/ensures language
+- state delta modeling
+- infrastructure simulation
 
 ---
 

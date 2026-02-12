@@ -11,15 +11,16 @@ Use the LONG version only if more context is needed.
 
 We are building BEAR (Block Enforcement & Representation).
 
-BEAR is a deterministic enforcement layer for backend systems.
+BEAR is a deterministic constraint compiler for backend systems.
 
 Source of truth for current work:
 - `doc/STATE.md` (current focus + next steps)
+- `doc/IR_SPEC.md` (canonical v0 IR model and strict rules)
 - `doc/PROJECT_LOG.md` (background + major decisions)
 
 It introduces a BEAR IR (block intermediate representation) and compiles it into:
 - non-editable skeletons
-- capability ports (effects allowlist)
+- structured capability ports (effects boundary)
 - deterministic tests (idempotency + invariants)
 - a `bear check` enforcement gate
 
@@ -31,13 +32,19 @@ Core rules:
 
 v0 scope:
 - JVM (Java) only
+- Single logic block per IR file
 - Enforce:
-  - allowed effects
+  - allowed effects via structured ports
   - idempotency by key
   - non_negative(field) invariant
 - Demo: bank account Withdraw block
 - Naive implementation must fail `bear check`
 - Correct implementation must pass
+
+v0 non-guarantees:
+- Business correctness beyond declared invariants
+- DB/concurrency/transaction semantics
+- Runtime enforcement beyond test harness
 
 Current Phase:
 [UPDATE EACH SESSION]
@@ -57,7 +64,7 @@ BEAR introduces a small intermediate representation (BEAR IR) for "blocks".
 
 BEAR compiles IR into:
 - Non-editable skeleton classes
-- Capability port interfaces derived from effects.allow
+- Structured port interfaces derived from effects.allow
 - Deterministic test templates
 - A single enforcement command: `bear check`
 
@@ -98,7 +105,7 @@ Target:
 - JVM (Java only)
 
 Enforced Guarantees:
-- Capability allowlist (effects.allow)
+- Structured effect boundary (effects.allow ports + ops)
 - Idempotency by key
 - non_negative(field) invariant
 
@@ -114,6 +121,12 @@ Demo:
 ## Explicitly Out of Scope (v0)
 
 - Spec -> IR lowering
+- Capability blocks in IR
+- Block-to-block composition/graph modeling
+- Behavior DSL
+- requires/ensures
+- State delta modeling
+- Infrastructure simulation
 - Cross-service modeling
 - Multi-language targets
 - LLM inside BEAR core
