@@ -102,3 +102,5 @@ No essays. No philosophy.
 - Added compile command spec at `spec/commands/compile.md`.
 - Added compile coverage in app/kernel tests for argument handling, deterministic regeneration, and impl preservation.
 - Parked feature request for later: configurable compile base package (`--base-package`) so adopter apps can own package namespace.
+- Integrated minimal demo wiring with `../bear-account-demo`: manual compile works, generated sourceSets are wired, demo tests run green, and user impl preservation was verified.
+- Fixed generator bug in runtime invariant emission for idempotency replay path (generated code now references correct result variable).

@@ -198,7 +198,7 @@ public final class JvmTarget implements Target {
                 .append("(BearValue.builder().put(\"key\", toText(request.").append(keyField.getterName).append("())).build());\n");
             s.append("        if (existing != null && \"true\".equals(existing.get(\"hit\"))) {\n");
             s.append("            ").append(blockName).append("Result replayed = decodeResult(existing);\n");
-            appendInvariantChecks(s, blockName, outputs, block);
+            appendInvariantChecks(s, blockName, outputs, block, "replayed");
             s.append("            return replayed;\n");
             s.append("        }\n");
         }
@@ -208,7 +208,7 @@ public final class JvmTarget implements Target {
             s.append(", ").append(port.variableName);
         }
         s.append(");\n");
-        appendInvariantChecks(s, blockName, outputs, block);
+        appendInvariantChecks(s, blockName, outputs, block, "result");
 
         if (block.idempotency() != null) {
             PortModel idPort = findPort(ports, block.idempotency().store().port());
@@ -252,21 +252,30 @@ public final class JvmTarget implements Target {
         return s.toString();
     }
 
-    private void appendInvariantChecks(StringBuilder s, String blockName, List<FieldModel> outputs, BearIr.Block block) {
+    private void appendInvariantChecks(
+        StringBuilder s,
+        String blockName,
+        List<FieldModel> outputs,
+        BearIr.Block block,
+        String resultRef
+    ) {
         if (block.invariants() == null) {
             return;
         }
         for (BearIr.Invariant invariant : block.invariants()) {
             FieldModel output = findField(outputs, invariant.field());
             if ("BigDecimal".equals(output.javaType)) {
-                s.append("        if (result.").append(output.getterName).append("() != null && result.")
+                s.append("        if (").append(resultRef).append(".").append(output.getterName).append("() != null && ")
+                    .append(resultRef).append(".")
                     .append(output.getterName).append("().compareTo(BigDecimal.ZERO) < 0) {\n");
             } else {
-                s.append("        if (result.").append(output.getterName).append("() != null && result.")
+                s.append("        if (").append(resultRef).append(".").append(output.getterName).append("() != null && ")
+                    .append(resultRef).append(".")
                     .append(output.getterName).append("() < 0) {\n");
             }
             s.append("            throw new BearInvariantViolationException(\"block=").append(blockName)
-                .append(", invariant=non_negative, field=").append(invariant.field()).append(", actual=\" + result.")
+                .append(", invariant=non_negative, field=").append(invariant.field()).append(", actual=\" + ")
+                .append(resultRef).append(".")
                 .append(output.getterName).append("());\n");
             s.append("        }\n");
         }
