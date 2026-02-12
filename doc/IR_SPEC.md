@@ -9,7 +9,7 @@ v0 supports:
 - one `logic` block per IR file
 - structured effect ports
 - contract inputs/outputs
-- idempotency by key
+- idempotency by key with explicit store ops
 - invariant template `non_negative(field=<outputField>)`
 
 v0 does not support:
@@ -22,7 +22,8 @@ v0 does not support:
 
 ## Model
 Root object:
-- `block`
+- `version` (string, required, only `v0`)
+- `block` (object, required)
 
 `block` fields:
 - `name` (string, required)
@@ -38,7 +39,7 @@ Root object:
 
 Field shape:
 - `name` (string, required)
-- `type` (enum, required; v0 primitives only)
+- `type` (enum, required, allowed values in v0: `string`, `decimal`, `enum`)
 
 `effects` fields:
 - `allow` (array of effect ports, required)
@@ -49,10 +50,15 @@ Effect port shape:
 
 `idempotency` fields:
 - `key` (string, required, must reference an input field name)
-- `store` (object, optional, if present must reference declared `effects.allow` port/op)
+- `store` (object, required when `idempotency` exists)
+
+`idempotency.store` fields:
+- `port` (string, required, must reference declared `effects.allow[*].port`)
+- `getOp` (string, required, must reference one op under the declared port)
+- `putOp` (string, required, must reference one op under the declared port)
 
 Invariant shape:
-- `type` (enum, required, only `non_negative`)
+- `kind` (enum, required, only `non_negative`)
 - `field` (string, required, must reference an output field name)
 
 ## Validation Rules (Strict)
@@ -64,49 +70,65 @@ Invariant shape:
 - port names must be unique
 - ops must be unique within each port
 - `idempotency.key` must reference an input field
+- `idempotency.store.port` must reference a declared port
+- `idempotency.store.getOp` and `idempotency.store.putOp` must reference declared ops under that port
 - invariant `field` must reference an output field
 
 ## Deterministic Normalization
 Canonical form must:
+- emit root keys in order: `version`, `block`
+- emit `block` keys in order: `name`, `kind`, `contract`, `effects`, `idempotency`, `invariants` (omit absent optionals)
 - sort inputs by `name`
 - sort outputs by `name`
 - sort ports by `port`
 - sort ops within each port
-- sort invariants deterministically
-- emit canonical key order
+- sort invariants deterministically by `kind` then `field`
 
-## Example (Shape Only)
+## Canonical Demo IR (v0)
 ```yaml
+version: v0
 block:
   name: Withdraw
   kind: logic
+
   contract:
     inputs:
       - name: accountId
         type: string
       - name: amount
         type: decimal
+      - name: currency
+        type: string
       - name: txId
         type: string
     outputs:
       - name: balance
         type: decimal
+
   effects:
     allow:
       - port: ledger
-        ops: [getAccount, putAccount]
-      - port: idempotencyStore
-        ops: [getByKey, putByKey]
+        ops:
+          - getBalance
+          - setBalance
+      - port: idempotency
+        ops:
+          - get
+          - put
+
   idempotency:
     key: txId
     store:
-      port: idempotencyStore
-      op: putByKey
+      port: idempotency
+      getOp: get
+      putOp: put
+
   invariants:
-    - type: non_negative
+    - kind: non_negative
       field: balance
 ```
 
 ## Notes
 - This spec is structural, not behavioral.
+- v0 idempotency guarantees deterministic replay behavior in the test harness, not concurrency correctness.
 - Do not expand IR expressiveness in v0.

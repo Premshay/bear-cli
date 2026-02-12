@@ -46,6 +46,7 @@ If a block passes `bear check`, then:
 - general behavioral verification
 
 BEAR v0 is structural enforcement plus deterministic guardrails.
+Idempotency in v0 means deterministic replay safety in the test harness, not concurrency-safe duplicate handling.
 
 ## Repository Structure (bear-cli)
 This repo is a Gradle multi-module project.
@@ -63,12 +64,13 @@ This repo is a Gradle multi-module project.
 A BEAR IR file defines a single logic block.
 
 Model:
+- `version` with only `v0` allowed
 - `block.name`
 - `block.kind` with only `logic` allowed in v0
 - `block.contract.inputs` and `block.contract.outputs`
 - `block.effects.allow` as structured ports (`port` + `ops[]`), not free strings
-- `block.idempotency` with key referencing an input field
-- `block.invariants` with only `non_negative(field=<outputField>)`
+- `block.idempotency` with key referencing an input field and explicit `store.port/getOp/putOp`
+- `block.invariants` with only `kind: non_negative` plus `field: <outputField>`
 
 IR must be:
 - strictly validated

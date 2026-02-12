@@ -34,9 +34,10 @@ v0 scope:
 - JVM (Java) only
 - Single logic block per IR file
 - Enforce:
+  - root IR version `v0`
   - allowed effects via structured ports
-  - idempotency by key
-  - non_negative(field) invariant
+  - idempotency key plus explicit store ops (`port/getOp/putOp`)
+  - `kind: non_negative` invariant on output field
 - Demo: bank account Withdraw block
 - Naive implementation must fail `bear check`
 - Correct implementation must pass
@@ -45,6 +46,7 @@ v0 non-guarantees:
 - Business correctness beyond declared invariants
 - DB/concurrency/transaction semantics
 - Runtime enforcement beyond test harness
+- Concurrency-safe duplicate handling (v0 covers deterministic replay only)
 
 Current Phase:
 [UPDATE EACH SESSION]

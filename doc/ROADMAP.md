@@ -61,6 +61,7 @@ Goal: Deterministic parsing + validation + normalization.
 
 - [ ] Add YAML parsing (SnakeYAML)
 - [ ] Implement strict schema validation
+  - require root `version: v0`
   - fail on unknown keys
   - fail on invalid enums
   - fail on invalid references
@@ -72,6 +73,7 @@ Goal: Deterministic parsing + validation + normalization.
 - [ ] Unique port names
 - [ ] Unique ops per port
 - [ ] idempotency.key must reference input
+- [ ] idempotency.store.port/getOp/putOp must reference declared effects
 - [ ] invariant field must reference output
 
 ### Normalization (Deterministic Canonical Form)
@@ -121,6 +123,8 @@ Generation must produce:
 ### 4. JUnit Test Templates
 
 - [ ] Idempotency test (if declared)
+  - same key invoked twice returns same output
+  - effect write op is applied at most once in deterministic harness
 - [ ] non_negative invariant test
 - [ ] Deterministic wiring with in-memory adapters
 
@@ -173,7 +177,7 @@ One command enforces BEAR guarantees.
 Goal: Prove value.
 
 - [ ] Create simple bank account domain
-- [ ] Write Withdraw BEAR IR (logic block)
+- [ ] Write canonical Withdraw IR at `bear/withdraw.bear.yaml` (single logic block)
 - [ ] Declare ledger + idempotency ports
 - [ ] Provide deterministic in-memory adapters
 - [ ] Implement naive Withdraw

@@ -301,6 +301,7 @@ v0 framing was tightened to remove ambiguity:
 - BEAR v0 is structural enforcement plus deterministic guardrails.
 - v0 explicitly documents both guarantees and non-guarantees.
 - IR remains intentionally limited; no behavior DSL or broader behavioral semantics.
+- Canonical demo IR includes root `version: v0`, invariant `kind`, and idempotency `store.port/getOp/putOp`.
 
 Out-of-scope for v0 remains explicit:
 - capability blocks in IR

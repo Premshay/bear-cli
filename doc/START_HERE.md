@@ -21,13 +21,15 @@ non-editable skeletons + structured ports + deterministic tests, all enforced by
 - Target: JVM (Java) only
 - Single logic block per IR file
 - Enforces:
+  - root IR version `v0`
   - allowed effects via structured ports (`effects.allow` with `port` + `ops[]`)
-  - idempotency by key (if declared)
-  - one invariant template: `non_negative(field=...)`
+  - idempotency by key with explicit store ops (`store.port`, `store.getOp`, `store.putOp`)
+  - one invariant template: `kind: non_negative` + `field`
 - Non-guarantees:
   - business correctness beyond declared invariants
   - DB/concurrency/transaction semantics
   - runtime enforcement beyond test harness
+  - duplicate-request concurrency correctness (v0 covers deterministic replay only)
 - Out of scope: capability blocks in IR, block graphs/composition, behavior DSL, requires/ensures, state delta modeling, infrastructure simulation
 
 ## Repo layout

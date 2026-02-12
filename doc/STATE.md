@@ -34,7 +34,7 @@ Exit condition:
 Implement Phase 1 core model + strict validation:
 
 1. Replace map-based IR with `BlockModel` + structured `EffectPortModel`
-2. Define strict YAML schema (fail on unknown keys)
+2. Define strict YAML schema (including root `version: v0`, fail on unknown keys)
 3. Implement semantic validation rules from `doc/ROADMAP.md`
 4. Implement deterministic canonicalization (sorted structure + canonical key order)
 5. Wire `bear validate <file>` to parse -> validate -> emit canonical form
@@ -42,6 +42,7 @@ Implement Phase 1 core model + strict validation:
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
 - Canonical IR specification is now `doc/IR_SPEC.md`.
+- Canonical demo IR path is `bear/withdraw.bear.yaml`.
 
 ---
 
@@ -63,7 +64,6 @@ It is scope drift.
 
 ## Upcoming Design Decisions (Not Blocking Phase 0)
 
-- Idempotency storage strategy in demo
 - Strictness model for effects enforcement (compile-time vs runtime test only)
 
 ---
@@ -96,3 +96,4 @@ No essays. No philosophy.
 
 - Added Gradle wrapper scripts + wrapper jar.
 - Aligned docs to v0 clarified scope: deterministic constraint compiler, structured ports, explicit guarantees/non-guarantees.
+- Locked canonical demo IR details (`version`, invariant `kind`, idempotency `store.port/getOp/putOp`).

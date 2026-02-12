@@ -18,6 +18,7 @@ v0 non-guarantees:
 - Business correctness beyond declared invariants
 - Real DB/concurrency/transaction semantics
 - Runtime enforcement beyond test harness
+- Concurrency-safe duplicate handling (v0 idempotency is deterministic replay in the test harness)
 
 Start here: `doc/START_HERE.md`
 
