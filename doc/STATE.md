@@ -110,3 +110,5 @@ No essays. No philosophy.
 - Implemented `bear check <ir-file> --project <path>` v1 drift gate: validate + temp compile + deterministic diff against `<project>/build/generated/bear`.
 - Added deterministic drift reporting (`ADDED`/`REMOVED`/`CHANGED`) and explicit missing-baseline failure (`MISSING_BASELINE`) with exit code `3`.
 - Added `spec/commands/check.md` to freeze v1 check command contract and non-mutation semantics.
+- Tightened `bear check` baseline semantics: empty generated baseline tree now counts as `MISSING_BASELINE` (same deterministic drift failure path).
+- Clarified `check` path semantics in spec: reported drift paths are relative to `build/generated/bear` root.
