@@ -1,0 +1,135 @@
+# `bear compile` (v0)
+
+## Command
+`bear compile <ir-file> --project <path>`
+
+- IR parse + semantic validation must succeed before generation.
+- Exit codes use the CLI contract:
+  - `0` success
+  - `2` schema/semantic validation error
+  - `64` usage error
+  - `74` IO error
+  - `70` internal error
+
+## Ownership Model
+
+### BEAR-owned (always regenerated)
+Location:
+- `<project>/build/generated/bear/src/main/java/...`
+- `<project>/build/generated/bear/src/test/java/...`
+
+Rules:
+- `<project>/build/generated/bear` is fully recreated on every compile run.
+- File paths and content are deterministic.
+- User edits in this tree are not preserved.
+
+### User-owned (never overwritten)
+Location:
+- `<project>/src/main/java/...`
+
+Rules:
+- `<BlockName>Impl.java` is created only if missing.
+- Existing impl files are never modified by `bear compile`.
+
+## Package Model
+- Generated package: `com.bear.generated.<blockname-lowercase-sanitized>`
+- Impl stub uses the same package but lives under user-owned `src/main/java`.
+
+Name normalization rules:
+- Split on non-alphanumeric boundaries and camel-case transitions.
+- Class names: PascalCase.
+- Members/methods: camelCase.
+- Leading digits are prefixed with `_`.
+- Java keywords are suffixed with `_`.
+
+## Generated Artifacts (Per Block)
+
+Main sources:
+- `<BlockName>.java` entrypoint (generated, non-editable)
+- `<BlockName>Logic.java` user logic boundary interface
+- `<BlockName>Request.java` immutable input model
+- `<BlockName>Result.java` immutable output model
+- `<PortName>Port.java` for each declared `effects.allow[*].port`
+- `BearValue.java` deterministic envelope type for port calls
+- `BearInvariantViolationException.java` runtime invariant failure type
+
+User source:
+- `<BlockName>Impl.java` in `src/main/java` (create once)
+
+Generated tests (conditional):
+- `<BlockName>IdempotencyTest.java` when idempotency is declared
+- `<BlockName>InvariantNonNegativeTest.java` when invariant is declared
+
+## Port Method Contract
+- One interface per declared port.
+- One method per declared op.
+- Methods sorted alphabetically by normalized op name.
+- Method signature is fixed in v0:
+  - `BearValue <op>(BearValue input);`
+- No generics in port method signatures.
+
+## Type Mapping (IR -> Java)
+- `string` -> `String`
+- `decimal` -> `BigDecimal`
+- `int` -> `Integer`
+- `bool` -> `Boolean`
+- `enum` -> `String`
+
+## Entrypoint Runtime Contract
+- Entrypoint delegates business logic through `<BlockName>Logic`.
+- If idempotency is declared:
+  - invoke declared `getOp` before logic
+  - on hit (`hit=true`) decode stored result and return
+  - on miss run logic, then call declared `putOp` with encoded result
+- If `non_negative` invariant is declared:
+  - enforce at runtime before returning result
+  - throw `BearInvariantViolationException` on violation
+
+## Wiring Signatures (Normative)
+- Generated entrypoint constructor:
+  - `public <BlockName>(<DeclaredPortInterfaces...>, <BlockName>Logic logic)`
+- Generated entrypoint execution method:
+  - `public <BlockName>Result execute(<BlockName>Request request)`
+- Generated logic interface method:
+  - `<BlockName>Result execute(<BlockName>Request request, <DeclaredPortInterfaces...>)`
+- Entrypoint must not instantiate `<BlockName>Impl` directly. Logic implementation is always injected via `<BlockName>Logic`.
+
+## Idempotency Payload Schema (Normative)
+For idempotent blocks, generated runtime uses the following `BearValue` payload contract:
+
+- `getOp` input payload:
+  - `key`: string form of the declared `idempotency.key` request field
+- `getOp` output payload:
+  - miss: `hit` absent or not equal to `"true"`
+  - hit: `hit="true"` and encoded result fields present
+- `putOp` input payload:
+  - `hit="true"`
+  - `key`: same key used for `getOp`
+  - `result.<outputFieldName>` for each declared output field
+
+Result encoding/decoding rules:
+- `key` conversion uses the same deterministic type encoding rules listed below.
+- `result.<outputFieldName>` keys use canonical output field names from normalized IR.
+- Fields are written in normalized output field order.
+- Type encoding is deterministic string conversion:
+  - `String`/`enum`: identity string
+  - `BigDecimal`: `toString()`
+  - `Integer`: base-10 string
+  - `Boolean`: `true`/`false`
+
+## Determinism Guarantees
+- Deterministic generated file list, file paths, class names, method order, and imports.
+- No timestamps/random/UUID values in generated output.
+- Text format is canonical UTF-8 with LF newlines.
+- Running `bear compile` twice with identical normalized IR yields byte-identical generated artifacts.
+
+## Invariant Violation Message (Normative)
+For runtime `non_negative` failures, generated code must throw `BearInvariantViolationException` with:
+
+`block=<BlockName>, invariant=non_negative, field=<fieldName>, actual=<value>`
+
+This message format is stable and part of compile conformance.
+
+## Failure Atomicity (v0)
+v0 does not guarantee atomic replacement of generated trees.
+Partial generated output on compile failure is allowed.

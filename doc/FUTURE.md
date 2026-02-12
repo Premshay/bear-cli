@@ -118,6 +118,17 @@ v0 can run as plain CLI only.
 
 ---
 
+## Compile Package Customization
+
+- Add `--base-package <pkg>` to `bear compile`
+- Generate under `<base-package>.generated.<blockname-sanitized>` instead of fixed `com.bear.generated...`
+- Keep deterministic package/name sanitization rules
+- Preserve two-tree ownership model (generated tree + user-owned impl)
+
+Deferred from v0 first slice to keep Phase 2 scope focused.
+
+---
+
 ## Enterprise Features
 
 - Policy enforcement modes

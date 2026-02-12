@@ -9,7 +9,7 @@ Last Updated: 2026-02-12
 
 ## Current Focus
 
-Phase 2 (JVM target): begin deterministic code generation (`bear compile`) from validated/normalized IR.
+Phase 2 (JVM target): `bear compile` first slice implemented with deterministic JVM artifact generation and two-tree ownership model.
 
 ---
 
@@ -21,7 +21,7 @@ Checklist:
 - [x] Phase 1 `bear validate <file>` implemented end-to-end
 - [x] Strict schema + semantic validation implemented and tested
 - [x] Deterministic normalization + canonical YAML emission implemented and golden-tested
-- [ ] Phase 2 codegen scaffolding started
+- [x] Phase 2 codegen scaffolding started
 
 Exit condition:
 `bear compile` emits deterministic JVM artifacts (ports + skeleton + test templates) for the demo IR.
@@ -30,12 +30,12 @@ Exit condition:
 
 ## Next Concrete Task
 
-Phase 2 (JVM target): start `bear compile` for v0 Withdraw demo:
+Phase 2 (JVM target): harden compile surface and align generated templates with golden corpus:
 
-1. Generate ports (interfaces) from `effects.allow`
-2. Generate a skeleton `Withdraw` block that can only use declared ports/ops
-3. Generate deterministic JUnit tests for v0 invariants + idempotency pattern
-4. Add drift detection (regen + compare) only once codegen exists
+1. Add golden corpus for `bear compile` generated outputs
+2. Tighten generated idempotency/invariant tests beyond compile-only templates
+3. Add compile spec conformance checks for naming + package sanitation edge cases
+4. Start Phase 3 drift detection (`bear check` regen + compare)
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -97,3 +97,8 @@ No essays. No philosophy.
 - Locked canonical demo IR details (`version`, invariant `kind`, idempotency `store.port/getOp/putOp`).
 - Implemented `bear validate <file>` end-to-end (strict schema + semantic validation, deterministic normalization, canonical YAML emission) with spec fixtures + golden output.
 - Stabilized Gradle behavior for Windows locks: wrapper defaults `GRADLE_USER_HOME` to temp and Gradle build outputs are redirected to temp (`bear-cli-build/<runId>`).
+- Implemented `bear compile <ir-file> --project <path>` with validate+normalize pre-pass and deterministic generation to `<project>/build/generated/bear`.
+- Implemented two-tree ownership model: generated artifacts are fully regenerated; user-owned `<BlockName>Impl.java` is created once under `src/main/java` and then preserved.
+- Added compile command spec at `spec/commands/compile.md`.
+- Added compile coverage in app/kernel tests for argument handling, deterministic regeneration, and impl preservation.
+- Parked feature request for later: configurable compile base package (`--base-package`) so adopter apps can own package namespace.

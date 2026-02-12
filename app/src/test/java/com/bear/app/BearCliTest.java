@@ -104,6 +104,65 @@ class BearCliTest {
         assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("schema at block: UNKNOWN_KEY:"));
     }
 
+    @Test
+    void compileRequiresExpectedArgs() {
+        ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
+        int exitCode = BearCli.run(
+            new String[] { "compile" },
+            new PrintStream(stdoutBytes),
+            new PrintStream(stderrBytes)
+        );
+
+        assertEquals(64, exitCode);
+        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("usage: INVALID_ARGS:"));
+    }
+
+    @Test
+    void compileMissingIrReturnsIoExitCode(@TempDir Path tempDir) {
+        ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
+        int exitCode = BearCli.run(
+            new String[] { "compile", "missing.yaml", "--project", tempDir.toString() },
+            new PrintStream(stdoutBytes),
+            new PrintStream(stderrBytes)
+        );
+
+        assertEquals(74, exitCode);
+        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("io: IO_ERROR:"));
+    }
+
+    @Test
+    void compileFixtureGeneratesArtifactsAndPreservesExistingImpl(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        Path impl = tempDir.resolve("src/main/java/com/bear/generated/withdraw/WithdrawImpl.java");
+        Files.createDirectories(impl.getParent());
+        Files.writeString(impl, "package com.bear.generated.withdraw;\npublic final class WithdrawImpl {}\n");
+
+        ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
+        int exitCode = BearCli.run(
+            new String[] { "compile", fixture.toString(), "--project", tempDir.toString() },
+            new PrintStream(stdoutBytes),
+            new PrintStream(stderrBytes)
+        );
+
+        assertEquals(0, exitCode);
+        assertEquals("", stderrBytes.toString());
+
+        Path generatedRoot = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/withdraw");
+        assertTrue(Files.exists(generatedRoot.resolve("Withdraw.java")));
+        assertTrue(Files.exists(generatedRoot.resolve("WithdrawLogic.java")));
+        assertTrue(Files.exists(generatedRoot.resolve("WithdrawRequest.java")));
+        assertTrue(Files.exists(generatedRoot.resolve("WithdrawResult.java")));
+        assertTrue(Files.exists(generatedRoot.resolve("LedgerPort.java")));
+        assertTrue(Files.exists(generatedRoot.resolve("IdempotencyPort.java")));
+
+        assertEquals("package com.bear.generated.withdraw;\npublic final class WithdrawImpl {}\n", Files.readString(impl));
+    }
+
     private static String normalizeLf(String text) {
         return text.replace("\r\n", "\n");
     }
