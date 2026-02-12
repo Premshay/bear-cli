@@ -18,6 +18,23 @@ BEAR does not simulate infrastructure behavior.
 BEAR is not a behavior DSL.
 BEAR is not primarily a spec-refinement tool.
 
+## Philosophy in Agentic Development
+BEAR assumes agents are highly capable at producing implementation, but weakly bounded unless structure is enforced.
+
+The design stance is:
+- maximize implementation freedom inside a declared cage
+- minimize trust required in agent internal reasoning
+- shift trust to deterministic, independent gates
+
+In practical terms:
+- BEAR does not try to make intent perfect before coding.
+- BEAR makes boundary changes explicit and reviewable.
+- BEAR treats ordinary internal evolution as fast-path work.
+- BEAR treats boundary expansion as governance-sensitive work.
+
+Core litmus:
+- If an agent can add new external interaction capability without a small, obvious, deterministic signal, BEAR is not doing its job.
+
 ## Core Principles
 1. Deterministic core
    - Validation, normalization, and code generation are deterministic and reproducible.
@@ -33,6 +50,28 @@ BEAR is not primarily a spec-refinement tool.
    - Ordinary IR evolution is expected.
    - Boundary-expanding changes must be explicit and reviewable.
    - Governance classification is defined in `doc/GOVERNANCE.md`.
+
+## Agentic Process Contract (v0)
+BEAR is expected to be default-on in agent sessions.
+
+Role split:
+- Developer: states domain intent and accepts/rejects boundary changes.
+- Agent: handles BEAR mechanics (IR updates, generation, gate execution, and reporting).
+- BEAR gates: provide deterministic, independent checks.
+
+Expected operating loop:
+1. Prompt in domain language.
+2. Agent explores code and locates/creates affected block IR.
+3. Agent applies IR and code updates.
+4. Agent runs deterministic gates (`validate`, `compile`/`check`, project tests as applicable).
+5. Agent reports:
+   - implementation summary
+   - boundary summary
+   - explicit boundary-expansion signals when present
+
+Required property:
+- boundary-expanding changes must be visible in workflow output and reviewable in seconds.
+- ordinary changes should remain low-friction.
 
 ## What BEAR Guarantees in v0
 If a block passes `bear check`, then:

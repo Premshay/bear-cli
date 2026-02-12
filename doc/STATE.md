@@ -116,3 +116,4 @@ No essays. No philosophy.
 - Extended `bear check` to execute project Gradle wrapper tests after drift pass, with dedicated test-failure exit code (`4`) and deterministic timeout handling.
 - Added deterministic test-failure reporting with normalized 40-line output tail and explicit drift short-circuit behavior (tests do not run on drift).
 - Added normative governance policy in `doc/GOVERNANCE.md` and aligned `doc/ARCHITECTURE.md`, `doc/ROADMAP.md`, `doc/START_HERE.md`, `doc/PROMPT_BOOTSTRAP.md`, and `README.md` to boundary-governance-first framing.
+- Expanded `doc/ARCHITECTURE.md` with explicit philosophy and agentic process contract sections (role split, default BEAR loop, and boundary-signal litmus).
