@@ -1,45 +1,58 @@
 # Start Here (bear-cli)
 
-This repository is the CLI + deterministic kernel for **BEAR** (Block Enforcement & Representation).
-
-BEAR is a deterministic constraint compiler for AI-assisted (or human) backend code changes:
-you describe a single **block** in **BEAR IR v0**, then BEAR validates/normalizes it and compiles it into
-non-editable skeletons + structured ports + deterministic tests, all enforced by a single `bear check` gate.
+This file is the navigation map.
+Use it to find the right source of truth quickly.
+These docs are primarily for in-repo sessions (Codex/agent with repo access).
 
 ## Read next (in order)
 
 1. `doc/STATE.md` -- current focus and next steps (keep updated).
-2. `doc/ARCHITECTURE.md` -- what BEAR is, v0 scope, non-goals.
-3. `doc/IR_SPEC.md` -- canonical v0 IR model and validation rules.
-4. `doc/ROADMAP.md` -- what to build in v0 and in what phases.
-5. `doc/PROJECT_LOG.md` -- background and major decisions.
-6. `doc/FUTURE.md` -- parking lot; explicitly not part of v0.
-7. `doc/PROMPT_BOOTSTRAP.md` -- what to paste into a fresh AI session to restore context.
+2. `doc/ARCHITECTURE.md` -- project intent, v0 guarantees/non-guarantees, scope lock.
+3. `doc/IR_SPEC.md` -- canonical v0 IR schema, validation, normalization, and demo IR shape.
+4. `doc/ROADMAP.md` -- execution plan and phase checkpoints.
+5. `doc/PROJECT_LOG.md` -- historical rationale and major decisions.
+6. `doc/FUTURE.md` -- deferred ideas (explicitly not v0).
+7. `doc/PROMPT_BOOTSTRAP.md` -- copy/paste seed for a fresh AI session.
 
-## v0 scope (quick)
+## What each file is for
 
-- Target: JVM (Java) only
-- Single logic block per IR file
-- Enforces:
-  - root IR version `v0`
-  - allowed effects via structured ports (`effects.allow` with `port` + `ops[]`)
-  - idempotency by key with explicit store ops (`store.port`, `store.getOp`, `store.putOp`)
-  - one invariant template: `kind: non_negative` + `field`
-- Non-guarantees:
-  - business correctness beyond declared invariants
-  - DB/concurrency/transaction semantics
-  - runtime enforcement beyond test harness
-  - duplicate-request concurrency correctness (v0 covers deterministic replay only)
-- Out of scope: capability blocks in IR, block graphs/composition, behavior DSL, requires/ensures, state delta modeling, infrastructure simulation
+- `doc/STATE.md`: operational tracker; update every working session.
+- `doc/ARCHITECTURE.md`: conceptual contract for v0.
+- `doc/IR_SPEC.md`: schema contract; if fields conflict elsewhere, this wins for IR shape.
+- `doc/ROADMAP.md`: implementation order; defines what gets built.
+- `doc/PROMPT_BOOTSTRAP.md`: transport context into a new chat, not a full architecture doc.
+  - Use this for non-repo sessions (for example ChatGPT without workspace file access).
 
 ## Repo layout
 
 - `kernel/` -- trusted deterministic seed: BEAR IR parsing/validation/normalization + target abstractions
 - `app/` -- CLI wrapper (commands like `bear validate`, `bear compile`, `bear check`)
 
-## Working agreement (for contributors + agents)
+## Session sequence (recommended)
 
-- Determinism first: validation, normalization, and codegen must be reproducible.
-- Agent-agnostic: BEAR must work with any agent tool (or none).
-- "Cage, not code": generate boundaries + tests; implement business logic in a separate impl file.
-- If it doesn't help demonstrate "naive Withdraw fails; corrected Withdraw passes", it's not v0.
+1. Read `doc/STATE.md` first.
+2. Read `doc/IR_SPEC.md` before touching parser/validator/generator code.
+3. Read `doc/ROADMAP.md` before choosing implementation scope.
+4. If this is a new AI chat, paste `doc/PROMPT_BOOTSTRAP.md` SHORT block.
+
+## Session close protocol
+
+Run this when major progress is made or before closing a session.
+
+1. Update `doc/STATE.md`:
+   - `Last Updated`
+   - `Current Focus`
+   - `Next Concrete Task`
+   - short `Session Notes` bullets
+2. Update canonical docs only if semantics changed:
+   - `doc/IR_SPEC.md` for IR/schema/rules
+   - `doc/ARCHITECTURE.md` for guarantees/non-guarantees/scope
+   - `doc/ROADMAP.md` for phase/scope execution plan
+3. Update `doc/PROJECT_LOG.md` only for meaningful architectural decisions.
+4. Keep handoff docs aligned if needed:
+   - `doc/START_HERE.md` for navigation/process changes
+   - `doc/PROMPT_BOOTSTRAP.md` for external non-repo session bootstrap changes
+5. End-of-session summary should always include:
+   - what changed
+   - open decisions/risks
+   - next single task

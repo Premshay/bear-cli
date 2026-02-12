@@ -1,52 +1,50 @@
-# BEAR Project Bootstrap
+# BEAR Project Bootstrap (For Non-Codex Sessions)
 
-This file is used to restart a new AI session without losing context.
-
-Always paste the SHORT version first.
-Use the LONG version only if more context is needed.
+Use this when starting a chat session that does not have repo file access (for example ChatGPT).
+Paste the SHORT block first. Paste LONG only if needed.
 
 ---
 
-# SHORT BOOTSTRAP (Default)
+# SHORT BOOTSTRAP (Paste First)
 
-We are building BEAR (Block Enforcement & Representation).
+We are building BEAR (Block Enforcement & Representation), a deterministic constraint compiler for backend blocks.
 
-BEAR is a deterministic constraint compiler for backend systems.
+Core purpose:
+- Agent-generated code is non-deterministic.
+- Natural language specs are loose.
+- Production systems need deterministic enforcement.
 
-Source of truth for current work:
-- `doc/STATE.md` (current focus + next steps)
-- `doc/IR_SPEC.md` (canonical v0 IR model and strict rules)
-- `doc/PROJECT_LOG.md` (background + major decisions)
+What BEAR does:
+- Takes BEAR IR (strict intermediate representation for one logic block).
+- Deterministically validates and normalizes IR.
+- Deterministically compiles IR into:
+  - non-editable skeletons
+  - structured capability port interfaces
+  - deterministic tests
+- Enforces with one gate: `bear check` (validate + compile + test + drift detection).
 
-It introduces a BEAR IR (block intermediate representation) and compiles it into:
-- non-editable skeletons
-- structured capability ports (effects boundary)
-- deterministic tests (idempotency + invariants)
-- a `bear check` enforcement gate
+v0 scope (locked):
+- JVM/Java only.
+- One logic block per IR file.
+- Effects are structured ports (`effects.allow` with `port` + `ops[]`).
+- Idempotency uses `key` plus store ops (`store.port/getOp/putOp`).
+- Invariants: only `kind: non_negative` on output fields.
 
-Core rules:
-- BEAR is fully deterministic
-- No LLM logic inside BEAR core
-- Agent-agnostic
-- Two-file approach (generated skeleton + separate impl)
-
-v0 scope:
-- JVM (Java) only
-- Single logic block per IR file
-- Enforce:
-  - root IR version `v0`
-  - allowed effects via structured ports
-  - idempotency key plus explicit store ops (`port/getOp/putOp`)
-  - `kind: non_negative` invariant on output field
-- Demo: bank account Withdraw block
-- Naive implementation must fail `bear check`
-- Correct implementation must pass
+v0 guarantees:
+- Structural contract enforcement.
+- Structural effect-boundary enforcement via generated ports.
+- Deterministic invariant/idempotency test gating.
+- Drift detection for generated artifacts.
 
 v0 non-guarantees:
-- Business correctness beyond declared invariants
-- DB/concurrency/transaction semantics
-- Runtime enforcement beyond test harness
-- Concurrency-safe duplicate handling (v0 covers deterministic replay only)
+- Business correctness beyond declared invariants.
+- Real DB/concurrency/transaction semantics.
+- Runtime enforcement beyond test harness.
+- Concurrency-safe duplicate handling (v0 idempotency is deterministic replay safety only).
+
+Demo proof target:
+- Naive Withdraw fails `bear check`.
+- Corrected Withdraw passes `bear check`.
 
 Current Phase:
 [UPDATE EACH SESSION]
@@ -54,95 +52,56 @@ Current Phase:
 Session Goal:
 [STATE SINGLE TASK]
 
+Done Criteria (optional):
+[STATE 1-2 CHECKS]
+
+Constraints for this session:
+- Do not add features beyond v0 scope.
+- Do not expand IR expressiveness.
+- Keep behavior deterministic.
+
 Continue from here.
 
 ---
 
 # LONG BOOTSTRAP (If More Context Is Needed)
 
-## Core Idea
+BEAR is not:
+- a full verifier
+- a behavior DSL
+- infrastructure simulation
+- a replacement for developers
 
-BEAR introduces a small intermediate representation (BEAR IR) for "blocks".
+BEAR IR v0 canonical model:
+- root: `version: v0`, `block`
+- `block.kind` must be `logic`
+- `contract.inputs` and `contract.outputs` are typed fields
+- `effects.allow` is a list of ports; each port has ops
+- `idempotency.key` references an input
+- `idempotency.store.port/getOp/putOp` reference declared effects
+- `invariants` supports only:
+  - `kind: non_negative`
+  - `field` referencing an output
+- unknown keys or invalid references must fail validation
 
-BEAR compiles IR into:
-- Non-editable skeleton classes
-- Structured port interfaces derived from effects.allow
-- Deterministic test templates
-- A single enforcement command: `bear check`
+Deterministic normalization requirements:
+- canonical key ordering
+- sorted inputs/outputs by name
+- sorted ports by name
+- sorted ops within each port
+- deterministic invariant ordering
 
-BEAR acts as a constraint layer between:
-- Spec / human intent
-- AI-generated or human-written implementation
+Two-file enforcement model:
+- generated skeleton is non-editable
+- implementation file is editable
+- regeneration must not allow silent drift
 
-It is not a full development platform.
-It does not embed LLM logic.
-
----
-
-## Architecture (bear-cli repo)
-
-- kernel/
-  - Trusted deterministic seed
-  - IR parsing
-  - Validation
-  - Normalization
-  - Target abstraction
-
-- app/
-  - CLI wrapper
-  - Commands:
-    - bear validate
-    - bear compile
-    - bear check
-
-Two-file enforcement:
-- Generated skeleton (non-editable)
-- Separate implementation file
-
----
-
-## v0 Scope (Locked)
-
-Target:
-- JVM (Java only)
-
-Enforced Guarantees:
-- Structured effect boundary (effects.allow ports + ops)
-- Idempotency by key
-- non_negative(field) invariant
-
-Demo:
-- Bank account domain
-- Withdraw block
-- Show:
-  - naive implementation fails
-  - correct implementation passes
-
----
-
-## Explicitly Out of Scope (v0)
-
-- Spec -> IR lowering
-- Capability blocks in IR
-- Block-to-block composition/graph modeling
-- Behavior DSL
-- requires/ensures
-- State delta modeling
-- Infrastructure simulation
-- Cross-service modeling
-- Multi-language targets
-- LLM inside BEAR core
-- Plugin system
-- UI
-- Rich invariant catalog
-- Full self-hosting of kernel
-
----
-
-## Current Phase
-[UPDATE EACH SESSION]
-
-## Session Goal
-[STATE SINGLE TASK]
-
-Continue from this state.
+Demo IR shape (canonical intent):
+- one Withdraw logic block
+- inputs: `accountId`, `amount`, `currency`, `txId`
+- output: `balance`
+- ports:
+  - `ledger`: `getBalance`, `setBalance`
+  - `idempotency`: `get`, `put`
+- idempotency key: `txId`
+- invariant: non-negative `balance`
