@@ -8,17 +8,19 @@ These docs are primarily for in-repo sessions (Codex/agent with repo access).
 
 1. `doc/STATE.md` -- current focus and next steps (keep updated).
 2. `doc/ARCHITECTURE.md` -- project intent, v0 guarantees/non-guarantees, scope lock.
-3. `doc/GOVERNANCE.md` -- normative IR diff classification (`ordinary` vs `boundary-expanding`) and review policy.
-4. `doc/IR_SPEC.md` -- canonical v0 IR schema, validation, normalization, and demo IR shape.
-5. `doc/ROADMAP.md` -- execution plan and phase checkpoints.
-6. `doc/PROJECT_LOG.md` -- historical rationale and major decisions.
-7. `doc/FUTURE.md` -- deferred ideas (explicitly not v0).
-8. `doc/PROMPT_BOOTSTRAP.md` -- copy/paste seed for a fresh AI session.
+3. `doc/NORTH_STAR.md` -- broader motivation and long-horizon success criteria.
+4. `doc/GOVERNANCE.md` -- normative IR diff classification (`ordinary` vs `boundary-expanding`) and review policy.
+5. `doc/IR_SPEC.md` -- canonical v0 IR schema, validation, normalization, and demo IR shape.
+6. `doc/ROADMAP.md` -- execution plan and phase checkpoints.
+7. `doc/PROJECT_LOG.md` -- historical rationale and major decisions.
+8. `doc/FUTURE.md` -- deferred ideas (explicitly not v0).
+9. `doc/PROMPT_BOOTSTRAP.md` -- copy/paste seed for a fresh AI session.
 
 ## What each file is for
 
 - `doc/STATE.md`: operational tracker; update every working session.
 - `doc/ARCHITECTURE.md`: conceptual contract for v0.
+- `doc/NORTH_STAR.md`: broader BEAR motivation and long-term success litmus.
 - `doc/GOVERNANCE.md`: normative governance contract for classifying IR changes and signaling boundary expansion.
 - `doc/IR_SPEC.md`: schema contract; if fields conflict elsewhere, this wins for IR shape.
 - `doc/ROADMAP.md`: implementation order; defines what gets built.

@@ -60,9 +60,36 @@ v0 supports only:
 - Policy-based effect enforcement
 - Forbidden dependency scanning
 - Integration with static analysis tools
+- Capability contract metadata:
+  - allowed event types
+  - allowed destinations/topics
+  - operation mode constraints (read/write/etc.)
+  - schema/version constraints
 
 v0 supports only:
 - simple allowlist of effects
+
+---
+
+## Boundary Usage Constraints (Post-v0)
+
+This track addresses the gap between:
+- capability allowance ("can call this")
+- capability usage semantics ("how this is used")
+
+Candidate constraint types (optional, narrow, boundary-focused):
+- max/expected call counts per capability op
+- outcome-coupled constraints (must/must-not call on success/failure)
+- exactly-once style interaction expectations where meaningful
+- interaction ordering constraints for specific boundary events
+
+Enforcement direction:
+- deterministic validation/normalization in IR layer
+- generated policy assertion tests in target scaffolding
+- CI-visible signals for interaction-pattern changes
+
+Non-goal:
+- full business-behavior specification DSL
 
 ---
 

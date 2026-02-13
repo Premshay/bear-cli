@@ -2,6 +2,7 @@
 
 This roadmap is strictly for v0.
 If something is not listed here, it does not get built.
+For long-term north-star framing, see `doc/NORTH_STAR.md`.
 
 Governance policy reference (normative): `doc/GOVERNANCE.md`.
 
@@ -150,3 +151,31 @@ Milestone:
 - Full self-hosting of kernel
 
 If it does not contribute to deterministic boundary governance and the demo proof loop, it is out of scope.
+
+## Post-v0 Hardening Track (Planned, Not v0)
+
+These items are directional follow-ons after v0 completion and are not current commitments for v0 delivery.
+
+### Stage H1 - Capability Contract Hardening
+- [ ] Expand capability contract model with boundary-relevant metadata (event types, destinations, mode, schema/version constraints).
+- [ ] Keep constraints boundary-observable and target-agnostic.
+- [ ] Add deterministic conformance checks for contract consistency.
+
+Milestone:
+Declared capabilities encode not only "can call" but constrained interaction surface shape.
+
+### Stage H2 - Boundary Usage Constraints
+- [ ] Add optional declarative interaction constraints (counts/order/outcome-coupled expectations).
+- [ ] Ensure constraints are intentionally narrow (no business-behavior DSL).
+- [ ] Add deterministic validation and normalization for the new constraint subset.
+
+Milestone:
+Material changes in capability usage patterns become visible and testable.
+
+### Stage H3 - Generated Policy Assertions
+- [ ] Generate boundary assertion scaffolding in test layer.
+- [ ] Enforce interaction-shape checks in `bear check` test gate.
+- [ ] Keep enforcement build/compile/test-based and cross-language portable.
+
+Milestone:
+Agents cannot silently change interaction semantics at the boundary while keeping CI green.

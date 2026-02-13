@@ -1,5 +1,8 @@
 # BEAR v0 Architecture
 
+This document defines v0 contract-level guarantees and constraints.
+For long-horizon motivation and success criteria, see `doc/NORTH_STAR.md`.
+
 ## Core Purpose
 BEAR is a boundary-governance enforcement layer for agentic development.
 

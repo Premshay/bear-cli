@@ -3,7 +3,7 @@
 This file captures execution state.  
 It must stay concise and operational.
 
-Last Updated: 2026-02-12
+Last Updated: 2026-02-13
 
 ---
 
@@ -117,3 +117,5 @@ No essays. No philosophy.
 - Added deterministic test-failure reporting with normalized 40-line output tail and explicit drift short-circuit behavior (tests do not run on drift).
 - Added normative governance policy in `doc/GOVERNANCE.md` and aligned `doc/ARCHITECTURE.md`, `doc/ROADMAP.md`, `doc/START_HERE.md`, `doc/PROMPT_BOOTSTRAP.md`, and `README.md` to boundary-governance-first framing.
 - Expanded `doc/ARCHITECTURE.md` with explicit philosophy and agentic process contract sections (role split, default BEAR loop, and boundary-signal litmus).
+- Added `doc/NORTH_STAR.md` to capture broader motivation and long-horizon success criteria, with cross-links from README/START_HERE/ARCHITECTURE/ROADMAP/PROMPT_BOOTSTRAP.
+- Expanded broader-vision docs to include post-v0 boundary-usage semantics direction: updated `doc/NORTH_STAR.md`, added post-v0 hardening stages in `doc/ROADMAP.md`, and added concrete boundary-usage constraint candidates in `doc/FUTURE.md`.

@@ -69,6 +69,10 @@ Constraints for this session:
 
 Continue from here.
 
+Reference split:
+- `doc/NORTH_STAR.md`: broad motivation and long-horizon success criteria.
+- `doc/ARCHITECTURE.md`: current v0 guarantees/non-guarantees.
+
 ---
 
 # LONG BOOTSTRAP (If More Context Is Needed)
