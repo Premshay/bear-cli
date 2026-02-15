@@ -124,3 +124,5 @@ No essays. No philosophy.
 - Added future roadmap direction for side-effect taxonomy and clarified principle "side-effect gating, not library gating" in target roadmap/future docs.
 - Repositioned side-effect gating principle: concise philosophy statement in `doc/ARCHITECTURE.md`, phase-scoped placement in `doc/ROADMAP.md` (Phase 2), detailed taxonomy retained in `doc/FUTURE.md`.
 - Started Phase 5 implementation: compile now emits deterministic `bear.surface.json`; check now classifies boundary expansion from manifests with deterministic warning/failure semantics and boundary signal lines.
+- Added BEAR logo assets under `assets/logo/` (lockup + mark SVG) and wired lockup logo into `README.md`.
+- Switched `README.md` logo source to the user-provided `assets/logo/bear.png` for exact visual match.

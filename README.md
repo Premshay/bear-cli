@@ -1,5 +1,9 @@
 # BEAR (bear-cli)
 
+<p align="center">
+  <img src="assets/logo/bear.png" alt="BEAR logo" width="360" />
+</p>
+
 Multi-module Java (17 target) Gradle project for the `bear` CLI.
 
 BEAR is a deterministic boundary-governance layer for AI-assisted (or human) backend code changes.
