@@ -3,6 +3,7 @@
 `doc/m1-canonical/` contains BEAR workflow guidance that may be copied into demo repos.
 
 In scope here:
+- `BEAR_PRIMER.md`
 - `AGENT.md`
 - `WORKFLOW.md`
 

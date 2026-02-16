@@ -18,8 +18,8 @@ Post-v0 M1 execution: prove isolated BEAR agent workflow in `bear-account-demo` 
 Phase: M1 workflow proof (active)
 
 Checklist:
-- [x] Add canonical BEAR workflow source texts in `bear-cli` (`doc/m1-canonical/AGENT.md`, `doc/m1-canonical/WORKFLOW.md`)
-- [x] Add demo-local `AGENT.md` and `WORKFLOW.md`
+- [x] Add canonical BEAR workflow source texts in `bear-cli` (`doc/m1-canonical/BEAR_PRIMER.md`, `doc/m1-canonical/AGENT.md`, `doc/m1-canonical/WORKFLOW.md`)
+- [x] Add demo-local `BEAR_PRIMER.md`, `AGENT.md` and `WORKFLOW.md`
 - [x] Add demo-local spec pack (`doc/spec/*`) + local IR (`spec/withdraw.bear.yaml`)
 - [x] Add demo wrapper + canonical gate scripts (`bin/bear*`)
 - [x] Add minimal `verifyNoUndeclaredReach` and wire to demo verification
@@ -28,6 +28,7 @@ Checklist:
   - `scenario/greenfield-build`
   - `scenario/feature-extension`
 - [x] Move evaluator scenario matrix/runbooks to `bear-cli/doc/m1-eval/*`
+- [x] Update canonical gate contract to deterministic `spec/*.bear.yaml` discovery with actionable no-IR guidance
 - [ ] Execute isolated acceptance run: greenfield build flow
 - [ ] Execute isolated acceptance run: feature-extension flow
 
@@ -43,13 +44,15 @@ M1 acceptance passes:
 
 Run the two acceptance proofs for M1 in isolated-agent style:
 
-1. Remove evaluator hint artifacts from demo repo (`doc/BLOCK_INDEX.md`, `doc/SCENARIOS.md`, `doc/SCENARIO.md`)
-2. Create/maintain canonical scenario branches:
-   - `scenario/greenfield-build`
-   - `scenario/feature-extension`
-3. Keep evaluator runbooks only in `bear-cli/doc/m1-eval/*`
-4. Run greenfield acceptance (agent creates initial block IR/impl) to `check: OK`
-5. Run feature-extension acceptance (update vs new block + boundary expansion path) to final `check: OK`
+1. Greenfield branch (`scenario/greenfield-build`):
+   - confirm deterministic no-IR guidance from canonical gate
+   - create first IR + compile + implementation
+   - reach final `check: OK`
+2. Feature-extension branch (`scenario/feature-extension`):
+   - force update-vs-create decision
+   - run stale-baseline check and observe boundary signal + drift (`exit 3`) when boundary expands
+   - regenerate + implement to final `check: OK`
+3. Capture concise evaluator evidence in `bear-cli/doc/m1-eval/*` only (not in demo repo)
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -89,11 +92,13 @@ It is scope drift.
 
 All of the following must be true:
 
-- Demo has direct, isolated workflow assets (`AGENT.md`, `WORKFLOW.md`, spec pack)
+- Demo has direct, isolated workflow assets (`BEAR_PRIMER.md`, `AGENT.md`, `WORKFLOW.md`, spec pack)
 - Demo has one canonical gate command (`bin/bear-all.*`)
+- Canonical gate handles greenfield deterministically when no IR files exist
 - Demo does not contain evaluator answer-key scenario docs
 - Canonical scenario branches are `scenario/greenfield-build` and `scenario/feature-extension`
 - Demo includes minimal no-undeclared-reach verification in test/check path
+- First-time isolated agent can explain core BEAR concepts from demo-local docs before coding
 
 ---
 
@@ -141,3 +146,4 @@ No essays. No philosophy.
 - Implemented demo-local M1 assets in `bear-account-demo`: `AGENT.md`, `WORKFLOW.md`, block index, spec pack, local IR, canonical scripts (`bin/bear*`), boundary scenario runbook, and `verifyNoUndeclaredReach` wired into tests.
 - M1 realism reset started: scenario evaluation guidance moves to `bear-cli/doc/m1-eval/*`; demo should keep only realistic project artifacts.
 - Completed realism reset core wiring: removed demo scenario answer-key docs, created canonical branches (`scenario/greenfield-build`, `scenario/feature-extension`), and moved evaluator runbooks into `bear-cli/doc/m1-eval/`.
+- Added M1 comprehension hardening requirements: local BEAR primer, stronger read-order guidance, and greenfield-safe canonical gate behavior.

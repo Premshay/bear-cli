@@ -4,15 +4,27 @@ Purpose:
 - This file is the canonical source text for demo-repo `AGENT.md` in M1.
 - In M1, demo copies are synchronized manually.
 
+## Read In This Order
+
+1. `doc/BEAR_PRIMER.md`
+2. `doc/spec/*`
+3. the feature request
+
 ## Mandatory BEAR Loop
 
 1. Read the feature request in domain terms.
-2. Locate affected block(s) and IR first.
+2. Discover existing BEAR structure:
+- inspect `spec/*.bear.yaml`
+- inspect generated package namespaces and existing `*Impl.java` files
 3. Decide if boundary/contract/effect changes are required.
 4. If required, update IR before implementation edits.
-5. Run canonical gate command.
-6. Fix failures by category (schema/validation, drift, boundary signal, tests).
-7. Report exactly what changed:
+5. Decide create-vs-update block:
+- update an existing block when feature fits same contract responsibility and boundary
+- create a new block when feature introduces a new responsibility/contract boundary
+6. If no IR exists yet, create the first `spec/*.bear.yaml` before expecting gate success.
+7. Run canonical gate command.
+8. Fix failures by category (schema/validation, drift, boundary signal, tests).
+9. Report exactly what changed:
 - IR and boundary deltas
 - implementation files
 - tests and gate result

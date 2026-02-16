@@ -10,6 +10,18 @@ Do not copy these runbooks into `bear-account-demo`.
 | `scenario/greenfield-build` | minimal app + domain specs; no completed BEAR block implementation | create initial block IR(s), compile/generate, implement, pass gate | canonical gate exits `0` |
 | `scenario/feature-extension` | existing app passes gate | decide update-existing-block vs create-new-block for new feature; perform IR-first boundary work when needed | stale-baseline check emits boundary expansion + drift (`3`) when applicable, then final gate exits `0` |
 
+## Canonical Gate Behavior Expectations
+
+- `bear-all` discovers `spec/*.bear.yaml` in deterministic filename order.
+- If no IR files exist:
+  - non-zero failure (`64`)
+  - actionable message:
+    - `No IR files found under spec/*.bear.yaml`
+    - `Create initial block IR, run compile, then rerun bear-all.`
+- If multiple IR files exist:
+  - check runs in sorted order
+  - gate stops on first failure and propagates exit code
+
 ## Legacy Branches (Non-Canonical)
 
 - `scenario/naive-fail-withdraw`

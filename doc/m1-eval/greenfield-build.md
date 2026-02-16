@@ -11,6 +11,9 @@ Validate that a generic agent can bootstrap BEAR-compliant development from doma
 1. Checkout `bear-account-demo` branch: `scenario/greenfield-build`.
 2. Provide a natural-language feature request aligned with available domain specs.
 3. Do not provide evaluator hints about exact block names/IR paths beyond what is discoverable in repo context.
+4. If branch starts without IR files, first gate run should fail with:
+- `No IR files found under spec/*.bear.yaml`
+- `Create initial block IR, run compile, then rerun bear-all.`
 
 ## Expected Agent Behavior
 

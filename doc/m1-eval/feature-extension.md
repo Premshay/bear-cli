@@ -21,6 +21,7 @@ while following IR-first boundary governance.
 1. Inspect existing IR + implementation to choose update/new block path.
 2. Apply IR-first changes for boundary/contract/effect updates.
 3. Run canonical gate on stale baseline and observe deterministic boundary/drift signal when IR expands boundary.
+   - if multiple IR files exist, checks run in deterministic sorted filename order and stop on first failure
 4. Regenerate/compile baseline and complete implementation/tests.
 5. Re-run canonical gate to pass.
 

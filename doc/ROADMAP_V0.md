@@ -106,7 +106,7 @@ All must be true:
 ### M1 (active): isolated workflow proof
 
 Deliver:
-- demo-local `AGENT.md` + `WORKFLOW.md` + minimal spec pack
+- demo-local `BEAR_PRIMER.md` + `AGENT.md` + `WORKFLOW.md` + minimal spec pack
 - demo-local canonical gate scripts (`bin/bear-all.ps1`, `bin/bear-all.sh`)
 - demo-local BEAR wrapper scripts (`bin/bear.ps1`, `bin/bear.sh`) with pinned local CLI path
 - canonical scenario branches:
@@ -114,10 +114,14 @@ Deliver:
   - `scenario/feature-extension`
 - minimal undeclared-reach check wired into demo verification path
 - evaluator runbooks moved to `bear-cli/doc/m1-eval/*` (kept out of demo repo to avoid cheat hints)
+- canonical gate behavior for greenfield:
+  - discovers `spec/*.bear.yaml` in deterministic order
+  - fails with actionable message when no IR files exist
 
 Done:
 - isolated agent can complete one non-boundary feature and one boundary-expanding feature using demo repo only
 - both flows terminate via the same canonical gate command
+- first-time isolated agent can explain BEAR concepts from demo-local docs and run bootstrap loop correctly
 
 Legacy/non-canonical proof branches:
 - `scenario/naive-fail-withdraw`
