@@ -97,6 +97,11 @@ Deliver:
   - boundary expansion
 - deterministic CI/report output that labels boundary expansion clearly
 - optional governance hooks (for example CODEOWNERS/approval on boundary-expanding diffs)
+- PR/base-branch boundary diff mode (`bear pr-check` or equivalent):
+  - compare current branch boundary surface against base branch
+  - emit deterministic boundary deltas (ports/ops/effects/contract/invariants)
+  - mark PRs with explicit boundary-expansion status for approval workflows
+- normalize exit-code classes for stale/boundary paths so CI signals are stable (`drift`/`boundary` are not ambiguously reported as generic failures)
 
 Success criteria:
 - when a block gains external power, reviewers can see it in seconds

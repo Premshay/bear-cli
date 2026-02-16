@@ -76,6 +76,8 @@ It is scope drift.
 ## Upcoming Design Decisions (Not Blocking Current Phase)
 
 - Strictness model for effects enforcement (compile-time vs runtime test only)
+- PR governance interface: boundary diff against base branch (`pr-check` shape, output contract, CI integration points)
+- Exit-code normalization policy for stale/boundary classifications (stable CI semantics)
 
 ---
 
@@ -148,3 +150,4 @@ No essays. No philosophy.
 - Completed realism reset core wiring: removed demo scenario answer-key docs, created canonical branches (`scenario/greenfield-build`, `scenario/feature-extension`), and moved evaluator runbooks into `bear-cli/doc/m1-eval/`.
 - Added M1 comprehension hardening requirements: local BEAR primer, stronger read-order guidance, and greenfield-safe canonical gate behavior.
 - Added evaluator operator runbook `doc/m1-eval/RUN_MILESTONE.md` with end-to-end instructions for running both M1 scenario flows in isolated demo sessions.
+- Added roadmap item for PR/base-branch boundary diff classification and CI boundary-expansion marking (plus exit-code normalization hardening) as post-M1 governance improvement.

@@ -106,7 +106,7 @@ All must be true:
 ### M1 (active): isolated workflow proof
 
 Deliver:
-- demo-local `BEAR_PRIMER.md` + `AGENT.md` + `WORKFLOW.md` + minimal spec pack
+- demo-local `BEAR_PRIMER.md` + `BEAR_AGENT.md` + `WORKFLOW.md` + minimal spec pack
 - demo-local canonical gate scripts (`bin/bear-all.ps1`, `bin/bear-all.sh`)
 - demo-local BEAR wrapper scripts (`bin/bear.ps1`, `bin/bear.sh`) with pinned local CLI path
 - canonical scenario branches:
@@ -122,6 +122,17 @@ Done:
 - isolated agent can complete one non-boundary feature and one boundary-expanding feature using demo repo only
 - both flows terminate via the same canonical gate command
 - first-time isolated agent can explain BEAR concepts from demo-local docs and run bootstrap loop correctly
+
+### M1.1 (next hardening target): PR governance signal quality
+
+Deliver:
+- add PR/base-branch boundary diff mode (`bear pr-check` or equivalent) to classify capability/port/op/contract/invariant deltas against base
+- support CI marking for boundary-expanding PRs (approval hook input)
+- normalize exit-code semantics for stale/boundary paths (avoid ambiguous generic failure code for classified drift/boundary states)
+
+Done:
+- PR runs produce deterministic boundary classification against base branch
+- CI can gate on explicit boundary-expansion status without depending on local stale-check ordering
 
 Legacy/non-canonical proof branches:
 - `scenario/naive-fail-withdraw`
