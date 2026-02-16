@@ -93,7 +93,14 @@ Feature-extension run must start from this promoted baseline, not from an older 
 git checkout scenario/feature-extension
 ```
 
-3. Provide a feature request that forces update-vs-create decision and likely boundary expansion.
+3. Use this recommended feature request (default for M1 Run 2):
+
+> Extend Withdraw to support a per-transaction fee, while preserving no-overdraft and idempotency behavior. Update the project so this is fully implemented and validated under BEAR rules.
+
+Optional boundary-expansion variant (if you specifically want boundary signal proof):
+
+> Add a fraud pre-check before withdrawal using a new fraud-check capability, and implement the change under BEAR rules.
+
 4. Agent should:
 - inspect existing IR/impl
 - choose update existing block vs create new block
