@@ -1,0 +1,45 @@
+# WORKFLOW.md (M1 Canonical Source)
+
+Purpose:
+- Human-readable operating guide for isolated BEAR workflow.
+
+## Standard Flow
+
+1. Read request.
+2. Discover current BEAR structure from repo state:
+- inspect `spec/*.bear.yaml` if present
+- inspect generated package namespaces and existing `*Impl.java` files
+3. Apply IR-first rule if boundary/contract/effect changes are needed.
+4. Decide create-vs-update for blocks:
+- update existing block when feature fits current contract/capability boundary
+- create a new block when feature introduces a distinct contract/responsibility boundary
+5. Implement in `*Impl.java` and tests only.
+6. Run canonical gate:
+- `.\bin\bear-all.ps1` or `./bin/bear-all.sh`
+7. Resolve failures by category until gate exits `0`.
+
+## Failure Triage
+
+1. `exit 2` (validation/schema/semantic):
+- fix IR shape/references
+- rerun gate
+
+2. `exit 3` (drift):
+- run compile flow as documented
+- ensure generated tree matches current IR
+- rerun gate
+
+3. boundary expansion lines present:
+- confirm this is intended
+- ensure IR change is explicit and reviewed
+- continue with compile + implementation + gate
+
+4. `exit 4` (tests/verification):
+- fix impl/tests/verification issue
+- rerun gate
+
+## M1 Constraints
+
+- No generated-file edits.
+- No silent boundary expansion.
+- One command determines done/not-done.

@@ -30,6 +30,12 @@ v0 non-guarantees:
 
 Start here: `doc/START_HERE.md`
 
+Current execution focus:
+- `M1` workflow proof (minimal): isolated demo repo proves IR-first agent loop with one canonical gate command.
+- Packaging/versioning is future work only, to be revisited when BEAR is mature enough for distribution design.
+- Canonical BEAR workflow source texts for demo-copied resources: `doc/m1-canonical/` (`AGENT.md`, `WORKFLOW.md`).
+- M1 evaluator harness docs (kept out of demo to avoid agent cheat hints): `doc/m1-eval/`.
+
 - `kernel`: deterministic core. Contains BEAR IR parsing (YAML), validation, normalization, and target abstractions. This module is trusted seed code and is never BEAR-generated.
 - `app`: CLI wrapper. Exposes `bear validate`, `bear compile`, and `bear check`. BEAR may later self-host parts of `app`, but never `kernel`.
 
@@ -81,5 +87,9 @@ Docs:
 - `doc/PROMPT_BOOTSTRAP.md` (paste into a fresh AI session to restore context)
 
 Demo repo (sibling):
-- `../bear-account-demo/README.md` (spec-first baseline usage)
-- `../bear-account-demo/doc/SCENARIOS.md` (scenario branch matrix and expected outputs)
+- `../bear-account-demo/README.md` (realistic app-facing demo context)
+
+M1 evaluator docs (this repo):
+- `doc/m1-eval/SCENARIOS.md`
+- `doc/m1-eval/greenfield-build.md`
+- `doc/m1-eval/feature-extension.md`

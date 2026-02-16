@@ -90,7 +90,7 @@ Scenario branch model (demo repo):
 - `main`: spec-first runnable baseline
 - `scenario/naive-fail-withdraw`: deterministic test-failure proof (`check: TEST_FAILED...`, exit `4`)
 - `scenario/corrected-pass-withdraw`: deterministic pass proof (`check: OK`, exit `0`)
-- `scenario/boundary-expansion-visible`: reserved next BEAR-specific scenario
+- `scenario/boundary-expansion-visible`: historical placeholder, replaced in M1 realism reset by canonical branches (`scenario/greenfield-build`, `scenario/feature-extension`)
 
 ## v0 Done Criteria
 
@@ -100,3 +100,34 @@ All must be true:
 - two-tree ownership enforced
 - check gate (drift + tests + boundary signal)
 - demo proof reproducible end-to-end
+
+## Post-v0 Milestone Split
+
+### M1 (active): isolated workflow proof
+
+Deliver:
+- demo-local `AGENT.md` + `WORKFLOW.md` + minimal spec pack
+- demo-local canonical gate scripts (`bin/bear-all.ps1`, `bin/bear-all.sh`)
+- demo-local BEAR wrapper scripts (`bin/bear.ps1`, `bin/bear.sh`) with pinned local CLI path
+- canonical scenario branches:
+  - `scenario/greenfield-build`
+  - `scenario/feature-extension`
+- minimal undeclared-reach check wired into demo verification path
+- evaluator runbooks moved to `bear-cli/doc/m1-eval/*` (kept out of demo repo to avoid cheat hints)
+
+Done:
+- isolated agent can complete one non-boundary feature and one boundary-expanding feature using demo repo only
+- both flows terminate via the same canonical gate command
+
+Legacy/non-canonical proof branches:
+- `scenario/naive-fail-withdraw`
+- `scenario/corrected-pass-withdraw`
+
+### M2 (future candidate): resource packaging/versioning
+
+Not an immediate next step after M1. Revisit only when BEAR maturity justifies packaging/distribution design.
+
+Potential future scope:
+- versioned resource bundle format
+- import/export automation
+- checksum/lock/provenance automation
