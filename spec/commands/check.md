@@ -33,6 +33,7 @@ It performs:
   - `<tempRoot>/build/generated/bear` (from deterministic compile)
 
 ## Exit codes
+Exit codes are defined centrally in `spec/commands/exit-codes.md`.
 - `0`: no drift
 - `2`: schema/semantic IR validation error
 - `3`: drift detected (including missing baseline)
@@ -40,6 +41,17 @@ It performs:
 - `64`: usage error
 - `74`: IO error
 - `70`: internal/unexpected error
+
+## Failure Envelope (non-zero exits)
+For every non-zero exit, `check` appends the standard failure footer defined in `spec/commands/exit-codes.md`:
+- `CODE=<enum>`
+- `PATH=<locator>`
+- `REMEDIATION=<deterministic-step>`
+
+Envelope invariants:
+- emitted exactly once
+- last three stderr lines
+- no stderr output after `REMEDIATION=...`
 
 ## Drift output format
 All drift lines go to stderr:
@@ -86,6 +98,7 @@ Output order in `check`:
 2. boundary signal lines
 3. drift lines
 4. test failure/timeout output (if reached)
+5. failure envelope (if non-zero)
 
 Relationship to drift:
 - boundary signaling is a classification layer on top of drift context

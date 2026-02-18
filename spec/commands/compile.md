@@ -4,12 +4,16 @@
 `bear compile <ir-file> --project <path>`
 
 - IR parse + semantic validation must succeed before generation.
-- Exit codes use the CLI contract:
+- Exit codes use the central registry in `spec/commands/exit-codes.md`.
   - `0` success
   - `2` schema/semantic validation error
   - `64` usage error
   - `74` IO error
   - `70` internal error
+- Non-zero exits append the standard failure envelope from `spec/commands/exit-codes.md`:
+  - `CODE=<enum>`
+  - `PATH=<locator>`
+  - `REMEDIATION=<deterministic-step>`
 
 ## Ownership Model
 

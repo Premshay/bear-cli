@@ -57,7 +57,14 @@ class BearCliTest {
         );
 
         assertEquals(64, exitCode);
-        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("usage: INVALID_ARGS:"));
+        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
+        assertTrue(stderr.startsWith("usage: INVALID_ARGS:"));
+        assertFailureEnvelope(
+            stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Run `bear validate <file>` with exactly one IR file path."
+        );
     }
 
     @Test
@@ -71,7 +78,14 @@ class BearCliTest {
         );
 
         assertEquals(64, exitCode);
-        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("usage: UNKNOWN_COMMAND:"));
+        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
+        assertTrue(stderr.startsWith("usage: UNKNOWN_COMMAND:"));
+        assertFailureEnvelope(
+            stderr,
+            "USAGE_UNKNOWN_COMMAND",
+            "cli.command",
+            "Run `bear --help` and use a supported command."
+        );
     }
 
     @Test
@@ -85,7 +99,14 @@ class BearCliTest {
         );
 
         assertEquals(74, exitCode);
-        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("io: IO_ERROR:"));
+        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
+        assertTrue(stderr.startsWith("io: IO_ERROR:"));
+        assertFailureEnvelope(
+            stderr,
+            "IO_ERROR",
+            "input.ir",
+            "Ensure the IR file exists and is readable, then rerun `bear validate <file>`."
+        );
     }
 
     @Test
@@ -112,7 +133,14 @@ class BearCliTest {
         );
 
         assertEquals(2, exitCode);
-        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("schema at block: UNKNOWN_KEY:"));
+        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
+        assertTrue(stderr.startsWith("schema at block: UNKNOWN_KEY:"));
+        assertFailureEnvelope(
+            stderr,
+            "IR_VALIDATION",
+            "block",
+            "Fix the IR issue at the reported path and rerun `bear validate <file>`."
+        );
     }
 
     @Test
@@ -126,7 +154,14 @@ class BearCliTest {
         );
 
         assertEquals(64, exitCode);
-        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("usage: INVALID_ARGS:"));
+        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
+        assertTrue(stderr.startsWith("usage: INVALID_ARGS:"));
+        assertFailureEnvelope(
+            stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Run `bear compile <ir-file> --project <path>` with the expected arguments."
+        );
     }
 
     @Test
@@ -140,7 +175,14 @@ class BearCliTest {
         );
 
         assertEquals(74, exitCode);
-        assertTrue(stderrBytes.toString(StandardCharsets.UTF_8).startsWith("io: IO_ERROR:"));
+        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
+        assertTrue(stderr.startsWith("io: IO_ERROR:"));
+        assertFailureEnvelope(
+            stderr,
+            "IO_ERROR",
+            "project.root",
+            "Ensure the IR/project paths are readable and writable, then rerun `bear compile`."
+        );
     }
 
     @Test
@@ -179,6 +221,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check" });
         assertEquals(64, run.exitCode);
         assertTrue(run.stderr.startsWith("usage: INVALID_ARGS:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Run `bear check <ir-file> --project <path>` with the expected arguments."
+        );
     }
 
     @Test
@@ -186,6 +234,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", "missing.yaml", "--project", tempDir.toString() });
         assertEquals(74, run.exitCode);
         assertTrue(run.stderr.startsWith("io: IO_ERROR:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_ERROR",
+            "project.root",
+            "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check`."
+        );
     }
 
     @Test
@@ -206,6 +260,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", invalid.toString(), "--project", tempDir.toString() });
         assertEquals(2, run.exitCode);
         assertTrue(run.stderr.startsWith("schema at block: UNKNOWN_KEY:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IR_VALIDATION",
+            "block",
+            "Fix the IR issue at the reported path and rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -216,6 +276,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, run.exitCode);
         assertTrue(run.stderr.startsWith("drift: MISSING_BASELINE: build/generated/bear"));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_MISSING_BASELINE",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -228,6 +294,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, run.exitCode);
         assertTrue(run.stderr.startsWith("drift: MISSING_BASELINE: build/generated/bear"));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_MISSING_BASELINE",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -276,12 +348,18 @@ class BearCliTest {
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, check.exitCode);
 
-        List<String> lines = normalizeLf(check.stderr).lines().filter(line -> !line.isBlank()).toList();
+        List<String> lines = nonEnvelopeLines(check.stderr);
         assertEquals(List.of(
             "drift: REMOVED: src/main/java/com/bear/generated/withdraw/BearValue.java",
             "drift: CHANGED: src/main/java/com/bear/generated/withdraw/Withdraw.java",
             "drift: ADDED: zzz_extra.txt"
         ), lines);
+        assertFailureEnvelope(
+            check.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
 
         assertFalse(Files.exists(removedFile));
         assertTrue(Files.exists(addedFile));
@@ -304,6 +382,12 @@ class BearCliTest {
         assertEquals(3, run.exitCode);
         assertTrue(stderr.contains("boundary: EXPANSION: CAPABILITY_ADDED: idempotency"));
         assertTrue(stderr.contains("drift: CHANGED: bear.surface.json"));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -322,6 +406,12 @@ class BearCliTest {
         assertEquals(3, run.exitCode);
         assertTrue(stderr.contains("boundary: EXPANSION: CAPABILITY_OP_ADDED: idempotency.put"));
         assertTrue(stderr.contains("drift: CHANGED: bear.surface.json"));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -340,6 +430,12 @@ class BearCliTest {
         assertEquals(3, run.exitCode);
         assertTrue(stderr.contains("boundary: EXPANSION: INVARIANT_RELAXED: non_negative:shadow"));
         assertTrue(stderr.contains("drift: CHANGED: bear.surface.json"));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -364,6 +460,12 @@ class BearCliTest {
             "boundary: EXPANSION: CAPABILITY_OP_ADDED: ledger.setBalance",
             "boundary: EXPANSION: INVARIANT_RELAXED: non_negative:zzz"
         ), boundaryLines);
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -378,6 +480,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, run.exitCode);
         assertTrue(normalizeLf(run.stderr).contains("check: BASELINE_MANIFEST_MISSING: " + manifest));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -392,6 +500,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, run.exitCode);
         assertTrue(normalizeLf(run.stderr).contains("check: BASELINE_MANIFEST_INVALID: MALFORMED_JSON"));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -409,6 +523,12 @@ class BearCliTest {
         assertEquals(3, run.exitCode);
         assertTrue(normalizeLf(run.stderr).contains(
             "check: BASELINE_STAMP_MISMATCH: irHash/generatorVersion differ; classification may be stale"));
+        assertFailureEnvelope(
+            run.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -423,11 +543,23 @@ class BearCliTest {
             CliRunResult missing = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
             assertEquals(70, missing.exitCode);
             assertTrue(normalizeLf(missing.stderr).startsWith("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING"));
+            assertFailureEnvelope(
+                missing.stderr,
+                "INTERNAL_ERROR",
+                "build/generated/bear/bear.surface.json",
+                "Capture stderr and file an issue against bear-cli."
+            );
 
             System.setProperty("bear.check.test.candidateManifestMode", "invalid");
             CliRunResult invalid = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
             assertEquals(70, invalid.exitCode);
             assertTrue(normalizeLf(invalid.stderr).startsWith("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:"));
+            assertFailureEnvelope(
+                invalid.stderr,
+                "INTERNAL_ERROR",
+                "build/generated/bear/bear.surface.json",
+                "Capture stderr and file an issue against bear-cli."
+            );
         } finally {
             if (previous == null) {
                 System.clearProperty("bear.check.test.candidateManifestMode");
@@ -448,6 +580,12 @@ class BearCliTest {
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(74, check.exitCode);
         assertTrue(check.stderr.startsWith("io: IO_ERROR: PROJECT_TEST_WRAPPER_MISSING:"));
+        assertFailureEnvelope(
+            check.stderr,
+            "IO_ERROR",
+            "project.root",
+            "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check`."
+        );
     }
 
     @Test
@@ -490,6 +628,12 @@ class BearCliTest {
         assertTrue(stderr.contains("\nline11\n"));
         assertTrue(stderr.contains("\nline50\n"));
         assertFalse(stderr.contains("\nline10\n"));
+        assertFailureEnvelope(
+            check.stderr,
+            "TEST_FAILURE",
+            "project.tests",
+            "Fix project tests and rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -512,6 +656,12 @@ class BearCliTest {
             CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
             assertEquals(4, check.exitCode);
             assertTrue(normalizeLf(check.stderr).startsWith("check: TEST_TIMEOUT: project tests exceeded 1s"));
+            assertFailureEnvelope(
+                check.stderr,
+                "TEST_TIMEOUT",
+                "project.tests",
+                "Reduce test runtime or increase timeout, then rerun `bear check <ir-file> --project <path>`."
+            );
         } finally {
             if (prev == null) {
                 System.clearProperty("bear.check.testTimeoutSeconds");
@@ -543,6 +693,12 @@ class BearCliTest {
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, check.exitCode);
         assertFalse(Files.exists(marker));
+        assertFailureEnvelope(
+            check.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -550,6 +706,12 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "pr-check" });
         assertEquals(64, run.exitCode);
         assertTrue(run.stderr.startsWith("usage: INVALID_ARGS: expected: bear pr-check"));
+        assertFailureEnvelope(
+            run.stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Run `bear pr-check <ir-file> --project <path> --base <ref>` with the expected arguments."
+        );
     }
 
     @Test
@@ -565,6 +727,12 @@ class BearCliTest {
         });
         assertEquals(64, run.exitCode);
         assertTrue(run.stderr.startsWith("usage: INVALID_ARGS: ir-file must be repo-relative"));
+        assertFailureEnvelope(
+            run.stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Pass a repo-relative `ir-file` path for `bear pr-check`."
+        );
     }
 
     @Test
@@ -578,6 +746,12 @@ class BearCliTest {
         });
         assertEquals(74, run.exitCode);
         assertTrue(normalizeLf(run.stderr).startsWith("pr-check: IO_ERROR: MERGE_BASE_FAILED:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_GIT",
+            "git.baseRef",
+            "Ensure base ref exists and is fetchable, then rerun `bear pr-check`."
+        );
     }
 
     @Test
@@ -590,7 +764,13 @@ class BearCliTest {
             "pr-check", "spec/missing.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
         });
         assertEquals(74, run.exitCode);
-        assertEquals("pr-check: IO_ERROR: READ_HEAD_FAILED: spec/missing.bear.yaml\n", normalizeLf(run.stderr));
+        assertTrue(normalizeLf(run.stderr).startsWith("pr-check: IO_ERROR: READ_HEAD_FAILED: spec/missing.bear.yaml\n"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_ERROR",
+            "spec/missing.bear.yaml",
+            "Ensure the IR file exists at HEAD and rerun `bear pr-check`."
+        );
     }
 
     @Test
@@ -624,6 +804,12 @@ class BearCliTest {
         assertTrue(stderr.contains("pr-check: INFO: BASE_IR_MISSING_AT_MERGE_BASE: spec/withdraw.bear.yaml: treated_as_empty_base"));
         assertTrue(stderr.contains("pr-delta: BOUNDARY_EXPANDING: PORTS: ADDED: idempotency"));
         assertTrue(stderr.contains("pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED"));
+        assertFailureEnvelope(
+            run.stderr,
+            "BOUNDARY_EXPANSION",
+            "spec/withdraw.bear.yaml",
+            "Review boundary-expanding deltas and route through explicit boundary review."
+        );
     }
 
     @Test
@@ -684,6 +870,12 @@ class BearCliTest {
             "pr-delta: ORDINARY: OPS: ADDED: ledger.reverse",
             "pr-delta: ORDINARY: CONTRACT: ADDED: input.note:string"
         ), lines);
+        assertFailureEnvelope(
+            run.stderr,
+            "BOUNDARY_EXPANSION",
+            "spec/withdraw.bear.yaml",
+            "Review boundary-expanding deltas and route through explicit boundary review."
+        );
     }
 
     @Test
@@ -713,6 +905,140 @@ class BearCliTest {
         assertFalse(stderr.contains("idempotency.store.getOp"));
         assertFalse(stderr.contains("idempotency.store.putOp"));
         assertFalse(stderr.contains("idempotency.key"));
+        assertFailureEnvelope(
+            run.stderr,
+            "BOUNDARY_EXPANSION",
+            "spec/withdraw.bear.yaml",
+            "Review boundary-expanding deltas and route through explicit boundary review."
+        );
+    }
+
+    @Test
+    void validateInjectedInternalFailureIsEnveloped() {
+        String key = "bear.cli.test.failInternal.validate";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "true");
+            CliRunResult run = runCli(new String[] { "validate", "spec/fixtures/withdraw.bear.yaml" });
+            assertEquals(70, run.exitCode);
+            assertTrue(run.stderr.startsWith("internal: INTERNAL_ERROR:"));
+            assertFailureEnvelope(
+                run.stderr,
+                "INTERNAL_ERROR",
+                "internal",
+                "Capture stderr and file an issue against bear-cli."
+            );
+        } finally {
+            restoreSystemProperty(key, previous);
+        }
+    }
+
+    @Test
+    void compileInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) {
+        String key = "bear.cli.test.failInternal.compile";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "true");
+            CliRunResult run = runCli(new String[] { "compile", "spec/fixtures/withdraw.bear.yaml", "--project", tempDir.toString() });
+            assertEquals(70, run.exitCode);
+            assertTrue(run.stderr.startsWith("internal: INTERNAL_ERROR:"));
+            assertFailureEnvelope(
+                run.stderr,
+                "INTERNAL_ERROR",
+                "internal",
+                "Capture stderr and file an issue against bear-cli."
+            );
+        } finally {
+            restoreSystemProperty(key, previous);
+        }
+    }
+
+    @Test
+    void checkInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) {
+        String key = "bear.cli.test.failInternal.check";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "true");
+            CliRunResult run = runCli(new String[] { "check", "spec/fixtures/withdraw.bear.yaml", "--project", tempDir.toString() });
+            assertEquals(70, run.exitCode);
+            assertTrue(run.stderr.startsWith("internal: INTERNAL_ERROR:"));
+            assertFailureEnvelope(
+                run.stderr,
+                "INTERNAL_ERROR",
+                "internal",
+                "Capture stderr and file an issue against bear-cli."
+            );
+        } finally {
+            restoreSystemProperty(key, previous);
+        }
+    }
+
+    @Test
+    void prCheckInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) throws Exception {
+        Path project = tempDir.resolve("project");
+        Path ir = project.resolve("spec/withdraw.bear.yaml");
+        writeFixtureIr(ir);
+
+        String key = "bear.cli.test.failInternal.pr-check";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "true");
+            CliRunResult run = runCli(new String[] {
+                "pr-check", "spec/withdraw.bear.yaml", "--project", project.toString(), "--base", "HEAD"
+            });
+            assertEquals(70, run.exitCode);
+            assertTrue(run.stderr.startsWith("internal: INTERNAL_ERROR:"));
+            assertFailureEnvelope(
+                run.stderr,
+                "INTERNAL_ERROR",
+                "internal",
+                "Capture stderr and file an issue against bear-cli."
+            );
+        } finally {
+            restoreSystemProperty(key, previous);
+        }
+    }
+
+    private static List<String> nonEnvelopeLines(String stderr) {
+        List<String> lines = normalizeLf(stderr).lines().filter(line -> !line.isBlank()).toList();
+        if (lines.size() < 3) {
+            return lines;
+        }
+        if (lines.get(lines.size() - 3).startsWith("CODE=")
+            && lines.get(lines.size() - 2).startsWith("PATH=")
+            && lines.get(lines.size() - 1).startsWith("REMEDIATION=")) {
+            return lines.subList(0, lines.size() - 3);
+        }
+        return lines;
+    }
+
+    private static void assertFailureEnvelope(String stderr, String code, String path, String remediation) {
+        List<String> lines = normalizeLf(stderr).lines().filter(line -> !line.isBlank()).toList();
+        assertTrue(lines.size() >= 3);
+
+        long codeCount = lines.stream().filter(line -> line.startsWith("CODE=")).count();
+        long pathCount = lines.stream().filter(line -> line.startsWith("PATH=")).count();
+        long remediationCount = lines.stream().filter(line -> line.startsWith("REMEDIATION=")).count();
+        assertEquals(1L, codeCount);
+        assertEquals(1L, pathCount);
+        assertEquals(1L, remediationCount);
+
+        assertEquals("CODE=" + code, lines.get(lines.size() - 3));
+        assertEquals("PATH=" + path, lines.get(lines.size() - 2));
+        assertEquals("REMEDIATION=" + remediation, lines.get(lines.size() - 1));
+
+        String pathValue = path.replace('\\', '/');
+        assertFalse(pathValue.startsWith("/"));
+        assertFalse(pathValue.startsWith("//"));
+        assertFalse(pathValue.matches("^[A-Za-z]:/.*"));
+    }
+
+    private static void restoreSystemProperty(String key, String previous) {
+        if (previous == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, previous);
+        }
     }
 
     private static ManifestData readManifestData(Path manifestPath) throws Exception {

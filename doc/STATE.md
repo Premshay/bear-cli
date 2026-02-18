@@ -9,7 +9,7 @@ Last Updated: 2026-02-18
 
 ## Current Focus
 
-Post-v0 milestone execution toward Preview Release: M1.1 governance signal hardening completed (local + hosted CI proof); move to next preview hardening slice.
+Post-v0 milestone execution toward Preview Release: deterministic failure-envelope and exit-registry hardening completed for CLI contracts; move to undeclared-reach enforcement slice.
 
 ---
 
@@ -43,11 +43,11 @@ M1 acceptance required:
 
 ## Next Concrete Task
 
-Start preview hard-requirement implementation in CLI contracts:
+Start preview undeclared-reach enforcement slice in `check`:
 
-1. Define and implement a deterministic failure envelope (`CODE`, `PATH`, `REMEDIATION`) for non-zero exits in `validate`, `compile`, `check`, and `pr-check`.
-2. Add/lock a single exit-code registry section across command specs and align tests/docs.
-3. Prioritize first preview enforcement slice in `check` (deterministic undeclared-reach detection target + dedicated exit semantics).
+1. Implement deterministic JVM direct-HTTP detection for covered surfaces in impl code.
+2. Add dedicated exit semantics (`6`, `UNDECLARED_REACH`) with failure envelope contract.
+3. Extend command/spec/tests to lock detection scope, exclusions, and remediation output.
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -162,3 +162,5 @@ No essays. No philosophy.
 - Updated `bear-account-demo` PR gate setup to avoid cross-repo checkout failures: vendored BEAR CLI bundle under `tools/bear-cli`, wrappers now prefer vendored bundle, and CI workflow runs `pr-gate` directly from repo assets.
 - Confirmed hosted CI proof on GitHub PRs for M1.1: non-boundary scenario run emitted `pr-check: OK: NO_BOUNDARY_EXPANSION`; boundary scenario run emitted deterministic boundary delta + `pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED` with exit `5`.
 - Added hosted CI evidence snippets to `doc/m1-eval/RUN_MILESTONE.md`.
+- Implemented preview failure-envelope hardening in CLI: all non-zero exits in `validate`/`compile`/`check`/`pr-check` now emit deterministic footer (`CODE`/`PATH`/`REMEDIATION`) exactly once and as terminal stderr lines.
+- Added centralized exit/failure-code registry at `spec/commands/exit-codes.md` and aligned command specs + CLI contract tests, including `pr-check` exit `5` boundary verdict envelope and app-level internal fault-injection coverage.

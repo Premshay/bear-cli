@@ -12,10 +12,12 @@
   - exits non-zero
 
 ## Exit codes
+Exit codes are defined centrally in `spec/commands/exit-codes.md`.
+`bear validate` uses:
 - `0`: valid
 - `2`: schema/validation error
-- `64`: usage error (missing args, unknown subcommand, wrong arg shape)
-- `74`: IO error (file unreadable/missing)
+- `64`: usage error
+- `74`: IO error
 - `70`: internal/unexpected error
 
 ## Error line format
@@ -32,6 +34,12 @@ Other error prefixes:
 - Usage errors (exit `64`): `usage: <CODE>: <message>`
 - IO errors (exit `74`): `io: <CODE>: <message>`
 - Internal errors (exit `70`): `internal: <CODE>: <message>`
+
+## Failure Envelope (non-zero exits)
+For every non-zero exit, `validate` appends the standard failure footer defined in `spec/commands/exit-codes.md`:
+- `CODE=<enum>`
+- `PATH=<locator>`
+- `REMEDIATION=<deterministic-step>`
 
 Common codes:
 - `MISSING_FIELD`

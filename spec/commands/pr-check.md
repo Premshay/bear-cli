@@ -45,6 +45,7 @@ It compares normalized IR in the current workspace (`HEAD` working tree) against
        - `git -C <project> show <mergeBase>:<ir-file>`
 
 ## Exit codes
+Exit codes are defined centrally in `spec/commands/exit-codes.md`.
 - `0`: no boundary-expanding deltas (no-delta or ordinary-only delta)
 - `5`: one or more boundary-expanding deltas
 - `2`: schema/semantic IR validation error (base or head)
@@ -54,6 +55,17 @@ It compares normalized IR in the current workspace (`HEAD` working tree) against
 
 `pr-check` does not use drift exit code `3`.
 
+## Failure Envelope (non-zero exits)
+For every non-zero exit, `pr-check` appends the standard failure footer defined in `spec/commands/exit-codes.md`:
+- `CODE=<enum>`
+- `PATH=<locator>`
+- `REMEDIATION=<deterministic-step>`
+
+Envelope invariants:
+- emitted exactly once
+- last three stderr lines
+- no stderr output after `REMEDIATION=...`
+
 ## Git/IO error prefixes
 Git/IO failures are emitted with stable reason prefixes:
 - `pr-check: IO_ERROR: NOT_A_GIT_REPO: <project>`
@@ -62,6 +74,8 @@ Git/IO failures are emitted with stable reason prefixes:
 - `pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: <ir-file>`
 - `pr-check: IO_ERROR: BASE_IR_READ_FAILED: <ir-file>`
 - `pr-check: IO_ERROR: INTERNAL_IO: <detail>`
+
+Classification between `IO_ERROR` and `IO_GIT` follows `spec/commands/exit-codes.md`.
 
 ## Output format
 Delta lines are emitted to stderr:
