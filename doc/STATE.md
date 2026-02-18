@@ -9,7 +9,7 @@ Last Updated: 2026-02-18
 
 ## Current Focus
 
-Post-v0 milestone execution toward Preview Release: lock preview contract around deterministic actionable failures and demo-grade undeclared-reach enforcement, then implement against `check`/`pr-check`.
+Post-v0 milestone execution toward Preview Release: complete M1.1 demo PR-governance integration on top of `pr-check`.
 
 ---
 
@@ -43,13 +43,11 @@ M1 acceptance required:
 
 ## Next Concrete Task
 
-Implement preview hard requirements in CLI contracts and specs:
+Run end-to-end M1.1 PR governance verification in hosted CI:
 
-1. Add actionable failure envelope (`CODE`, `PATH`, `REMEDIATION`) across `validate`, `compile`, `check`, and `pr-check` non-zero exits.
-2. Add deterministic undeclared-reach check in `bear check` (preview canonical class: direct HTTP client usage in impl paths), with dedicated exit code and remediation output.
-3. Add a single exit-code registry section across command specs and enforce it in docs/tests.
-4. Add failure-envelope compliance tests that cover usage/IO/git/internal non-zero outcomes.
-5. Align command specs (`spec/commands/*.md`) and demo CI scripts/runbooks to the updated preview exit-code and output contract.
+1. Open demo PR from `scenario/pr-non-boundary` to `main` and confirm `pr-gate` workflow exits `0`.
+2. Open demo PR from `scenario/pr-boundary-expand` to `main` and confirm deterministic boundary output with exit `5`.
+3. Capture CI snippets and add concise evaluator evidence notes under `doc/m1-eval/`.
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -157,3 +155,7 @@ No essays. No philosophy.
 - Tightened `pr-check` frozen contract details: explicit missing-head-IR behavior (`READ_HEAD_FAILED`, exit `74`), stable git/IO reason prefixes, and concrete output examples for boundary vs ordinary-only deltas.
 - Merged harness-engineering additions into existing roadmap structure (not override): preserved prior phase/milestone plan while adding explicit preview contract requirements (actionable failures, deterministic undeclared-reach enforcement, and prioritized P2/P3 backlog) in `doc/ROADMAP.md` and `doc/ROADMAP_V0.md`.
 - Tightened preview risk controls from roadmap review feedback: added scoped self-hosting definition/fallback, explicit undeclared-reach exit code + JVM detection surface/exclusions, unified exit-code registry requirement, and failure-envelope compliance test requirement in roadmap docs.
+- Integrated demo M1.1 PR governance assets in `bear-account-demo`: added `bin/pr-gate.ps1`, `bin/pr-gate.sh`, `.github/workflows/pr-gate.yml`, and updated `README.md`/`WORKFLOW.md` for explicit `origin/main` usage.
+- Created demo branches `scenario/pr-non-boundary` (impl/test-only delta) and `scenario/pr-boundary-expand` (invariant relaxation boundary delta) and validated with `bear pr-check` against `origin/main` (`0` vs `5` behavior).
+- Extended evaluator runbooks in `doc/m1-eval/RUN_MILESTONE.md` and `doc/m1-eval/SCENARIOS.md` to include PR governance pass/fail scenario runs and expected outputs.
+- Added explicit expected boundary `pr-gate` output snippet to `doc/m1-eval/RUN_MILESTONE.md` (with note that additional boundary delta lines are acceptable while exit `5` + fail verdict remain required).

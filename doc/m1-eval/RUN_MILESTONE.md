@@ -9,6 +9,7 @@ Prove that, from demo repo context only, an agent can:
 - complete greenfield bootstrap flow
 - complete feature-extension flow with IR-first boundary governance
 - use one canonical gate command as the done signal
+- run explicit PR governance checks (`pr-gate`) that classify boundary expansion against base branch
 
 ## Preconditions
 
@@ -23,6 +24,8 @@ Prove that, from demo repo context only, an agent can:
 3. Branch states:
 - `scenario/greenfield-build`: greenfield-ready (no initial `spec/*.bear.yaml`, no initial impl)
 - `scenario/feature-extension`: based on successful greenfield result (ported from `scenario/greenfield-build`)
+- `scenario/pr-non-boundary`: impl/test-only change for PR governance pass flow
+- `scenario/pr-boundary-expand`: boundary-expanding IR change for PR governance fail flow
 
 ## One-Time Setup
 
@@ -119,6 +122,57 @@ Pass criteria:
 - final gate exit `0`
 - agent report separates boundary deltas from implementation deltas
 
+## Run 3: PR Governance Pass Path
+
+1. Open a fresh VS Code window with only `bear-account-demo`.
+2. Checkout:
+
+```powershell
+git checkout scenario/pr-non-boundary
+```
+
+3. Run:
+
+```powershell
+.\bin\pr-gate.ps1 origin/main
+```
+
+Pass criteria:
+- command exits `0`
+- no boundary-expanding verdict line is emitted
+
+## Run 4: PR Governance Boundary Path
+
+1. Open a fresh VS Code window with only `bear-account-demo`.
+2. Checkout:
+
+```powershell
+git checkout scenario/pr-boundary-expand
+```
+
+3. Run:
+
+```powershell
+.\bin\pr-gate.ps1 origin/main
+```
+
+Pass criteria:
+- command exits `5`
+- stderr includes deterministic boundary classification lines (for example `pr-delta: BOUNDARY_EXPANDING: ...`)
+- stderr includes `pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED`
+
+Expected snippet for current fixture:
+
+```text
+pr-gate: checking spec/withdraw.bear.yaml against origin/main
+pr-delta: BOUNDARY_EXPANDING: INVARIANTS: REMOVED: non_negative:balance
+pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED
+```
+
+Note:
+- Additional `pr-delta:` boundary lines are acceptable if IR changes evolve.
+- Hard pass criteria remain: boundary verdict line present and exit code `5`.
+
 ## Evidence To Capture
 
 Capture in `bear-cli/doc/m1-eval/` only:
@@ -148,6 +202,10 @@ Do not add evaluator expected-output hints into `bear-account-demo`.
 - tests/verification failure
 - fix impl/tests and rerun
 
+5. Exit `5` from `pr-gate`:
+- boundary-expanding PR deltas detected
+- expected for intentional boundary changes; route to explicit review flow
+
 ## Completion Check
 
-M1 run is complete when both scenario runs satisfy their pass criteria and evidence is captured in `bear-cli/doc/m1-eval/`.
+M1/M1.1 run is complete when all four scenario runs satisfy their pass criteria and evidence is captured in `bear-cli/doc/m1-eval/`.
