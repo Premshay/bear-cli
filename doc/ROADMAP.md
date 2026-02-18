@@ -7,7 +7,7 @@ For current v0 contract details, see `doc/ARCHITECTURE.md` and `doc/GOVERNANCE.m
 ## Status Snapshot
 
 - v0 core is complete.
-- active work is post-v0 milestone execution (currently M1.1 governance signal hardening).
+- active work is post-v0 milestone execution (currently M1.1 governance signal hardening and preview contract hardening).
 - target milestone is `Preview Release` (reached via M1 -> M1.1 -> preview).
 - this file is strategic; do not treat it as the step-by-step execution tracker.
 
@@ -19,6 +19,41 @@ BEAR is successful only if agent speed is paired with structural control:
 - boundary expansion is explicit and reviewable
 - deterministic build/test gates enforce declared structure
 - developers are not burdened with IR micromanagement
+
+## Harness Engineering Addendum (Preview)
+
+This is additive to the existing roadmap, not a replacement.
+
+Strategic position:
+- BEAR is a deterministic structural containment layer for agent-generated code.
+- BEAR is a compile/CI gate, not a full agent harness platform.
+- Reliability comes from deterministic structure + mechanical enforcement, not model trust.
+
+Primary preview failure modes to target:
+- silent boundary expansion
+- drift/entropy in generated artifacts
+- undeclared escape paths that bypass declared boundaries
+
+Preview additions that are now mandatory:
+1. Actionable failures as a product requirement.
+  - output must be minimal, stable, greppable, and include explicit remediation
+  - applies to every non-zero path, including usage/IO/git/internal failures
+2. Demo-grade no-undeclared-reach enforcement.
+  - deterministically catch at least one realistic boundary bypass class
+3. Stable exit semantics as a CI contract.
+  - one numeric registry across commands
+  - contract tests enforce failure-envelope coverage
+
+Position in the wider stack:
+- In scope: static/CI structural enforcement.
+- Out of scope for preview: runtime orchestration, sandboxing, policy gateways, eval platforms.
+- Scope rationale: fastest falsifiable preview with current team capacity.
+
+Preview success is falsifiable only if all are true:
+- implementation/refactor freedom remains high inside blocks
+- boundary expansion is deterministic and review-visible in PR/CI
+- undeclared reach attempts for covered surfaces fail deterministically with remediation
+- workflow stays low-friction with one canonical CI command and scoped self-hosting (clean clone + normal wrapper flow, no bespoke ritual)
 
 ## Execution Layering
 
@@ -56,6 +91,7 @@ Initial JVM enforcement targets:
 - forbidden API/symbol checks (for example: network/filesystem/reflection surfaces)
 - only declared capability interfaces are visible to block logic
 - build fails on forbidden references
+- failures are actionable and deterministic for agents
 
 CI must fail if:
 - code uses undeclared external surfaces
