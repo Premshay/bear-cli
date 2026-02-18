@@ -8,6 +8,8 @@
 2. project test execution after drift passes
 3. boundary-expansion signaling derived from BEAR surface manifests
 
+For base-branch PR governance classification, use `bear pr-check`.
+
 It performs:
 1. Parse + validate + normalize IR.
 2. Compile normalized IR into a temporary project root.

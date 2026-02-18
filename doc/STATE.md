@@ -3,13 +3,13 @@
 This file captures execution state.  
 It must stay concise and operational.
 
-Last Updated: 2026-02-16
+Last Updated: 2026-02-18
 
 ---
 
 ## Current Focus
 
-Post-v0 milestone execution toward Preview Release: execute M1.1 governance signal hardening.
+Post-v0 milestone execution toward Preview Release: complete CLI-side M1.1 `pr-check`; start demo PR-gate integration.
 
 ---
 
@@ -43,18 +43,14 @@ M1 acceptance required:
 
 ## Next Concrete Task
 
-Start M1.1 implementation (entry gate to Preview Release):
+Integrate M1.1 CLI governance mode into demo-service workflow:
 
-1. Define `pr-check` command contract (or equivalent):
-   - input model (base branch + project/IR targets)
-   - deterministic output schema for boundary deltas
-   - exit-code contract
-2. Implement base-branch boundary diff classification:
-   - ports/ops/effects/contract/invariants delta categories
-   - stable, greppable output lines for CI
-3. Normalize stale/boundary exit-code semantics:
-   - remove ambiguous generic failures for classified boundary/drift paths
-4. Add tests/spec coverage and CI usage notes for M1.1 behavior.
+1. Add demo PR gate scripts (`bin/pr-gate.*`) that call:
+   - `bear pr-check <ir-file> --project . --base <ref>`
+2. Add demo scenario branches for PR-gate realism:
+   - non-boundary PR path (`exit 0`)
+   - boundary-expanding PR path (`exit 5`)
+3. Add CI/runbook usage notes for boundary classification output and reviewer flow.
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -157,3 +153,6 @@ No essays. No philosophy.
 - Added M1 comprehension hardening requirements: local BEAR primer, stronger read-order guidance, and greenfield-safe canonical gate behavior.
 - Added evaluator operator runbook `doc/m1-eval/RUN_MILESTONE.md` with end-to-end instructions for running both M1 scenario flows in isolated demo sessions.
 - Added roadmap item for PR/base-branch boundary diff classification and CI boundary-expansion marking (plus exit-code normalization hardening) as post-M1 governance improvement.
+- Implemented `bear pr-check <ir-file> --project <path> --base <ref>` with merge-base comparison, deterministic `pr-delta` output (`PORTS|OPS|IDEMPOTENCY|CONTRACT|INVARIANTS`), explicit boundary verdict (`exit 5`), repo-relative path enforcement, and base-missing-as-empty classification.
+- Added `pr-check` spec at `spec/commands/pr-check.md`, linked `check` doc to `pr-check` responsibility split, and added CLI tests covering args/path rules, base-missing behavior, deterministic ordering, idempotency add semantics, and exit-code contract.
+- Tightened `pr-check` frozen contract details: explicit missing-head-IR behavior (`READ_HEAD_FAILED`, exit `74`), stable git/IO reason prefixes, and concrete output examples for boundary vs ordinary-only deltas.

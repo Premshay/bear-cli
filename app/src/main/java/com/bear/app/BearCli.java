@@ -44,6 +44,7 @@ public final class BearCli {
             case "validate" -> runValidate(args, out, err);
             case "compile" -> runCompile(args, out, err);
             case "check" -> runCheck(args, out, err);
+            case "pr-check" -> runPrCheck(args, out, err);
             default -> {
                 err.println("usage: UNKNOWN_COMMAND: unknown command: " + command);
                 yield ExitCode.USAGE;
@@ -242,6 +243,125 @@ public final class BearCli {
         }
     }
 
+    private static int runPrCheck(String[] args, PrintStream out, PrintStream err) {
+        if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
+            printUsage(out);
+            return ExitCode.OK;
+        }
+        if (args.length != 6 || !"--project".equals(args[2]) || !"--base".equals(args[4])) {
+            err.println("usage: INVALID_ARGS: expected: bear pr-check <ir-file> --project <path> --base <ref>");
+            return ExitCode.USAGE;
+        }
+
+        String irArg = args[1];
+        Path irPath = Path.of(irArg);
+        if (irPath.isAbsolute()) {
+            err.println("usage: INVALID_ARGS: ir-file must be repo-relative");
+            return ExitCode.USAGE;
+        }
+        Path normalizedRelative = irPath.normalize();
+        if (normalizedRelative.startsWith("..") || normalizedRelative.toString().isBlank()) {
+            err.println("usage: INVALID_ARGS: ir-file must be repo-relative");
+            return ExitCode.USAGE;
+        }
+
+        Path projectRoot = Path.of(args[3]).toAbsolutePath().normalize();
+        String baseRef = args[5];
+        Path headIrPath = projectRoot.resolve(normalizedRelative).normalize();
+        if (!headIrPath.startsWith(projectRoot)) {
+            err.println("usage: INVALID_ARGS: ir-file must be repo-relative");
+            return ExitCode.USAGE;
+        }
+        String repoRelativePath = normalizedRelative.toString().replace('\\', '/');
+        if (!Files.isRegularFile(headIrPath)) {
+            err.println("pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath);
+            return ExitCode.IO;
+        }
+
+        Path tempRoot = null;
+        try {
+            BearIrParser parser = new BearIrParser();
+            BearIrValidator validator = new BearIrValidator();
+            BearIrNormalizer normalizer = new BearIrNormalizer();
+
+            BearIr head = normalizer.normalize(parseAndValidateIr(parser, validator, headIrPath));
+
+            GitResult isRepoResult = runGit(projectRoot, List.of("rev-parse", "--is-inside-work-tree"));
+            if (isRepoResult.exitCode() != 0 || !"true".equals(isRepoResult.stdout().trim())) {
+                err.println("pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot);
+                return ExitCode.IO;
+            }
+
+            GitResult mergeBaseResult = runGit(projectRoot, List.of("merge-base", "HEAD", baseRef));
+            if (mergeBaseResult.exitCode() != 0) {
+                err.println("pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef);
+                return ExitCode.IO;
+            }
+            String mergeBase = mergeBaseResult.stdout().trim();
+            if (mergeBase.isBlank()) {
+                err.println("pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base");
+                return ExitCode.IO;
+            }
+
+            BearIr base = null;
+            GitResult catFileResult = runGit(projectRoot, List.of("cat-file", "-e", mergeBase + ":" + repoRelativePath));
+            if (catFileResult.exitCode() != 0) {
+                GitResult existsResult = runGit(projectRoot, List.of("ls-tree", "--name-only", mergeBase, "--", repoRelativePath));
+                if (existsResult.exitCode() != 0) {
+                    err.println("pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath);
+                    return ExitCode.IO;
+                }
+                if (existsResult.stdout().trim().isEmpty()) {
+                    err.println("pr-check: INFO: BASE_IR_MISSING_AT_MERGE_BASE: " + repoRelativePath + ": treated_as_empty_base");
+                } else {
+                    err.println("pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath);
+                    return ExitCode.IO;
+                }
+            } else {
+                GitResult showResult = runGit(projectRoot, List.of("show", mergeBase + ":" + repoRelativePath));
+                if (showResult.exitCode() != 0) {
+                    err.println("pr-check: IO_ERROR: BASE_IR_READ_FAILED: " + repoRelativePath);
+                    return ExitCode.IO;
+                }
+                tempRoot = Files.createTempDirectory("bear-pr-check-");
+                Path baseTempIr = tempRoot.resolve("base.bear.yaml");
+                Files.writeString(baseTempIr, showResult.stdout(), StandardCharsets.UTF_8);
+                base = normalizer.normalize(parseAndValidateIr(parser, validator, baseTempIr));
+            }
+
+            List<PrDelta> deltas = computePrDeltas(base, head);
+            for (PrDelta delta : deltas) {
+                err.println("pr-delta: " + delta.clazz().label + ": " + delta.category().label + ": " + delta.change().label + ": " + delta.key());
+            }
+
+            boolean hasBoundary = deltas.stream().anyMatch(delta -> delta.clazz() == PrClass.BOUNDARY_EXPANDING);
+            if (hasBoundary) {
+                err.println("pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED");
+                return ExitCode.BOUNDARY_EXPANSION;
+            }
+
+            out.println("pr-check: OK: NO_BOUNDARY_EXPANSION");
+            return ExitCode.OK;
+        } catch (BearIrValidationException e) {
+            err.println(e.formatLine());
+            return ExitCode.VALIDATION;
+        } catch (IOException e) {
+            err.println("pr-check: IO_ERROR: INTERNAL_IO: " + squash(e.getMessage()));
+            return ExitCode.IO;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            err.println("pr-check: IO_ERROR: INTERRUPTED");
+            return ExitCode.IO;
+        } catch (Exception e) {
+            err.println("internal: INTERNAL_ERROR:");
+            return ExitCode.INTERNAL;
+        } finally {
+            if (tempRoot != null) {
+                deleteRecursivelyBestEffort(tempRoot);
+            }
+        }
+    }
+
     private static List<DriftItem> computeDrift(Path baselineRoot, Path candidateRoot) throws IOException {
         Map<String, byte[]> baseline = readRegularFiles(baselineRoot);
         Map<String, byte[]> candidate = readRegularFiles(candidateRoot);
@@ -301,6 +421,218 @@ public final class BearCli {
             .comparing((BoundarySignal signal) -> signal.type().order)
             .thenComparing(BoundarySignal::key));
         return signals;
+    }
+
+    private static BearIr parseAndValidateIr(BearIrParser parser, BearIrValidator validator, Path path) throws IOException {
+        BearIr ir = parser.parse(path);
+        validator.validate(ir);
+        return ir;
+    }
+
+    private static List<PrDelta> computePrDeltas(BearIr baseIr, BearIr headIr) {
+        PrSurface base = baseIr == null ? emptyPrSurface() : toPrSurface(baseIr);
+        PrSurface head = toPrSurface(headIr);
+
+        List<PrDelta> deltas = new ArrayList<>();
+
+        for (String port : head.ports()) {
+            if (!base.ports().contains(port)) {
+                deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.PORTS, PrChange.ADDED, port));
+            }
+        }
+        for (String port : base.ports()) {
+            if (!head.ports().contains(port)) {
+                deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.PORTS, PrChange.REMOVED, port));
+            }
+        }
+
+        TreeSet<String> commonPorts = new TreeSet<>(head.ports());
+        commonPorts.retainAll(base.ports());
+        for (String port : commonPorts) {
+            TreeSet<String> headOps = head.opsByPort().getOrDefault(port, new TreeSet<>());
+            TreeSet<String> baseOps = base.opsByPort().getOrDefault(port, new TreeSet<>());
+            for (String op : headOps) {
+                if (!baseOps.contains(op)) {
+                    deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.OPS, PrChange.ADDED, port + "." + op));
+                }
+            }
+            for (String op : baseOps) {
+                if (!headOps.contains(op)) {
+                    deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.OPS, PrChange.REMOVED, port + "." + op));
+                }
+            }
+        }
+
+        addIdempotencyDeltas(deltas, base.idempotency(), head.idempotency());
+        addContractDeltas(deltas, base.inputs(), head.inputs(), true);
+        addContractDeltas(deltas, base.outputs(), head.outputs(), false);
+
+        for (String invariant : head.invariants()) {
+            if (!base.invariants().contains(invariant)) {
+                deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.INVARIANTS, PrChange.ADDED, invariant));
+            }
+        }
+        for (String invariant : base.invariants()) {
+            if (!head.invariants().contains(invariant)) {
+                deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.INVARIANTS, PrChange.REMOVED, invariant));
+            }
+        }
+
+        deltas.sort(Comparator
+            .comparing((PrDelta delta) -> delta.clazz().order)
+            .thenComparing(delta -> delta.category().order)
+            .thenComparing(delta -> delta.change().order)
+            .thenComparing(PrDelta::key));
+        return deltas;
+    }
+
+    private static void addIdempotencyDeltas(
+        List<PrDelta> deltas,
+        BearIr.Idempotency base,
+        BearIr.Idempotency head
+    ) {
+        if (base == null && head == null) {
+            return;
+        }
+        if (base == null) {
+            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.ADDED, "idempotency"));
+            return;
+        }
+        if (head == null) {
+            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.REMOVED, "idempotency"));
+            return;
+        }
+
+        if (!base.key().equals(head.key())) {
+            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.key"));
+        }
+        if (!base.store().port().equals(head.store().port())) {
+            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.store.port"));
+        }
+        if (!base.store().getOp().equals(head.store().getOp())) {
+            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.store.getOp"));
+        }
+        if (!base.store().putOp().equals(head.store().putOp())) {
+            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.store.putOp"));
+        }
+    }
+
+    private static void addContractDeltas(
+        List<PrDelta> deltas,
+        Map<String, BearIr.FieldType> base,
+        Map<String, BearIr.FieldType> head,
+        boolean input
+    ) {
+        TreeSet<String> names = new TreeSet<>();
+        names.addAll(base.keySet());
+        names.addAll(head.keySet());
+        for (String name : names) {
+            boolean inBase = base.containsKey(name);
+            boolean inHead = head.containsKey(name);
+            String prefix = input ? "input." : "output.";
+
+            if (!inBase) {
+                PrClass clazz = input ? PrClass.ORDINARY : PrClass.BOUNDARY_EXPANDING;
+                deltas.add(new PrDelta(
+                    clazz,
+                    PrCategory.CONTRACT,
+                    PrChange.ADDED,
+                    prefix + name + ":" + typeToken(head.get(name))
+                ));
+                continue;
+            }
+            if (!inHead) {
+                deltas.add(new PrDelta(
+                    PrClass.BOUNDARY_EXPANDING,
+                    PrCategory.CONTRACT,
+                    PrChange.REMOVED,
+                    prefix + name + ":" + typeToken(base.get(name))
+                ));
+                continue;
+            }
+            if (base.get(name) != head.get(name)) {
+                deltas.add(new PrDelta(
+                    PrClass.BOUNDARY_EXPANDING,
+                    PrCategory.CONTRACT,
+                    PrChange.CHANGED,
+                    prefix + name + ":" + typeToken(base.get(name)) + "->" + typeToken(head.get(name))
+                ));
+            }
+        }
+    }
+
+    private static String typeToken(BearIr.FieldType type) {
+        return type.name().toLowerCase();
+    }
+
+    private static PrSurface toPrSurface(BearIr ir) {
+        TreeSet<String> ports = new TreeSet<>();
+        Map<String, TreeSet<String>> opsByPort = new TreeMap<>();
+        for (BearIr.EffectPort port : ir.block().effects().allow()) {
+            ports.add(port.port());
+            opsByPort.put(port.port(), new TreeSet<>(port.ops()));
+        }
+
+        Map<String, BearIr.FieldType> inputs = new TreeMap<>();
+        for (BearIr.Field input : ir.block().contract().inputs()) {
+            inputs.put(input.name(), input.type());
+        }
+        Map<String, BearIr.FieldType> outputs = new TreeMap<>();
+        for (BearIr.Field output : ir.block().contract().outputs()) {
+            outputs.put(output.name(), output.type());
+        }
+
+        TreeSet<String> invariants = new TreeSet<>();
+        if (ir.block().invariants() != null) {
+            for (BearIr.Invariant invariant : ir.block().invariants()) {
+                invariants.add(invariant.kind().name().toLowerCase() + ":" + invariant.field());
+            }
+        }
+        return new PrSurface(ports, opsByPort, inputs, outputs, ir.block().idempotency(), invariants);
+    }
+
+    private static PrSurface emptyPrSurface() {
+        return new PrSurface(
+            new TreeSet<>(),
+            new TreeMap<>(),
+            new TreeMap<>(),
+            new TreeMap<>(),
+            null,
+            new TreeSet<>()
+        );
+    }
+
+    private static GitResult runGit(Path projectRoot, List<String> gitArgs) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>();
+        command.add("git");
+        command.add("-C");
+        command.add(projectRoot.toString());
+        command.addAll(gitArgs);
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        Process process = pb.start();
+        boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroyForcibly();
+            process.waitFor(5, TimeUnit.SECONDS);
+            throw new IOException("GIT_TIMEOUT: " + String.join(" ", gitArgs));
+        }
+
+        String stdout;
+        String stderr;
+        try (InputStream out = process.getInputStream(); InputStream err = process.getErrorStream()) {
+            stdout = new String(out.readAllBytes(), StandardCharsets.UTF_8);
+            stderr = new String(err.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        return new GitResult(process.exitValue(), normalizeLf(stdout), normalizeLf(stderr));
+    }
+
+    private static String squash(String text) {
+        if (text == null) {
+            return "no details";
+        }
+        String squashed = normalizeLf(text).replace('\n', ' ').trim();
+        return squashed.isEmpty() ? "no details" : squashed;
     }
 
     private static BoundaryManifest parseManifest(Path path) throws IOException, ManifestParseException {
@@ -576,6 +908,7 @@ public final class BearCli {
         out.println("Usage: bear validate <file>");
         out.println("       bear compile <ir-file> --project <path>");
         out.println("       bear check <ir-file> --project <path>");
+        out.println("       bear pr-check <ir-file> --project <path> --base <ref>");
         out.println("       bear --help");
     }
 
@@ -584,6 +917,7 @@ public final class BearCli {
         private static final int VALIDATION = 2;
         private static final int DRIFT = 3;
         private static final int TEST_FAILURE = 4;
+        private static final int BOUNDARY_EXPANSION = 5;
         private static final int USAGE = 64;
         private static final int IO = 74;
         private static final int INTERNAL = 70;
@@ -621,6 +955,65 @@ public final class BearCli {
     }
 
     private record BoundarySignal(BoundaryType type, String key) {
+    }
+
+    private enum PrClass {
+        BOUNDARY_EXPANDING("BOUNDARY_EXPANDING", 0),
+        ORDINARY("ORDINARY", 1);
+
+        private final String label;
+        private final int order;
+
+        PrClass(String label, int order) {
+            this.label = label;
+            this.order = order;
+        }
+    }
+
+    private enum PrCategory {
+        PORTS("PORTS", 0),
+        OPS("OPS", 1),
+        IDEMPOTENCY("IDEMPOTENCY", 2),
+        CONTRACT("CONTRACT", 3),
+        INVARIANTS("INVARIANTS", 4);
+
+        private final String label;
+        private final int order;
+
+        PrCategory(String label, int order) {
+            this.label = label;
+            this.order = order;
+        }
+    }
+
+    private enum PrChange {
+        CHANGED("CHANGED", 0),
+        ADDED("ADDED", 1),
+        REMOVED("REMOVED", 2);
+
+        private final String label;
+        private final int order;
+
+        PrChange(String label, int order) {
+            this.label = label;
+            this.order = order;
+        }
+    }
+
+    private record PrDelta(PrClass clazz, PrCategory category, PrChange change, String key) {
+    }
+
+    private record PrSurface(
+        TreeSet<String> ports,
+        Map<String, TreeSet<String>> opsByPort,
+        Map<String, BearIr.FieldType> inputs,
+        Map<String, BearIr.FieldType> outputs,
+        BearIr.Idempotency idempotency,
+        TreeSet<String> invariants
+    ) {
+    }
+
+    private record GitResult(int exitCode, String stdout, String stderr) {
     }
 
     private record BoundaryManifest(

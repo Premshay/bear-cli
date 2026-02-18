@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.List;
@@ -544,6 +545,176 @@ class BearCliTest {
         assertFalse(Files.exists(marker));
     }
 
+    @Test
+    void prCheckRequiresExpectedArgs() {
+        CliRunResult run = runCli(new String[] { "pr-check" });
+        assertEquals(64, run.exitCode);
+        assertTrue(run.stderr.startsWith("usage: INVALID_ARGS: expected: bear pr-check"));
+    }
+
+    @Test
+    void prCheckRejectsAbsoluteIrPath(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        Files.createDirectories(ir.getParent());
+        Files.writeString(ir, Files.readString(TestRepoPaths.repoRoot().resolve("spec/fixtures/withdraw.bear.yaml")));
+        gitCommitAll(repo, "add ir");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", ir.toString(), "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(64, run.exitCode);
+        assertTrue(run.stderr.startsWith("usage: INVALID_ARGS: ir-file must be repo-relative"));
+    }
+
+    @Test
+    void prCheckMissingBaseRefReturnsIo(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        gitCommitAll(repo, "add ir");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "missing-ref"
+        });
+        assertEquals(74, run.exitCode);
+        assertTrue(normalizeLf(run.stderr).startsWith("pr-check: IO_ERROR: MERGE_BASE_FAILED:"));
+    }
+
+    @Test
+    void prCheckMissingHeadIrReturnsIo(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Files.writeString(repo.resolve("README.md"), "x\n", StandardCharsets.UTF_8);
+        gitCommitAll(repo, "base");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/missing.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(74, run.exitCode);
+        assertEquals("pr-check: IO_ERROR: READ_HEAD_FAILED: spec/missing.bear.yaml\n", normalizeLf(run.stderr));
+    }
+
+    @Test
+    void prCheckNoDeltaReturnsOk(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        gitCommitAll(repo, "add ir");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(0, run.exitCode);
+        assertEquals("pr-check: OK: NO_BOUNDARY_EXPANSION\n", normalizeLf(run.stdout));
+        assertEquals("", run.stderr);
+    }
+
+    @Test
+    void prCheckTreatsMissingBaseIrAsBoundaryExpansion(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Files.writeString(repo.resolve("README.md"), "base\n", StandardCharsets.UTF_8);
+        gitCommitAll(repo, "base");
+
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        gitCommitAll(repo, "add ir");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        String stderr = normalizeLf(run.stderr);
+        assertEquals(5, run.exitCode);
+        assertTrue(stderr.contains("pr-check: INFO: BASE_IR_MISSING_AT_MERGE_BASE: spec/withdraw.bear.yaml: treated_as_empty_base"));
+        assertTrue(stderr.contains("pr-delta: BOUNDARY_EXPANDING: PORTS: ADDED: idempotency"));
+        assertTrue(stderr.contains("pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED"));
+    }
+
+    @Test
+    void prCheckOrdinaryOpsDeltaReturnsZero(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        String base = fixtureIrContent();
+        Files.createDirectories(ir.getParent());
+        Files.writeString(ir, base, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "base ir");
+
+        String head = base.replace("          - setBalance\n", "          - setBalance\n          - reverse\n");
+        Files.writeString(ir, head, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "ordinary op change");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        String stderr = normalizeLf(run.stderr);
+        assertEquals(0, run.exitCode);
+        assertTrue(stderr.contains("pr-delta: ORDINARY: OPS: ADDED: ledger.reverse"));
+        assertFalse(stderr.contains("BOUNDARY_EXPANDING"));
+        assertEquals("pr-check: OK: NO_BOUNDARY_EXPANSION\n", normalizeLf(run.stdout));
+    }
+
+    @Test
+    void prCheckOrderingIsDeterministic(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        String base = fixtureIrContent();
+        Files.createDirectories(ir.getParent());
+        Files.writeString(ir, base, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "base ir");
+
+        String head = base
+            .replace("      - name: txId\n        type: string\n", "      - name: txId\n        type: string\n      - name: note\n        type: string\n")
+            .replace("          - setBalance\n", "          - setBalance\n          - reverse\n")
+            .replace(
+                "      - port: idempotency\n        ops:\n          - get\n          - put\n",
+                "      - port: audit\n        ops:\n          - write\n      - port: idempotency\n        ops:\n          - get\n          - put\n"
+            )
+            .replace("    key: txId\n", "    key: accountId\n")
+            .replace("  invariants:\n    - kind: non_negative\n      field: balance\n", "");
+        Files.writeString(ir, head, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "mixed changes");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        List<String> lines = normalizeLf(run.stderr).lines()
+            .filter(line -> line.startsWith("pr-delta: "))
+            .toList();
+        assertEquals(5, run.exitCode);
+        assertEquals(List.of(
+            "pr-delta: BOUNDARY_EXPANDING: PORTS: ADDED: audit",
+            "pr-delta: BOUNDARY_EXPANDING: IDEMPOTENCY: CHANGED: idempotency.key",
+            "pr-delta: BOUNDARY_EXPANDING: INVARIANTS: REMOVED: non_negative:balance",
+            "pr-delta: ORDINARY: OPS: ADDED: ledger.reverse",
+            "pr-delta: ORDINARY: CONTRACT: ADDED: input.note:string"
+        ), lines);
+    }
+
+    @Test
+    void prCheckIdempotencyAddEmitsOnlyTopLevelDelta(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        String fixture = fixtureIrContent();
+        String base = fixture.replace(
+            "  idempotency:\n    key: txId\n    store:\n      port: idempotency\n      getOp: get\n      putOp: put\n",
+            ""
+        );
+        assertFalse(base.equals(fixture));
+        Files.createDirectories(ir.getParent());
+        Files.writeString(ir, base, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "base without idempotency");
+
+        Files.writeString(ir, fixture, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "add idempotency");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        String stderr = normalizeLf(run.stderr);
+        assertEquals(5, run.exitCode);
+        assertTrue(stderr.contains("pr-delta: BOUNDARY_EXPANDING: IDEMPOTENCY: ADDED: idempotency"));
+        assertFalse(stderr.contains("idempotency.store.port"));
+        assertFalse(stderr.contains("idempotency.store.getOp"));
+        assertFalse(stderr.contains("idempotency.store.putOp"));
+        assertFalse(stderr.contains("idempotency.key"));
+    }
+
     private static ManifestData readManifestData(Path manifestPath) throws Exception {
         String json = Files.readString(manifestPath, StandardCharsets.UTF_8);
         ManifestData data = new ManifestData();
@@ -660,6 +831,45 @@ class BearCliTest {
 
     private static boolean isWindows() {
         return System.getProperty("os.name").toLowerCase().contains("win");
+    }
+
+    private static Path initGitRepo(Path repoRoot) throws Exception {
+        Files.createDirectories(repoRoot);
+        git(repoRoot, "init");
+        git(repoRoot, "config", "user.email", "bear@example.com");
+        git(repoRoot, "config", "user.name", "Bear Test");
+        return repoRoot;
+    }
+
+    private static void gitCommitAll(Path repoRoot, String message) throws Exception {
+        git(repoRoot, "add", "-A");
+        git(repoRoot, "commit", "-m", message);
+    }
+
+    private static void git(Path repoRoot, String... args) throws Exception {
+        ArrayList<String> command = new ArrayList<>();
+        command.add("git");
+        command.add("-C");
+        command.add(repoRoot.toString());
+        command.addAll(Arrays.asList(args));
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        String output;
+        try (var in = process.getInputStream()) {
+            output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        int exit = process.waitFor();
+        assertEquals(0, exit, "git command failed: " + String.join(" ", command) + "\n" + output);
+    }
+
+    private static String fixtureIrContent() throws Exception {
+        return Files.readString(TestRepoPaths.repoRoot().resolve("spec/fixtures/withdraw.bear.yaml"), StandardCharsets.UTF_8);
+    }
+
+    private static void writeFixtureIr(Path path) throws Exception {
+        Files.createDirectories(path.getParent());
+        Files.writeString(path, fixtureIrContent(), StandardCharsets.UTF_8);
     }
 
     private static CliRunResult runCli(String[] args) {
