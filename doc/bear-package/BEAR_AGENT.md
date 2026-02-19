@@ -20,6 +20,11 @@ Purpose:
 4. Use deterministic BEAR gates; no ad-hoc substitute scripts.
 5. If multiple governed blocks or multiple IR files exist, `bear.blocks.yaml` is mandatory.
 6. Do not remove `bear.blocks.yaml` to bypass `--all` governance.
+7. In greenfield (no `spec/*.bear.yaml`), create IR and run `bear validate` + `bear compile` before writing implementation source files.
+8. Do not invent replacement contracts/ports to bypass BEAR generation; implement against generated BEAR request/result/port interfaces.
+9. Do not create domain logic classes under `com.bear.generated.*` except user-owned `*Impl.java` files created by BEAR compile.
+10. If expected feature files/paths are missing, treat repository state as greenfield or extension based on actual `spec/*.bear.yaml` presence; do not switch to ad-hoc implementation-first mode.
+11. If `bear validate`/`bear compile`/`bear check` fails, fix BEAR artifacts and rerun; do not bypass by writing non-BEAR replacement architecture.
 
 ## Session Baseline Check
 
@@ -34,19 +39,25 @@ Before planning or editing:
 - inspect `spec/*.bear.yaml`
 - inspect `bear.blocks.yaml` if present
 - inspect generated namespaces and existing `*Impl.java` files
-3. Decide whether boundaries change (contract/effects/idempotency/invariants).
-4. Apply IR-first updates before implementation edits when boundaries change.
-5. Decide block strategy:
+3. Classify repo BEAR state from disk:
+- `0` IR files: greenfield bootstrap mode
+- `1` IR file: single-block mode
+- `>=2` IR files: multi-block mode, index required
+4. Decide whether boundaries change (contract/effects/idempotency/invariants).
+5. Apply IR-first updates before implementation edits when boundaries change.
+6. Decide block strategy:
 - update an existing block when responsibility boundary is unchanged
 - create a new block when responsibility implies a distinct authority boundary
-6. If decomposition yields multiple governed blocks:
+7. If decomposition yields multiple governed blocks:
 - create/update `bear.blocks.yaml`
 - run `--all` command variants as canonical gates
   - if index validation fails, fix `name`/`ir`/`projectRoot` entries and rerun `check --all`
-7. Compile/generate after IR changes.
-8. Implement only in user-owned implementation/tests.
-9. Run canonical gate to `0`.
-10. Report deterministic completion summary.
+8. Compile/generate after IR changes.
+9. In greenfield bootstrap (`0` IR at start), no feature implementation edits are allowed until at least one `validate` and `compile` succeeds.
+10. Implement only after generated contracts exist.
+11. Implement only in user-owned implementation/tests.
+12. Run canonical gate to `0`.
+13. Report deterministic completion summary.
 
 ## Generic Decomposition Rules
 

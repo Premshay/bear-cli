@@ -28,6 +28,12 @@ Purpose:
 7. Implement in `*Impl.java` and tests only.
 8. Re-run check to `0`.
 
+Greenfield hard stop:
+- if no IR exists yet, do not write implementation source code first.
+- IR -> validate -> compile must happen before implementation edits.
+- if generated contracts are missing, compile; do not invent replacement interfaces/classes.
+- if repository paths expected by the prompt are missing, this is still not permission for implementation-first fallback.
+
 ### B) Extension Flow (existing BEAR repo)
 
 1. Discover existing IR/index/impl state.
@@ -97,3 +103,10 @@ Index troubleshooting:
 - No generated-file edits.
 - No silent boundary expansion.
 - One deterministic gate determines done/not-done.
+- No implementation-first bypass in greenfield mode.
+
+## Invalid Patterns (Fail the Run)
+
+1. Writing feature classes before creating any `spec/*.bear.yaml`.
+2. Implementing custom ports/contracts to replace missing generated BEAR interfaces.
+3. Deleting or skipping `bear.blocks.yaml` in multi-block state to force per-IR fallback.

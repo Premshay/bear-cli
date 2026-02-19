@@ -98,6 +98,8 @@ If greenfield starts with no IR/index, expected guidance is:
 
 Explicit failure condition:
 - multi-IR run without `bear.blocks.yaml` is invalid even if per-IR fallback could otherwise pass.
+- greenfield implementation-first runs are invalid: if no IR existed at start, agent must create IR and run validate/compile before writing feature implementation source files.
+- any run that introduces ad-hoc replacement architecture (custom contracts/ports) before BEAR generation is invalid even if final gate is green.
 
 ## Promote Baseline for Scenario 2
 
@@ -149,6 +151,7 @@ Store evidence in `bear-cli/doc/m1-eval/` only:
 6. `bear.blocks.yaml` snippet.
 7. Explicit `check --all` output snippet.
 8. Brief IR/code/test delta summary.
+9. Ordering proof snippet: first successful `validate/compile` occurs before first feature implementation edit under `src/main/java` or `src/test/java`.
 
 ## Failure Triage
 
