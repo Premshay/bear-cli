@@ -72,7 +72,8 @@ Continue from here.
 Reference split:
 - `doc/NORTH_STAR.md`: broad motivation and long-horizon success criteria.
 - `doc/ARCHITECTURE.md`: current v0 guarantees/non-guarantees.
-- `doc/ROADMAP_V0.md`: current execution checklist for v0 delivery.
+- `doc/ROADMAP.md`: roadmap definitions, milestones, and post-preview priorities.
+- `doc/PROGRAM_BOARD.md`: live milestone status, evidence, and queue (repo sessions only).
 
 ---
 

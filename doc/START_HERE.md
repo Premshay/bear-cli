@@ -1,72 +1,55 @@
 # Start Here (bear-cli)
 
-This file is the navigation map.
-Use it to find the right source of truth quickly.
-These docs are primarily for in-repo sessions (Codex/agent with repo access).
+This is the navigation map for active work.
 
 ## Read next (in order)
 
-1. `doc/STATE.md` -- current focus and next steps (keep updated).
-2. `doc/ARCHITECTURE.md` -- project intent, v0 guarantees/non-guarantees, scope lock.
-3. `doc/INVARIANT_CHARTER.md` -- normative invariant catalog and enforcement status (`ENFORCED`/`PARTIAL`/`PLANNED`).
-4. `doc/NORTH_STAR.md` -- broader motivation and long-horizon success criteria.
-5. `doc/GOVERNANCE.md` -- normative IR diff classification (`ordinary` vs `boundary-expanding`) and review policy.
-6. `doc/IR_SPEC.md` -- canonical v0 IR schema, validation, normalization, and demo IR shape.
-7. `spec/repo/block-index.md` -- canonical `bear.blocks.yaml` contract for repo-level `--all` enforcement.
-8. `doc/ROADMAP_V0.md` -- concrete post-v0 execution roadmap (historical filename) and milestone checkpoints.
-9. `doc/ROADMAP.md` -- broader target roadmap beyond immediate v0 execution.
-10. `doc/bear-package/` -- BEAR-distributed workflow source texts (`AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`, `BEAR_PRIMER.md`).
-11. `doc/PROJECT_LOG.md` -- historical rationale and major decisions.
-12. `doc/FUTURE.md` -- deferred ideas (explicitly not v0).
-13. `doc/PROMPT_BOOTSTRAP.md` -- copy/paste seed for a fresh AI session.
-14. `doc/USER_GUIDE.md` -- user-facing command usage and failure/exit contract quick reference.
+1. `doc/PROGRAM_BOARD.md` -- canonical milestone state, closure checklist, evidence, and ordered queue.
+2. `doc/STATE.md` -- short handoff for the current working session.
+3. `doc/ROADMAP.md` -- milestone definitions, done criteria, and post-preview priorities.
+4. `doc/ARCHITECTURE.md` -- v0 guarantees/non-guarantees and scope lock.
+5. `doc/INVARIANT_CHARTER.md` -- normative invariant catalog (`ENFORCED`/`PARTIAL`/`PLANNED`).
+6. `doc/GOVERNANCE.md` -- normative IR diff classification and review policy.
+7. `doc/IR_SPEC.md` -- canonical v0 IR schema and normalization rules.
+8. `spec/repo/block-index.md` -- canonical `bear.blocks.yaml` contract for `--all` enforcement.
+9. `doc/USER_GUIDE.md` -- operator-facing command and failure-envelope guide.
+10. `doc/bear-package/` -- distributed workflow source texts (`AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`, `BEAR_PRIMER.md`).
+11. `doc/PROJECT_LOG.md` -- architectural rationale history.
+12. `doc/NORTH_STAR.md` -- long-horizon vision.
+13. `doc/FUTURE.md` -- explicitly parked ideas.
+14. `doc/PROMPT_BOOTSTRAP.md` -- non-repo chat bootstrap seed.
+15. `doc/archive/README.md` -- archived-file index.
 
-## What each file is for
+## Source Ownership
 
-- `doc/STATE.md`: operational tracker; update every working session.
-- `doc/ARCHITECTURE.md`: conceptual contract for v0.
-- `doc/INVARIANT_CHARTER.md`: invariant source of truth (what must hold, current enforcement status).
-- `doc/NORTH_STAR.md`: broader BEAR motivation and long-term success litmus.
-- `doc/GOVERNANCE.md`: normative governance contract for classifying IR changes and signaling boundary expansion.
-- `doc/IR_SPEC.md`: schema contract; if fields conflict elsewhere, this wins for IR shape.
-- `spec/repo/block-index.md`: repo-level multi-block index schema and invariants for `check --all` / `pr-check --all`.
-- `doc/ROADMAP_V0.md`: implementation order for current post-v0 milestone execution.
-- `doc/ROADMAP.md`: broader target direction and longer-horizon phases.
-- `doc/bear-package/`: package source texts distributed into adopter/demo repos (`AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`, `BEAR_PRIMER.md`).
-- `doc/PROMPT_BOOTSTRAP.md`: transport context into a new chat, not a full architecture doc.
-  - Use this for non-repo sessions (for example ChatGPT without workspace file access).
-- `doc/USER_GUIDE.md`: practical operator guide for running commands and interpreting failure envelopes.
+- `doc/PROGRAM_BOARD.md`: only source for active milestone status and queue ordering.
+- `doc/ROADMAP.md`: only source for roadmap definitions and done criteria.
+- `doc/STATE.md`: only source for short session handoff.
+- `doc/archive/*`: historical references only, never active planning inputs.
 
-## Repo layout
+## Repo Layout
 
-- `kernel/` -- trusted deterministic seed: BEAR IR parsing/validation/normalization + target abstractions
-- `app/` -- CLI wrapper (commands like `bear validate`, `bear compile`, `bear check`)
+- `kernel/` -- deterministic seed: IR parse/validate/normalize and target abstractions
+- `app/` -- CLI wrapper (`validate`, `compile`, `check`, `pr-check`)
 
-## Session sequence (recommended)
+## Session Sequence (recommended)
 
-1. Read `doc/STATE.md` first.
-2. Read `doc/IR_SPEC.md` before touching parser/validator/generator code.
-3. Read `doc/ROADMAP.md` before choosing implementation scope.
-4. If this is a new AI chat, paste `doc/PROMPT_BOOTSTRAP.md` SHORT block.
+1. Read `doc/PROGRAM_BOARD.md` and `doc/STATE.md`.
+2. Read `doc/IR_SPEC.md` before parser/validator/generator edits.
+3. Read `doc/ROADMAP.md` before choosing scope.
+4. If this is a fresh non-repo chat, paste `doc/PROMPT_BOOTSTRAP.md` SHORT block.
 
-## Session close protocol
-
-Run this when major progress is made or before closing a session.
+## Session Close Protocol
 
 1. Update `doc/STATE.md`:
    - `Last Updated`
    - `Current Focus`
    - `Next Concrete Task`
-   - short `Session Notes` bullets
-2. Update canonical docs only if semantics changed:
-   - `doc/IR_SPEC.md` for IR/schema/rules
-   - `doc/ARCHITECTURE.md` for guarantees/non-guarantees/scope
-   - `doc/ROADMAP.md` for phase/scope execution plan
-3. Update `doc/PROJECT_LOG.md` only for meaningful architectural decisions.
-4. Keep handoff docs aligned if needed:
-   - `doc/START_HERE.md` for navigation/process changes
-   - `doc/PROMPT_BOOTSTRAP.md` for external non-repo session bootstrap changes
-5. End-of-session summary should always include:
-   - what changed
-   - open decisions/risks
-   - next single task
+   - short session notes
+2. Update `doc/PROGRAM_BOARD.md` if milestone checklist, evidence links, risks, or queue ordering changed.
+3. Update canonical docs only when semantics changed:
+   - `doc/IR_SPEC.md`
+   - `doc/ARCHITECTURE.md`
+   - `doc/GOVERNANCE.md`
+   - `doc/ROADMAP.md`
+4. Update `doc/PROJECT_LOG.md` only for major architectural decisions.

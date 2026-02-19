@@ -2,11 +2,12 @@
 
 If you are an AI coding assistant (or a human picking up the repo), start here:
 
-1. Read `doc/STATE.md` (source of truth for current work + next steps).
-2. Read `doc/START_HERE.md`.
-3. Read `doc/IR_SPEC.md` for canonical v0 IR structure and constraints.
-4. If this is a fresh non-repo session (for example ChatGPT), use `doc/PROMPT_BOOTSTRAP.md` (paste the SHORT section first).
-5. If you need historical rationale, read `doc/PROJECT_LOG.md`.
+1. Read `doc/PROGRAM_BOARD.md` (source of truth for milestone status, evidence, and ordered queue).
+2. Read `doc/STATE.md` (short session handoff).
+3. Read `doc/START_HERE.md`.
+4. Read `doc/IR_SPEC.md` for canonical v0 IR structure and constraints.
+5. If this is a fresh non-repo session (for example ChatGPT), use `doc/PROMPT_BOOTSTRAP.md` (paste the SHORT section first).
+6. If you need historical rationale, read `doc/PROJECT_LOG.md`.
 
 Guardrails (v0):
 - Keep `kernel/` deterministic and small (trusted seed). No LLM/agent logic in core.
@@ -16,5 +17,6 @@ Guardrails (v0):
 
 Session hygiene:
 - Update `doc/STATE.md` whenever work progresses (Last Updated, Current Focus, Next Concrete Task).
+- Update `doc/PROGRAM_BOARD.md` when milestone checklist/evidence/queue/risk entries change.
 - Update `doc/PROJECT_LOG.md` only for major architectural shifts/decisions.
 - Before ending a session, follow `doc/START_HERE.md` -> "Session close protocol".

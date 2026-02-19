@@ -2,7 +2,15 @@
 
 ## Status
 
-Proposed (post-preview queue)
+Proposed
+
+## Milestone Target
+
+P2
+
+## Priority Bucket
+
+P2
 
 ## Goal
 
@@ -28,3 +36,7 @@ or (repo mode, later):
 2. Touches only BEAR-owned generated paths.
 3. Emits standard failure envelope on non-zero exits.
 4. Integrates cleanly with existing `check`/`pr-check` contracts.
+
+## Dependencies
+
+- `doc/backlog/P1_PREVIEW_CLOSURE_GAPS.md` closed or explicitly waived.

@@ -30,11 +30,11 @@ v0 non-guarantees:
 
 Start here: `doc/START_HERE.md`
 
-Current execution focus:
-- `M1` workflow proof (minimal): isolated demo repo proves IR-first agent loop with one canonical gate command.
-- Packaging/versioning is future work only, to be revisited when BEAR is mature enough for distribution design.
-- BEAR package source texts for distributed workflow docs: `doc/bear-package/` (`BEAR_PRIMER.md`, `AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`).
-- M1 evaluator harness docs (kept out of demo to avoid agent cheat hints): `doc/m1-eval/`.
+Execution tracking:
+- live milestone status and queue: `doc/PROGRAM_BOARD.md`
+- current session handoff: `doc/STATE.md`
+- milestone definitions and priorities: `doc/ROADMAP.md`
+- archived superseded planning files: `doc/archive/README.md`
 
 - `kernel`: deterministic core. Contains BEAR IR parsing (YAML), validation, normalization, and target abstractions. This module is trusted seed code and is never BEAR-generated.
 - `app`: CLI wrapper. Exposes `bear validate`, `bear compile`, and `bear check`. BEAR may later self-host parts of `app`, but never `kernel`.
@@ -75,17 +75,18 @@ This repo writes Gradle outputs to a temp build root (`%TEMP%\bear-cli-build\...
 For development, prefer running the CLI via `:app:run`.
 
 Docs:
-- `doc/STATE.md` (current focus + next steps)
+- `doc/PROGRAM_BOARD.md` (live milestone status + closure checklist + ordered queue)
+- `doc/STATE.md` (short current-session handoff)
 - `doc/USER_GUIDE.md` (user-facing command usage + failure envelope quick reference)
 - `doc/NORTH_STAR.md` (broader motivation + long-horizon success criteria)
 - `doc/ARCHITECTURE.md` (what BEAR is + v0 scope)
 - `doc/GOVERNANCE.md` (normative IR diff classification and boundary-expansion policy)
 - `doc/IR_SPEC.md` (canonical v0 IR model + validation rules)
-- `doc/ROADMAP_V0.md` (concrete v0 execution roadmap)
-- `doc/ROADMAP.md` (broader target roadmap)
+- `doc/ROADMAP.md` (single roadmap: milestones, done criteria, post-preview priorities)
 - `doc/PROJECT_LOG.md` (background + major decisions)
 - `doc/FUTURE.md` (explicitly out-of-scope ideas)
 - `doc/PROMPT_BOOTSTRAP.md` (paste into a fresh AI session to restore context)
+- `doc/archive/README.md` (archived doc index)
 
 Demo repo (sibling):
 - `../bear-account-demo/README.md` (realistic app-facing demo context)

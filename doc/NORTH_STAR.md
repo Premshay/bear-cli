@@ -99,4 +99,5 @@ This doc is the long-horizon target model, not a claim that all properties exist
 
 - `doc/ARCHITECTURE.md`: what BEAR guarantees now (v0 contract).
 - `doc/GOVERNANCE.md`: normative classification and review policy.
-- `doc/ROADMAP.md`: phased path from current v0 to stronger enforcement.
+- `doc/ROADMAP.md`: milestone definitions and phased path to stronger enforcement.
+- `doc/PROGRAM_BOARD.md`: live milestone execution status and evidence (operational view).

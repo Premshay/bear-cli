@@ -1,192 +1,141 @@
-# BEAR Target Roadmap
+# BEAR Roadmap
 
-This roadmap expresses the broader target direction for BEAR.
-For current execution order and milestone sequencing, see `doc/ROADMAP_V0.md` (historical filename; now post-v0 execution tracker).
-For current v0 contract details, see `doc/ARCHITECTURE.md` and `doc/GOVERNANCE.md`.
+This file is the single canonical roadmap.
+It defines milestone contracts, done criteria, and post-preview priorities.
 
-## Status Snapshot
+Live execution status is tracked in `doc/PROGRAM_BOARD.md`.
+Session handoff status is tracked in `doc/STATE.md`.
 
-- v0 core is complete.
-- active work is post-v0 milestone execution (currently M1.1 governance signal hardening and preview contract hardening).
-- target milestone is `Preview Release` (reached via M1 -> M1.1 -> preview).
-- this file is strategic; do not treat it as the step-by-step execution tracker.
+## Milestone Pipeline
 
-## Why This Roadmap
+`v0 complete -> M1 workflow proof -> M1.1 governance hardening -> Preview Release -> P2 -> P3`
 
-BEAR is successful only if agent speed is paired with structural control:
-- agents can move fast inside blocks
-- new external power cannot be introduced silently
-- boundary expansion is explicit and reviewable
-- deterministic build/test gates enforce declared structure
-- developers are not burdened with IR micromanagement
+Milestone status ownership:
+- Active/completed state lives only in `doc/PROGRAM_BOARD.md`.
+- This file stays stable and milestone-definition focused.
 
-## Harness Engineering Addendum (Preview)
+## Milestone Definitions
 
-This is additive to the existing roadmap, not a replacement.
+### M1: Workflow Proof
 
-Strategic position:
-- BEAR is a deterministic structural containment layer for agent-generated code.
-- BEAR is a compile/CI gate, not a full agent harness platform.
-- Reliability comes from deterministic structure + mechanical enforcement, not model trust.
-
-Primary preview failure modes to target:
-- silent boundary expansion
-- drift/entropy in generated artifacts
-- undeclared escape paths that bypass declared boundaries
-
-Preview additions that are now mandatory:
-1. Actionable failures as a product requirement.
-  - output must be minimal, stable, greppable, and include explicit remediation
-  - applies to every non-zero path, including usage/IO/git/internal failures
-2. Demo-grade no-undeclared-reach enforcement.
-  - deterministically catch at least one realistic boundary bypass class
-3. Stable exit semantics as a CI contract.
-  - one numeric registry across commands
-  - contract tests enforce failure-envelope coverage
-
-Preview invariant alignment:
-- preview invariant source of truth is `doc/INVARIANT_CHARTER.md`
-- preview "must enforce" set is the charter preview list
-- broad charter claims use explicit scope caveat for preview static detection coverage
-
-Position in the wider stack:
-- In scope: static/CI structural enforcement.
-- Out of scope for preview: runtime orchestration, sandboxing, policy gateways, eval platforms.
-- Scope rationale: fastest falsifiable preview with current team capacity.
-
-Preview success is falsifiable only if all are true:
-- implementation/refactor freedom remains high inside blocks
-- boundary expansion is deterministic and review-visible in PR/CI
-- undeclared reach attempts for covered surfaces fail deterministically with remediation
-- workflow stays low-friction with one canonical CI command and scoped self-hosting (clean clone + normal wrapper flow, no bespoke ritual)
-
-## Execution Layering
-
-Two roadmap files are intentional:
-- `doc/ROADMAP.md` (this file): long-horizon strategy and phase intent.
-- `doc/ROADMAP_V0.md`: near-term execution order, milestone definitions, and done criteria.
-
-## Phase 1 - Deterministic Core (current foundation)
-
-Goal: IR and generation are stable and trustworthy.
+Goal:
+- prove isolated BEAR-aware agent workflow in the demo repo
 
 Deliver:
+- demo-local BEAR workflow assets (`BEAR_PRIMER.md`, `AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`)
+- canonical gate scripts and wrapper scripts
+- realistic scenario branches (`scenario/greenfield-build`, `scenario/feature-extension`)
+- no demo answer-key hints
+
+Done criteria:
+1. Isolated agent completes one non-boundary feature and one boundary-expanding feature.
+2. Both flows terminate through one canonical gate command.
+3. Demo workflow is runnable from demo repo context only.
+
+### M1.1: Governance Signal Hardening
+
+Goal:
+- make boundary governance CI-native and ordering-independent
+
+Deliver:
+- `bear pr-check` base-branch diff mode
+- deterministic boundary-delta output (`PORTS|OPS|IDEMPOTENCY|CONTRACT|INVARIANTS`)
+- CI-ready boundary-expansion status signal
+- stable exit-code semantics for governance paths
+
+Done criteria:
+1. PR runs classify boundary deltas deterministically.
+2. CI can gate on explicit boundary expansion without stale-baseline ordering dependencies.
+
+### Preview Release
+
+Goal:
+- ship a credible, tryable preview on a realistic multi-block banking slice
+
+Entry criteria:
+- M1 accepted
+- M1.1 accepted
+
+Preview contract (must ship):
+1. `bear validate` deterministic schema/semantic validation + canonical normalization.
+2. `bear compile` deterministic generation + impl-preservation ownership contract.
+3. `bear check` deterministic drift gate (`ADDED|REMOVED|CHANGED|MISSING_BASELINE`).
+4. `bear check` project tests only after drift pass, with stable failure/timeout semantics.
+5. `bear pr-check` deterministic boundary expansion verdict (`0` / `5`).
+6. Non-zero exits include deterministic failure envelope:
+   - `CODE=...`
+   - `PATH=...`
+   - `REMEDIATION=...`
+7. Preview undeclared-reach enforcement:
+   - direct HTTP bypass detection (JVM covered surfaces)
+   - deterministic exit `6` and remediation
+8. Self-hosting baseline:
+   - BEAR commands run in clean clone with normal wrapper flow and no bespoke ritual
+9. Single exit-code registry for preview:
+   - `0,2,3,4,5,6,64,70,74`
+10. Failure-envelope compliance coverage for validation/drift/test/usage/IO/git/internal paths.
+
+Preview demo scope:
+- small banking slice with 2-3 blocks
+- canonical gate command as definition of done
+- undeclared-reach guard in verification path
+- packaged agent workflow docs in repo (`AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`)
+- repo-level block index mapping block to IR/project/test roots
+
+Preview definition of done:
+1. Agents can implement/refactor freely inside block boundaries.
+2. Boundary expansion is deterministic and review-visible in PR/CI.
+3. Covered undeclared-reach bypass attempts fail deterministically with remediation.
+4. Workflow remains low-friction with one canonical gate and normal self-hosting.
+5. CLI contracts remain deterministic, greppable, and exit-code stable.
+
+## Post-Preview Priorities
+
+Priority ordering is strict and maps to `doc/INVARIANT_CHARTER.md`.
+
+### Priority 2 (next after preview)
+
+1. `bear fix` for generated artifacts only.
+2. Generated structural tests.
+3. Minimal taste-invariants rule pack.
+4. Boundary regression suite (`bear/regressions/` fixtures).
+5. Better PR diff ergonomics.
+
+### Priority 3 (strategic extensions)
+
+1. Capability templates.
+2. Broader boundary-escape coverage (DB/filesystem/messaging).
+3. Multi-block and multi-module composition hardening.
+4. Optional policy hooks (deterministic project-provided checks).
+
+## Strategic Phases (Condensed)
+
+### Phase 1: Deterministic Core
 - strict IR validation
-- canonical normalization
-- deterministic canonical emission
-- drift detection
-- stable exit-code contract
-- golden fixtures/conformance corpus
+- canonical normalization and emission
+- deterministic generation and drift checks
+- stable exit semantics
 
-Success criteria:
-- IR diffs are stable
-- schema/semantic failures are deterministic
-- normalization has no silent behavior shifts
-- `bear check` is reliable and predictable
+### Phase 2: Structural Enforcement
+- side-effect gating on real escape-hatch surfaces
+- deterministic failures for undeclared external reach
 
-Current status:
-- directionally complete; maintain and harden as baseline
+### Phase 3: Boundary Classification
+- explicit ordinary vs boundary-expanding diffs
+- deterministic PR/CI governance signaling
 
-## Phase 2 - Real Structural Enforcement (critical)
+### Phase 4: Agent-Native Workflow
+- BEAR-aware default agent loop
+- minimal developer IR micromanagement
 
-Goal: declared effects/ports map to mechanical build enforcement.
+### Phase 5: Controlled Behavioral Visibility (optional)
+- detect meaningful interaction-shape changes
+- avoid broad behavior DSL expansion
 
-Initial JVM enforcement targets:
-- block modules cannot import integration modules directly
-- forbidden API/symbol checks (for example: network/filesystem/reflection surfaces)
-- only declared capability interfaces are visible to block logic
-- build fails on forbidden references
-- failures are actionable and deterministic for agents
-
-CI must fail if:
-- code uses undeclared external surfaces
-- implementation diverges from declared structural boundaries
-
-Success criteria:
-- an agent cannot introduce a new HTTP call, filesystem write, or DB client usage without corresponding declared boundary change plus passing enforcement checks
-
-Notes:
-- start on JVM first
-- cross-language parity comes after JVM maturity
-
-Phase 2 explicit deliverable:
-- define and freeze a minimal side-effect taxonomy and JVM enforcement mapping
-- apply principle: side-effect gating, not library gating
-  - libraries are generally allowed
-  - external reach/escape-hatch surfaces are governed
-  - side effects should flow through declared capability ports
-
-## Phase 3 - Boundary Expansion Classification
-
-Goal: make power expansion visible and reviewable.
-
-Deliver:
-- deterministic IR diff classification:
-  - ordinary change
-  - boundary expansion
-- deterministic CI/report output that labels boundary expansion clearly
-- optional governance hooks (for example CODEOWNERS/approval on boundary-expanding diffs)
-- PR/base-branch boundary diff mode (`bear pr-check` or equivalent):
-  - compare current branch boundary surface against base branch
-  - emit deterministic boundary deltas (ports/ops/effects/contract/invariants)
-  - mark PRs with explicit boundary-expansion status for approval workflows
-- normalize exit-code classes for stale/boundary paths so CI signals are stable (`drift`/`boundary` are not ambiguously reported as generic failures)
-
-Success criteria:
-- when a block gains external power, reviewers can see it in seconds
-
-## Phase 4 - Agent-Native Integration
-
-Goal: BEAR becomes default operating mode in agentic development.
-
-Deliver:
-- repo-level bootstrap context for agents
-- explicit agent protocol:
-  - update IR when boundary/contract changes require it
-  - run validate -> check (drift + tests)
-  - do not widen effects silently
-  - report human-readable boundary summary/diff
-
-Success criteria:
-- developers work in domain terms
-- agents operate BEAR-aware by default
-- BEAR does not require constant manual IR babysitting
-
-## Phase 5 - Controlled Behavioral Visibility (optional, high value)
-
-This phase starts only after structural enforcement is strong.
-
-Goal: detect meaningful boundary-usage changes, not just capability additions.
-
-Deliver (narrow boundary scope):
-- capability contract refinements (for example allowed topics/event types)
-- optional per-op interaction constraints (such as cardinality)
-- generated policy tests for observable interaction patterns
-
-Non-goal:
-- full behavior modeling or business-logic DSL
-
-Success criteria:
-- meaningful interaction-pattern changes produce deterministic test diffs or constraint violations
-
-## Explicitly Out of Scope (for now)
+## Out of Scope (Current Roadmap)
 
 - runtime sandboxing
-- runtime permission enforcement and policy engines
+- policy engines and runtime authorization frameworks
 - full formal behavioral verification
-- complex workflow/orchestration modeling
-- rich domain DSL for business semantics
-- cross-language parity before JVM enforcement is mature
-
-## 12-Month Honest Success Definition
-
-BEAR is successful if all are true:
-- agents move fast inside blocks
-- new external interactions cannot be introduced silently
-- boundary expansion is explicit and quickly reviewable
-- build/test gates enforce declared structure
-- developers do not feel burdened by BEAR mechanics
-
-## Current Immediate Execution Focus
-
-Near-term implementation is tracked in `doc/ROADMAP_V0.md` and `doc/STATE.md`.
+- workflow orchestration platforms
+- business-logic DSL expansion
