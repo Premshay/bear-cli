@@ -37,7 +37,7 @@ Execution tracking:
 - archived superseded planning files: `doc/archive/README.md`
 
 - `kernel`: deterministic core. Contains BEAR IR parsing (YAML), validation, normalization, and target abstractions. This module is trusted seed code and is never BEAR-generated.
-- `app`: CLI wrapper. Exposes `bear validate`, `bear compile`, and `bear check`. BEAR may later self-host parts of `app`, but never `kernel`.
+- `app`: CLI wrapper. Exposes `bear validate`, `bear compile`, `bear fix`, `bear check`, and `bear pr-check`. BEAR may later self-host parts of `app`, but never `kernel`.
 
 ## Quickstart (dev)
 
@@ -75,7 +75,7 @@ This repo writes Gradle outputs to a temp build root (`%TEMP%\bear-cli-build\...
 For development, prefer running the CLI via `:app:run`.
 
 Docs:
-- `doc/PROGRAM_BOARD.md` (live milestone status + closure checklist + ordered queue)
+- `doc/PROGRAM_BOARD.md` (live milestone feature status + ordered feature queue)
 - `doc/STATE.md` (short current-session handoff)
 - `doc/USER_GUIDE.md` (user-facing command usage + failure envelope quick reference)
 - `doc/NORTH_STAR.md` (broader motivation + long-horizon success criteria)

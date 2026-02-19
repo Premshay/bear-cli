@@ -124,4 +124,5 @@ If request adds structural output guarantees:
 For each changed IR:
 1. `bear validate <ir-file>`
 2. `bear compile <ir-file> --project <repoRoot>`
-3. `bear check <ir-file> --project <repoRoot>` or `bear check --all --project <repoRoot>`
+3. `bear fix <ir-file> --project <repoRoot>` (or `bear fix --all --project <repoRoot>` when indexed) when generated artifacts need deterministic repair
+4. `bear check <ir-file> --project <repoRoot>` or `bear check --all --project <repoRoot>`

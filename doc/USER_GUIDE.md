@@ -42,6 +42,7 @@ Intent:
 For full normative command contracts, see:
 - `spec/commands/validate.md`
 - `spec/commands/compile.md`
+- `spec/commands/fix.md`
 - `spec/commands/check.md`
 - `spec/commands/pr-check.md`
 - `spec/commands/exit-codes.md`
@@ -78,7 +79,34 @@ Behavior:
 - regenerates BEAR-owned artifacts under `<project>/build/generated/bear`
 - does not overwrite user-owned impl files under `<project>/src/main/java`
 
-### 3. Local gate (drift + tests)
+### 3. Repair generated artifacts
+
+```text
+bear fix <ir-file> --project <path>
+```
+
+Use when:
+- repairing or normalizing BEAR-owned generated artifacts
+- regenerating deterministic generated output without touching user-owned impl files
+
+Behavior:
+- regenerates BEAR-owned artifacts under `<project>/build/generated/bear`
+- preserves user-owned impl files under `<project>/src/main/java`
+- does not run tests or PR governance checks
+
+### 3b. Repair generated artifacts (multi-block)
+
+```text
+bear fix --all --project <repoRoot>
+```
+
+Optional flags:
+- `--blocks <path>`
+- `--only <name1,name2,...>`
+- `--fail-fast`
+- `--strict-orphans`
+
+### 4. Local gate (drift + tests)
 
 ```text
 bear check <ir-file> --project <path>
@@ -93,7 +121,7 @@ Behavior:
 - fails with undeclared-reach exit code when covered direct HTTP client usage bypasses declared ports
 - runs project tests only after no-drift result
 
-### 3b. Repo gate (multi-block)
+### 4b. Repo gate (multi-block)
 
 ```text
 bear check --all --project <repoRoot>
@@ -110,7 +138,7 @@ Use when:
 - CI/local workflow needs one deterministic gate for all managed blocks
 - multiple blocks can share one `projectRoot`; `check --all` runs undeclared-reach/tests once per root
 
-### 4. PR governance gate (base diff classification)
+### 5. PR governance gate (base diff classification)
 
 ```text
 bear pr-check <ir-file> --project <path> --base <ref>
@@ -123,7 +151,7 @@ Behavior:
 - exits `5` when boundary expansion is detected
 - exits `0` for no-boundary-expansion outcomes
 
-### 4b. PR governance gate (multi-block)
+### 5b. PR governance gate (multi-block)
 
 ```text
 bear pr-check --all --project <repoRoot> --base <ref>
@@ -136,7 +164,7 @@ Optional flags:
 
 ## Non-zero failure envelope
 
-All non-zero exits in `validate`, `compile`, `check`, and `pr-check` include:
+All non-zero exits in `validate`, `compile`, `fix`, `check`, and `pr-check` include:
 
 ```text
 CODE=<enum>
@@ -214,6 +242,7 @@ All non-zero command exits include deterministic footer lines:
 2. Agent updates IR if boundary/contract/effect changes are needed.
 3. Agent runs `bear validate <ir-file>`.
 4. Agent runs `bear compile <ir-file> --project <path>`.
-5. Agent implements user-owned logic/tests.
-6. Agent runs `bear check <ir-file> --project <path>`.
-7. For PR governance, run `bear pr-check <ir-file> --project <path> --base <ref>`.
+5. If generated artifacts need deterministic repair, run `bear fix <ir-file> --project <path>` (or `fix --all`).
+6. Agent implements user-owned logic/tests.
+7. Agent runs `bear check <ir-file> --project <path>`.
+8. For PR governance, run `bear pr-check <ir-file> --project <path> --base <ref>`.

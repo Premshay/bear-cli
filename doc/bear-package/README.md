@@ -4,6 +4,13 @@
 
 This package is generic and domain-neutral. It provides BEAR operating rules, IR guidance, and deterministic gate usage. It must not include app-specific solution hints.
 
+Canonical command surface expected by the package:
+- `bear validate`
+- `bear compile`
+- `bear fix`
+- `bear check`
+- `bear pr-check`
+
 ## Package Contract
 
 1. BEAR package is a copyable bundle dropped into any backend project.

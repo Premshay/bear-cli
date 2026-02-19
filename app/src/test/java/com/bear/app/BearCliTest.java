@@ -89,6 +89,15 @@ class BearCliTest {
     }
 
     @Test
+    void helpIncludesFixCommands() {
+        CliRunResult run = runCli(new String[] { "--help" });
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("bear fix <ir-file> --project <path>"));
+        assertTrue(stdout.contains("bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]"));
+    }
+
+    @Test
     void validateMissingFileReturnsIoExitCode() {
         ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
@@ -214,6 +223,95 @@ class BearCliTest {
         assertTrue(Files.exists(generatedRoot.resolve("IdempotencyPort.java")));
 
         assertEquals("package com.bear.generated.withdraw;\npublic final class WithdrawImpl {}\n", Files.readString(impl));
+    }
+
+    @Test
+    void fixRequiresExpectedArgs() {
+        CliRunResult run = runCli(new String[] { "fix" });
+        assertEquals(64, run.exitCode);
+        assertTrue(run.stderr.startsWith("usage: INVALID_ARGS:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Run `bear fix <ir-file> --project <path>` with the expected arguments."
+        );
+    }
+
+    @Test
+    void fixMissingIrReturnsIoExitCode(@TempDir Path tempDir) {
+        CliRunResult run = runCli(new String[] { "fix", "missing.yaml", "--project", tempDir.toString() });
+        assertEquals(74, run.exitCode);
+        assertTrue(run.stderr.startsWith("io: IO_ERROR:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_ERROR",
+            "project.root",
+            "Ensure the IR/project paths are readable and writable, then rerun `bear fix`."
+        );
+    }
+
+    @Test
+    void fixInvalidIrReturnsValidationExitCode(@TempDir Path tempDir) throws Exception {
+        Path invalid = tempDir.resolve("invalid.bear.yaml");
+        Files.writeString(invalid, ""
+            + "version: v0\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: i, type: string}]\n"
+            + "    outputs: [{name: o, type: string}]\n"
+            + "  effects:\n"
+            + "    allow: []\n"
+            + "  extra: true\n");
+
+        CliRunResult run = runCli(new String[] { "fix", invalid.toString(), "--project", tempDir.toString() });
+        assertEquals(2, run.exitCode);
+        assertTrue(run.stderr.startsWith("schema at block: UNKNOWN_KEY:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IR_VALIDATION",
+            "block",
+            "Fix the IR issue at the reported path and rerun `bear fix <ir-file> --project <path>`."
+        );
+    }
+
+    @Test
+    void fixRegeneratesArtifactsAndPreservesExistingImpl(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        Path impl = tempDir.resolve("src/main/java/com/bear/generated/withdraw/WithdrawImpl.java");
+        Files.createDirectories(impl.getParent());
+        String implContent = "package com.bear.generated.withdraw;\npublic final class WithdrawImpl {\n  // keep\n}\n";
+        Files.writeString(impl, implContent);
+
+        Path generated = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/withdraw/Withdraw.java");
+        Files.createDirectories(generated.getParent());
+        Files.writeString(generated, "stale\n");
+
+        CliRunResult run = runCli(new String[] { "fix", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, run.exitCode);
+        assertEquals("fix: OK\n", normalizeLf(run.stdout));
+        assertEquals("", run.stderr);
+
+        assertTrue(Files.readString(generated).contains("public final class Withdraw"));
+        assertEquals(implContent, Files.readString(impl));
+    }
+
+    @Test
+    void fixDeterministicRerunIsByteIdentical(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        assertEquals(0, runCli(new String[] { "fix", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        Path generated = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/withdraw/Withdraw.java");
+        byte[] first = Files.readAllBytes(generated);
+
+        assertEquals(0, runCli(new String[] { "fix", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        byte[] second = Files.readAllBytes(generated);
+        assertEquals(bytesToHex(first), bytesToHex(second));
     }
 
     @Test
@@ -1037,6 +1135,112 @@ class BearCliTest {
     }
 
     @Test
+    void fixAllPassesInCanonicalOrder(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        CliRunResult run = runCli(new String[] { "fix", "--all", "--project", fixture.repoRoot().toString() });
+
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("BLOCK: alpha"));
+        assertTrue(stdout.contains("BLOCK: beta"));
+        assertTrue(stdout.contains("BLOCK: gamma"));
+        assertTrue(stdout.indexOf("BLOCK: alpha") < stdout.indexOf("BLOCK: beta"));
+        assertTrue(stdout.indexOf("BLOCK: beta") < stdout.indexOf("BLOCK: gamma"));
+        assertTrue(stdout.contains("SUMMARY:"));
+        assertTrue(stdout.contains("EXIT_CODE: 0"));
+        assertEquals("", run.stderr);
+    }
+
+    @Test
+    void fixAllUnknownOnlyNameIsUsageError(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        CliRunResult run = runCli(new String[] {
+            "fix", "--all", "--project", fixture.repoRoot().toString(), "--only", "not-a-block"
+        });
+        assertEquals(64, run.exitCode);
+        assertTrue(run.stderr.startsWith("usage: INVALID_ARGS: unknown block in --only"));
+        assertFailureEnvelope(
+            run.stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Use only block names declared in `bear.blocks.yaml`."
+        );
+    }
+
+    @Test
+    void fixAllDisabledBlockRenderedAsSkip(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        writeBlockIndex(fixture.repoRoot(), ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/alpha\n"
+            + "  - name: beta\n"
+            + "    ir: spec/beta.bear.yaml\n"
+            + "    projectRoot: services/beta\n"
+            + "    enabled: false\n");
+
+        CliRunResult run = runCli(new String[] { "fix", "--all", "--project", fixture.repoRoot().toString() });
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("BLOCK: beta\nIR: spec/beta.bear.yaml\nPROJECT: services/beta\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: DISABLED"));
+    }
+
+    @Test
+    void fixAllFailFastMarksRemainingAsSkip(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
+        Files.writeString(alphaIr, "version: v0\nblock:\n  name: alpha\n");
+
+        CliRunResult run = runCli(new String[] {
+            "fix", "--all", "--project", fixture.repoRoot().toString(), "--fail-fast"
+        });
+
+        assertEquals(2, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: beta\nIR: spec/beta.bear.yaml\nPROJECT: services/beta\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: FAIL_FAST_ABORT"));
+        assertTrue(stderr.contains("BLOCK: gamma\nIR: spec/gamma.bear.yaml\nPROJECT: services/gamma\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: FAIL_FAST_ABORT"));
+        assertTrue(stderr.contains("FAIL_FAST_TRIGGERED: true"));
+    }
+
+    @Test
+    void fixAllStrictOrphansFailsOnRepoMarker(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/surfaces/orphan.surface.json");
+        Files.createDirectories(orphan.getParent());
+        Files.writeString(orphan, "{}\n");
+
+        CliRunResult run = runCli(new String[] {
+            "fix", "--all", "--project", fixture.repoRoot().toString(), "--strict-orphans"
+        });
+        assertEquals(74, run.exitCode);
+        assertTrue(run.stderr.startsWith("fix: IO_ERROR: ORPHAN_MARKER: orphan-root/build/generated/bear/surfaces/orphan.surface.json"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_ERROR",
+            "orphan-root/build/generated/bear/surfaces/orphan.surface.json",
+            "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
+        );
+    }
+
+    @Test
+    void fixAllAggregatedFailureUsesRepoFooter(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
+        Files.writeString(alphaIr, "version: v0\nblock:\n  name: alpha\n");
+
+        CliRunResult run = runCli(new String[] { "fix", "--all", "--project", fixture.repoRoot().toString() });
+        assertEquals(2, run.exitCode);
+        assertFailureEnvelope(
+            run.stderr,
+            "REPO_MULTI_BLOCK_FAILED",
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    @Test
     void prCheckAllProducesMixedClassifications(@TempDir Path tempDir) throws Exception {
         Path repo = initGitRepo(tempDir.resolve("repo"));
         Path servicesA = repo.resolve("services/a");
@@ -1352,6 +1556,26 @@ class BearCliTest {
         try {
             System.setProperty(key, "true");
             CliRunResult run = runCli(new String[] { "check", "spec/fixtures/withdraw.bear.yaml", "--project", tempDir.toString() });
+            assertEquals(70, run.exitCode);
+            assertTrue(run.stderr.startsWith("internal: INTERNAL_ERROR:"));
+            assertFailureEnvelope(
+                run.stderr,
+                "INTERNAL_ERROR",
+                "internal",
+                "Capture stderr and file an issue against bear-cli."
+            );
+        } finally {
+            restoreSystemProperty(key, previous);
+        }
+    }
+
+    @Test
+    void fixInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) {
+        String key = "bear.cli.test.failInternal.fix";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "true");
+            CliRunResult run = runCli(new String[] { "fix", "spec/fixtures/withdraw.bear.yaml", "--project", tempDir.toString() });
             assertEquals(70, run.exitCode);
             assertTrue(run.stderr.startsWith("internal: INTERNAL_ERROR:"));
             assertFailureEnvelope(

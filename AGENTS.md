@@ -2,7 +2,7 @@
 
 If you are an AI coding assistant (or a human picking up the repo), start here:
 
-1. Read `doc/PROGRAM_BOARD.md` (source of truth for milestone status, evidence, and ordered queue).
+1. Read `doc/PROGRAM_BOARD.md` (source of truth for milestone feature status and ordered feature queue).
 2. Read `doc/STATE.md` (short session handoff).
 3. Read `doc/START_HERE.md`.
 4. Read `doc/IR_SPEC.md` for canonical v0 IR structure and constraints.
@@ -13,10 +13,10 @@ Guardrails (v0):
 - Keep `kernel/` deterministic and small (trusted seed). No LLM/agent logic in core.
 - Stay within v0 scope defined in `doc/ARCHITECTURE.md` + `doc/ROADMAP.md`.
 - Treat `doc/FUTURE.md` as explicitly out-of-scope unless the user asks.
-- Prefer the two-file approach (generated skeleton + separate impl) and deterministic enforcement via `bear check`.
+- Prefer the two-file approach (generated skeleton + separate impl), use `bear fix` for generated-artifact repair, and deterministic enforcement via `bear check`.
 
 Session hygiene:
 - Update `doc/STATE.md` whenever work progresses (Last Updated, Current Focus, Next Concrete Task).
-- Update `doc/PROGRAM_BOARD.md` when milestone checklist/evidence/queue/risk entries change.
+- Update `doc/PROGRAM_BOARD.md` when milestone feature status/queue/risk entries change.
 - Update `doc/PROJECT_LOG.md` only for major architectural shifts/decisions.
 - Before ending a session, follow `doc/START_HERE.md` -> "Session close protocol".

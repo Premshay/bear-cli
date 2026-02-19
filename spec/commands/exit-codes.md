@@ -20,7 +20,7 @@ This file is the single source of truth for:
 
 ## Non-Zero Failure Envelope
 
-Every non-zero command exit in `validate`, `compile`, `check`, and `pr-check` must include this footer on stderr:
+Every non-zero command exit in `validate`, `compile`, `fix`, `check`, and `pr-check` must include this footer on stderr:
 
 `CODE=<enum>`
 `PATH=<locator>`

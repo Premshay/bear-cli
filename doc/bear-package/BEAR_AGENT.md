@@ -24,7 +24,7 @@ Purpose:
 8. Do not invent replacement contracts/ports to bypass BEAR generation; implement against generated BEAR request/result/port interfaces.
 9. Do not create domain logic classes under `com.bear.generated.*` except user-owned `*Impl.java` files created by BEAR compile.
 10. If expected feature files/paths are missing, treat repository state as greenfield or extension based on actual `spec/*.bear.yaml` presence; do not switch to ad-hoc implementation-first mode.
-11. If `bear validate`/`bear compile`/`bear check` fails, fix BEAR artifacts and rerun; do not bypass by writing non-BEAR replacement architecture.
+11. If `bear validate`/`bear compile`/`bear fix`/`bear check` fails, fix BEAR artifacts and rerun; do not bypass by writing non-BEAR replacement architecture.
 12. Prefer the smallest design that satisfies requirements and BEAR constraints.
 13. If you add new production architecture (platform/adapters/executors/etc.), include a brief necessity rationale tied to requirements and boundary ownership.
 14. If BEAR tooling fails with IO/lock/environment defects, stop and report the tooling failure; do not mutate unrelated IR to fit stale generated outputs.
@@ -57,11 +57,12 @@ Before planning or editing:
 - run `--all` command variants as canonical gates
   - if index validation fails, fix `name`/`ir`/`projectRoot` entries and rerun `check --all`
 8. Compile/generate after IR changes.
-9. In greenfield bootstrap (`0` IR at start), no feature implementation edits are allowed until at least one `validate` and `compile` succeeds.
-10. Implement only after generated contracts exist.
-11. Implement only in user-owned implementation/tests.
-12. Run canonical gate to `0`.
-13. Report deterministic completion summary.
+9. If generated artifacts are stale/drifted, run `bear fix` (or `fix --all` when indexed).
+10. In greenfield bootstrap (`0` IR at start), no feature implementation edits are allowed until at least one `validate` and `compile` succeeds.
+11. Implement only after generated contracts exist.
+12. Implement only in user-owned implementation/tests.
+13. Run canonical gate to `0`.
+14. Report deterministic completion summary.
 
 ## Generic Decomposition Rules
 
@@ -107,6 +108,7 @@ Direct CLI equivalents:
 - single-block: `bear check <ir-file> --project <repoRoot>`
 - multi-block: `bear check --all --project <repoRoot>`
 - PR/base: `bear pr-check ...`
+- repair generated artifacts: `bear fix <ir-file> --project <repoRoot>` / `bear fix --all --project <repoRoot>`
 
 ## Completion Report Template
 

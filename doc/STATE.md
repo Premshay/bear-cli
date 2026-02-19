@@ -10,14 +10,14 @@ For milestone status and backlog ordering, use `doc/PROGRAM_BOARD.md`.
 ## Current Focus
 
 Product-development planning:
-- active milestone is `Preview Release` (feature-complete baseline)
-- active execution queue starts at `P2` feature work
+- active milestone is `P2`
+- `bear fix` feature delivery is implemented and tests are passing
 - release-evidence documentation is not a delivery gate for ongoing feature development
 
 ## Next Concrete Task
 
-Start P2 feature implementation:
-1. Execute `doc/backlog/P2_BEAR_FIX_GENERATED_ONLY.md` (`bear fix` command).
+Define and execute next P2 feature:
+1. Generated structural tests.
 
 ## Session Notes
 
@@ -29,3 +29,4 @@ Start P2 feature implementation:
 - Added interpretation guardrails to `doc/ROADMAP.md`, `doc/PROGRAM_BOARD.md`, and `doc/START_HERE.md` to separate feature scope from closure queue items.
 - Added explicit Preview feature standing section in `doc/PROGRAM_BOARD.md` and aligned navigation docs to reference it.
 - Rebased active planning to product-development-first flow and removed release-evidence gating from active queue.
+- Implemented `bear fix` command (`single` + `--all`) with tests and synchronized agent-package/docs command surface.

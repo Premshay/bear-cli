@@ -40,10 +40,11 @@ Greenfield hard stop:
 2. Decide update-existing-block vs add-new-block.
 3. Apply IR changes first when boundaries change.
 4. Compile touched IR files.
-5. Run check gate (`check` or `check --all`).
-6. Implement and test.
-7. Re-run check gate to `0`.
-8. For PR/base governance run:
+5. If generated artifacts are stale or drifted, run `bear fix` for touched IR (or `fix --all` when indexed).
+6. Run check gate (`check` or `check --all`).
+7. Implement and test.
+8. Re-run check gate to `0`.
+9. For PR/base governance run:
 - `bear pr-check <ir-file> --project <repoRoot> --base <ref>`
 - or `bear pr-check --all --project <repoRoot> --base <ref>` when indexed
 
@@ -73,7 +74,8 @@ Wrappers should route to `--all` when `bear.blocks.yaml` exists.
 - fix IR structure/references/enums/duplicates
 
 3. `3` drift failure:
-- rerun compile for changed IR
+- prefer `bear fix` (or `fix --all`) to deterministically repair generated artifacts
+- alternatively rerun compile for changed IR
 - rerun check
 
 4. `6` undeclared reach:

@@ -6,11 +6,11 @@
 
 ## Current Milestone
 
-`Preview Release` (active)
+`P2` (active)
 
 ## Milestone Pipeline
 
-`v0 complete -> M1 complete -> M1.1 complete -> Preview Release active -> P2 -> P3`
+`v0 complete -> M1 complete -> M1.1 complete -> Preview Release complete -> P2 active -> P3`
 
 ## Interpretation Guardrails
 
@@ -54,14 +54,14 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `doc/backlog/P2_BEAR_FIX_GENERATED_ONLY.md`
+1. Next P2 item to define (`generated structural tests`)
 
 ## Backlog Buckets (P1/P2/P3)
 
 - `P1`
   - `doc/backlog/P1_PREVIEW_CLOSURE_GAPS.md` (parked; non-blocking for product development)
 - `P2`
-  - `doc/backlog/P2_BEAR_FIX_GENERATED_ONLY.md`
+  - `doc/backlog/P2_BEAR_FIX_GENERATED_ONLY.md` (`Completed`)
 - `P3`
   - none queued yet
 

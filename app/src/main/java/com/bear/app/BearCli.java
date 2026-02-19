@@ -59,6 +59,7 @@ public final class BearCli {
             }
             case "validate" -> runValidate(args, out, err);
             case "compile" -> runCompile(args, out, err);
+            case "fix" -> runFix(args, out, err);
             case "check" -> runCheck(args, out, err);
             case "pr-check" -> runPrCheck(args, out, err);
             default -> failWithLegacy(
@@ -195,6 +196,155 @@ public final class BearCli {
                 "Capture stderr and file an issue against bear-cli."
             );
         }
+    }
+
+    private static int runFix(String[] args, PrintStream out, PrintStream err) {
+        if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
+            printUsage(out);
+            return ExitCode.OK;
+        }
+
+        if (args.length >= 2 && "--all".equals(args[1])) {
+            return runFixAll(args, out, err);
+        }
+
+        if (args.length != 4 || !"--project".equals(args[2])) {
+            return failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: expected: bear fix <ir-file> --project <path>",
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Run `bear fix <ir-file> --project <path>` with the expected arguments."
+            );
+        }
+
+        Path irFile = Path.of(args[1]);
+        Path projectRoot = Path.of(args[3]);
+        FixResult result = executeFix(irFile, projectRoot, null);
+        return emitFixResult(result, out, err);
+    }
+
+    private static int runFixAll(String[] args, PrintStream out, PrintStream err) {
+        AllFixOptions options = parseAllFixOptions(args, err);
+        if (options == null) {
+            return ExitCode.USAGE;
+        }
+
+        BlockIndex index;
+        try {
+            index = new BlockIndexParser().parse(options.repoRoot(), options.blocksPath());
+        } catch (BlockIndexValidationException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.VALIDATION,
+                "index: VALIDATION_ERROR: " + e.getMessage(),
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                "Fix `bear.blocks.yaml` and rerun `bear fix --all`."
+            );
+        } catch (IOException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.IO,
+                "io: IO_ERROR: " + squash(e.getMessage()),
+                FailureCode.IO_ERROR,
+                "bear.blocks.yaml",
+                "Ensure `bear.blocks.yaml` is readable and rerun `bear fix --all`."
+            );
+        }
+
+        List<BlockIndexEntry> selected = selectBlocks(index, options.onlyNames());
+        if (selected == null) {
+            return failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: unknown block in --only",
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Use only block names declared in `bear.blocks.yaml`."
+            );
+        }
+
+        try {
+            List<String> legacyMarkers = options.strictOrphans()
+                ? computeLegacyMarkersRepoWide(options.repoRoot())
+                : computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
+            if (!legacyMarkers.isEmpty()) {
+                return failWithLegacy(
+                    err,
+                    ExitCode.IO,
+                    "fix: IO_ERROR: LEGACY_SURFACE_MARKER: " + legacyMarkers.get(0),
+                    FailureCode.IO_ERROR,
+                    legacyMarkers.get(0),
+                    "Delete legacy marker paths and recompile managed blocks, then rerun `bear fix --all`."
+                );
+            }
+
+            List<String> orphanMarkers = options.strictOrphans()
+                ? computeOrphanMarkersRepoWide(options.repoRoot(), index)
+                : computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
+            if (!orphanMarkers.isEmpty()) {
+                return failWithLegacy(
+                    err,
+                    ExitCode.IO,
+                    "fix: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
+                    FailureCode.IO_ERROR,
+                    orphanMarkers.get(0),
+                    "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
+                );
+            }
+        } catch (IOException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.IO,
+                "fix: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
+                FailureCode.IO_ERROR,
+                "bear.blocks.yaml",
+                "Ensure repo paths are readable and rerun `bear fix --all`."
+            );
+        }
+
+        List<BlockExecutionResult> blockResults = new ArrayList<>();
+        boolean failed = false;
+        boolean failFastTriggered = false;
+        for (BlockIndexEntry block : selected) {
+            if (!block.enabled()) {
+                blockResults.add(skipBlock(block, "DISABLED"));
+                continue;
+            }
+            if (options.failFast() && failed) {
+                failFastTriggered = true;
+                blockResults.add(skipBlock(block, "FAIL_FAST_ABORT"));
+                continue;
+            }
+
+            FixResult fixResult = executeFix(
+                options.repoRoot().resolve(block.ir()).normalize(),
+                options.repoRoot().resolve(block.projectRoot()).normalize(),
+                block.name()
+            );
+            BlockExecutionResult blockResult = toFixBlockResult(block, fixResult);
+            blockResults.add(blockResult);
+            if (blockResult.status() == BlockStatus.FAIL) {
+                failed = true;
+            }
+        }
+
+        RepoAggregationResult summary = aggregateFixResults(blockResults, failFastTriggered);
+        List<String> lines = renderFixAllOutput(blockResults, summary);
+        if (summary.exitCode() == ExitCode.OK) {
+            printLines(out, lines);
+            return ExitCode.OK;
+        }
+        printLines(err, lines);
+        return fail(
+            err,
+            summary.exitCode(),
+            FailureCode.REPO_MULTI_BLOCK_FAILED,
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
     }
 
     private static int runCheck(String[] args, PrintStream out, PrintStream err) {
@@ -657,6 +807,21 @@ public final class BearCli {
         );
     }
 
+    private static int emitFixResult(FixResult result, PrintStream out, PrintStream err) {
+        printLines(out, result.stdoutLines());
+        printLines(err, result.stderrLines());
+        if (result.exitCode() == ExitCode.OK) {
+            return ExitCode.OK;
+        }
+        return fail(
+            err,
+            result.exitCode(),
+            result.failureCode(),
+            result.failurePath(),
+            result.failureRemediation()
+        );
+    }
+
     private static int emitPrCheckResult(PrCheckResult result, PrintStream out, PrintStream err) {
         printLines(out, result.stdoutLines());
         printLines(err, result.stderrLines());
@@ -670,6 +835,66 @@ public final class BearCli {
             result.failurePath(),
             result.failureRemediation()
         );
+    }
+
+    private static FixResult executeFix(Path irFile, Path projectRoot, String expectedBlockKey) {
+        try {
+            maybeFailInternalForTest("fix");
+            BearIrParser parser = new BearIrParser();
+            BearIrValidator validator = new BearIrValidator();
+            BearIrNormalizer normalizer = new BearIrNormalizer();
+            JvmTarget target = new JvmTarget();
+
+            BearIr ir = parser.parse(irFile);
+            validator.validate(ir);
+            BearIr normalized = normalizer.normalize(ir);
+            String blockKey = toBlockKey(normalized.block().name());
+            if (expectedBlockKey != null && !expectedBlockKey.equals(blockKey)) {
+                String line = "schema at block.name: INVALID_VALUE: block name must match index name: " + expectedBlockKey;
+                return fixFailure(
+                    ExitCode.VALIDATION,
+                    List.of(line),
+                    "VALIDATION",
+                    FailureCode.IR_VALIDATION,
+                    "block.name",
+                    "Set `block.name` to match index `name` and rerun `bear fix --all`.",
+                    line
+                );
+            }
+
+            target.compile(normalized, projectRoot);
+            return new FixResult(ExitCode.OK, List.of("fix: OK"), List.of(), null, null, null, null, null);
+        } catch (BearIrValidationException e) {
+            return fixFailure(
+                ExitCode.VALIDATION,
+                List.of(e.formatLine()),
+                "VALIDATION",
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                "Fix the IR issue at the reported path and rerun `bear fix <ir-file> --project <path>`.",
+                e.formatLine()
+            );
+        } catch (IOException e) {
+            return fixFailure(
+                ExitCode.IO,
+                List.of("io: IO_ERROR: " + e.getMessage()),
+                "IO_ERROR",
+                FailureCode.IO_ERROR,
+                "project.root",
+                "Ensure the IR/project paths are readable and writable, then rerun `bear fix`.",
+                "io: IO_ERROR: " + e.getMessage()
+            );
+        } catch (Exception e) {
+            return fixFailure(
+                ExitCode.INTERNAL,
+                List.of("internal: INTERNAL_ERROR:"),
+                "INTERNAL_ERROR",
+                FailureCode.INTERNAL_ERROR,
+                "internal",
+                "Capture stderr and file an issue against bear-cli.",
+                "internal: INTERNAL_ERROR:"
+            );
+        }
     }
 
     private static CheckResult executeCheck(
@@ -1218,6 +1443,27 @@ public final class BearCli {
         );
     }
 
+    private static FixResult fixFailure(
+        int exitCode,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail
+    ) {
+        return new FixResult(
+            exitCode,
+            List.of(),
+            List.copyOf(stderrLines),
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail
+        );
+    }
+
     private static List<String> tailLines(String output) {
         List<String> lines = normalizeLf(output).lines().toList();
         int start = Math.max(0, lines.size() - 40);
@@ -1336,6 +1582,114 @@ public final class BearCli {
             return null;
         }
         return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans);
+    }
+
+    private static AllFixOptions parseAllFixOptions(String[] args, PrintStream err) {
+        Path repoRoot = null;
+        String blocksArg = null;
+        String onlyArg = null;
+        boolean failFast = false;
+        boolean strictOrphans = false;
+        for (int i = 2; i < args.length; i++) {
+            String token = args[i];
+            switch (token) {
+                case "--project" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --project",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Run `bear fix --all --project <repoRoot>` with required arguments."
+                        );
+                        return null;
+                    }
+                    repoRoot = Path.of(args[++i]).toAbsolutePath().normalize();
+                }
+                case "--blocks" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --blocks",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass a repo-relative path after `--blocks`."
+                        );
+                        return null;
+                    }
+                    blocksArg = args[++i];
+                }
+                case "--only" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --only",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass comma-separated block names after `--only`."
+                        );
+                        return null;
+                    }
+                    onlyArg = args[++i];
+                }
+                case "--fail-fast" -> failFast = true;
+                case "--strict-orphans" -> strictOrphans = true;
+                default -> {
+                    failWithLegacy(
+                        err,
+                        ExitCode.USAGE,
+                        "usage: INVALID_ARGS: unexpected argument: " + token,
+                        FailureCode.USAGE_INVALID_ARGS,
+                        "cli.args",
+                        "Run `bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`."
+                    );
+                    return null;
+                }
+            }
+        }
+        if (repoRoot == null) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: expected: bear fix --all --project <repoRoot>",
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Run `bear fix --all --project <repoRoot>` with required arguments."
+            );
+            return null;
+        }
+        Path blocksPath;
+        try {
+            blocksPath = resolveBlocksPath(repoRoot, blocksArg);
+        } catch (IllegalArgumentException e) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass a repo-relative path for `--blocks`."
+            );
+            return null;
+        }
+        Set<String> onlyNames;
+        try {
+            onlyNames = parseOnlyNames(onlyArg);
+        } catch (IllegalArgumentException e) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass comma-separated block names for `--only`."
+            );
+            return null;
+        }
+        return new AllFixOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans);
     }
 
     private static AllPrCheckOptions parseAllPrCheckOptions(String[] args, PrintStream err) {
@@ -1677,6 +2031,41 @@ public final class BearCli {
         );
     }
 
+    private static BlockExecutionResult toFixBlockResult(BlockIndexEntry block, FixResult result) {
+        if (result.exitCode() == ExitCode.OK) {
+            return new BlockExecutionResult(
+                block.name(),
+                block.ir(),
+                block.projectRoot(),
+                BlockStatus.PASS,
+                ExitCode.OK,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of()
+            );
+        }
+        return new BlockExecutionResult(
+            block.name(),
+            block.ir(),
+            block.projectRoot(),
+            BlockStatus.FAIL,
+            result.exitCode(),
+            result.category(),
+            result.failureCode(),
+            normalizeLocator(result.failurePath()),
+            squash(result.detail()),
+            result.failureRemediation(),
+            null,
+            null,
+            List.of()
+        );
+    }
+
     private static BlockExecutionResult rootFailure(
         BlockExecutionResult base,
         int exitCode,
@@ -1830,6 +2219,40 @@ public final class BearCli {
         );
     }
 
+    private static RepoAggregationResult aggregateFixResults(List<BlockExecutionResult> results, boolean failFastTriggered) {
+        int passed = 0;
+        int failed = 0;
+        int skipped = 0;
+        int exitCode = ExitCode.OK;
+        int rank = severityRankFix(exitCode);
+        for (BlockExecutionResult result : results) {
+            if (result.status() == BlockStatus.PASS) {
+                passed++;
+            } else if (result.status() == BlockStatus.FAIL) {
+                failed++;
+                int candidateRank = severityRankFix(result.exitCode());
+                if (candidateRank < rank) {
+                    rank = candidateRank;
+                    exitCode = result.exitCode();
+                }
+            } else {
+                skipped++;
+            }
+        }
+        return new RepoAggregationResult(
+            exitCode,
+            results.size(),
+            passed + failed,
+            passed,
+            failed,
+            skipped,
+            failFastTriggered,
+            0,
+            0,
+            0
+        );
+    }
+
     private static int severityRankCheck(int code) {
         return switch (code) {
             case 70 -> 1;
@@ -1852,6 +2275,17 @@ public final class BearCli {
             case 2 -> 4;
             case 5 -> 5;
             case 0 -> 6;
+            default -> 1;
+        };
+    }
+
+    private static int severityRankFix(int code) {
+        return switch (code) {
+            case 70 -> 1;
+            case 74 -> 2;
+            case 64 -> 3;
+            case 2 -> 4;
+            case 0 -> 5;
             default -> 1;
         };
     }
@@ -1930,6 +2364,36 @@ public final class BearCli {
         lines.add(summary.failed() + " failed");
         lines.add(summary.skipped() + " skipped");
         lines.add("BOUNDARY_EXPANDING: " + boundaryCount);
+        lines.add("EXIT_CODE: " + summary.exitCode());
+        return lines;
+    }
+
+    private static List<String> renderFixAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
+        List<String> lines = new ArrayList<>();
+        for (BlockExecutionResult result : results) {
+            lines.add("BLOCK: " + result.name());
+            lines.add("IR: " + result.ir());
+            lines.add("PROJECT: " + result.project());
+            lines.add("STATUS: " + result.status());
+            lines.add("EXIT_CODE: " + result.exitCode());
+            if (result.status() == BlockStatus.FAIL) {
+                lines.add("CATEGORY: " + result.category());
+                lines.add("BLOCK_CODE: " + result.blockCode());
+                lines.add("BLOCK_PATH: " + result.blockPath());
+                lines.add("DETAIL: " + result.detail());
+                lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
+            } else if (result.status() == BlockStatus.SKIP) {
+                lines.add("REASON: " + result.reason());
+            }
+            lines.add("");
+        }
+        lines.add("SUMMARY:");
+        lines.add(summary.total() + " blocks total");
+        lines.add(summary.checked() + " checked");
+        lines.add(summary.passed() + " passed");
+        lines.add(summary.failed() + " failed");
+        lines.add(summary.skipped() + " skipped");
+        lines.add("FAIL_FAST_TRIGGERED: " + summary.failFastTriggered());
         lines.add("EXIT_CODE: " + summary.exitCode());
         return lines;
     }
@@ -2629,6 +3093,8 @@ public final class BearCli {
     private static void printUsage(PrintStream out) {
         out.println("Usage: bear validate <file>");
         out.println("       bear compile <ir-file> --project <path>");
+        out.println("       bear fix <ir-file> --project <path>");
+        out.println("       bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
         out.println("       bear check <ir-file> --project <path>");
         out.println("       bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
         out.println("       bear pr-check <ir-file> --project <path> --base <ref>");
@@ -2737,6 +3203,15 @@ public final class BearCli {
     );
 
     private record AllCheckOptions(
+        Path repoRoot,
+        Path blocksPath,
+        Set<String> onlyNames,
+        boolean failFast,
+        boolean strictOrphans
+    ) {
+    }
+
+    private record AllFixOptions(
         Path repoRoot,
         Path blocksPath,
         Set<String> onlyNames,

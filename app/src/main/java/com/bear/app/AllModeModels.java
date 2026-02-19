@@ -29,6 +29,18 @@ record PrCheckResult(
 ) {
 }
 
+record FixResult(
+    int exitCode,
+    List<String> stdoutLines,
+    List<String> stderrLines,
+    String category,
+    String failureCode,
+    String failurePath,
+    String failureRemediation,
+    String detail
+) {
+}
+
 enum BlockStatus {
     PASS,
     FAIL,

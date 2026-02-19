@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Completed
 
 ## Milestone Target
 
@@ -40,3 +40,9 @@ or (repo mode, later):
 ## Dependencies
 
 - none (ready to start).
+
+## Implementation Notes
+
+- Implemented `bear fix` single-block and `--all` modes in CLI.
+- Added deterministic command spec at `spec/commands/fix.md`.
+- Updated CLI and agent-package docs to include `fix` in canonical workflows.
