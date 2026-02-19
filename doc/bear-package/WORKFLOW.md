@@ -104,9 +104,16 @@ Index troubleshooting:
 - No silent boundary expansion.
 - One deterministic gate determines done/not-done.
 - No implementation-first bypass in greenfield mode.
+- Prefer minimal sufficient design; avoid unnecessary architecture expansion.
+- If new production architecture is introduced, include a short necessity rationale mapped to requirements and BEAR boundaries.
 
 ## Invalid Patterns (Fail the Run)
 
 1. Writing feature classes before creating any `spec/*.bear.yaml`.
 2. Implementing custom ports/contracts to replace missing generated BEAR interfaces.
 3. Deleting or skipping `bear.blocks.yaml` in multi-block state to force per-IR fallback.
+
+## Completion Report Addendum
+
+If new production architecture was added, include:
+- `Architecture rationale: <why required, and which boundary/lifecycle requirement it satisfies>`

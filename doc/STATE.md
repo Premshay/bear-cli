@@ -194,3 +194,4 @@ No essays. No philosophy.
 - Further reduced Scenario 1 prompt scope in `doc/m1-eval/RUN_MULTI_BLOCK.md` (immediate DEPOSIT only, scheduled create-only, async worker, no retries, fixed per-account daily limit) to preserve multi-block pressure with minimal implementation load.
 - Hardened agent/runbook anti-bypass rules after an implementation-first greenfield run: package docs now require IR->validate->compile before implementation edits, forbid replacement contracts bypassing BEAR generation, and mark greenfield implementation-first behavior as eval failure.
 - Synced hardened anti-bypass rules into demo-distributed `BEAR_AGENT.md` and `WORKFLOW.md` so isolated eval agents receive the same IR-first constraints as package source docs.
+- Added minimal-sufficient-design policy to package+demo BEAR instructions, including required architecture rationale when new production components are introduced.
