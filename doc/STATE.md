@@ -18,7 +18,7 @@ Post-v0 milestone execution toward Preview Release: shared-root multi-block hard
 Phase: M1 workflow proof (completed), M1.1 governance signal hardening (active)
 
 Checklist:
-- [x] Add canonical BEAR workflow source texts in `bear-cli` (`doc/m1-canonical/BEAR_PRIMER.md`, `doc/m1-canonical/AGENTS.md`, `doc/m1-canonical/BEAR_AGENT.md`, `doc/m1-canonical/WORKFLOW.md`)
+- [x] Add canonical BEAR workflow source texts in `bear-cli` (`doc/bear-package/BEAR_PRIMER.md`, `doc/bear-package/AGENTS.md`, `doc/bear-package/BEAR_AGENT.md`, `doc/bear-package/WORKFLOW.md`)
 - [x] Add demo-local `BEAR_PRIMER.md`, `AGENTS.md`, `BEAR_AGENT.md`, and `WORKFLOW.md`
 - [x] Add demo-local spec pack (`doc/spec/*`) + local IR (`spec/withdraw.bear.yaml`)
 - [x] Add demo wrapper + canonical gate scripts (`bin/bear*`)
@@ -143,9 +143,9 @@ No essays. No philosophy.
 - Switched `README.md` logo source to the user-provided `assets/logo/bear.png` for exact visual match.
 - Completed Phase 6 demo proof in `bear-account-demo` with branch-per-scenario model: `main` spec-first baseline, `scenario/naive-fail-withdraw` (deterministic exit `4`), and `scenario/corrected-pass-withdraw` (deterministic exit `0`), plus scenario matrix/runbook docs.
 - Split post-v0 execution into M1 (minimal workflow proof) and future packaging/versioning (not immediate), with roadmap/state updates.
-- Added canonical BEAR workflow source texts under `doc/m1-canonical/` and aligned demo-copied workflow resources to source-of-truth references.
+- Added canonical BEAR workflow source texts under `doc/bear-package/` and aligned demo-copied workflow resources to source-of-truth references.
 - Implemented demo-local M1 assets in `bear-account-demo`: `AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`, spec pack, local IR, canonical scripts (`bin/bear*`), and `verifyNoUndeclaredReach` wired into tests.
-- Synced canonical naming model in `bear-cli/doc/m1-canonical/`: thin bootstrap in `AGENTS.md` and BEAR contract in `BEAR_AGENT.md`.
+- Synced canonical naming model in `bear-cli/doc/bear-package/`: thin bootstrap in `AGENTS.md` and BEAR contract in `BEAR_AGENT.md`.
 - M1 realism reset started: scenario evaluation guidance moves to `bear-cli/doc/m1-eval/*`; demo should keep only realistic project artifacts.
 - Completed realism reset core wiring: removed demo scenario answer-key docs, created canonical branches (`scenario/greenfield-build`, `scenario/feature-extension`), and moved evaluator runbooks into `bear-cli/doc/m1-eval/`.
 - Added M1 comprehension hardening requirements: local BEAR primer, stronger read-order guidance, and greenfield-safe canonical gate behavior.

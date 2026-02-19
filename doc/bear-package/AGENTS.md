@@ -3,6 +3,7 @@
 Purpose:
 - Thin project bootstrap file for Codex-style sessions.
 - Routes agents to `BEAR_AGENT.md`, where BEAR operating rules are defined.
+- Optional: only use when project does not already own a root `AGENTS.md`.
 
 Template:
 
@@ -19,3 +20,6 @@ Notes:
 - Keep this file minimal in real projects.
 - BEAR behavior and decision rules belong in `BEAR_AGENT.md`, not here.
 ```
+
+If the adopter project already has `AGENTS.md`, do not replace it.
+Use `AGENTS_SHIM.md` and append the one-line BEAR pointer instead.
