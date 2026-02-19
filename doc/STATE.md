@@ -9,13 +9,13 @@ Last Updated: 2026-02-19
 
 ## Current Focus
 
-Post-v0 milestone execution toward Preview Release: shared-root multi-block hardening (block-scoped generation/markers, root-level reach/tests aggregation, managed-root orphan guards).
+Preview Release hardening and packaging readiness: frozen command contracts, deterministic failure envelopes, and operator-facing reliability guidance.
 
 ---
 
 ## Current Phase
 
-Phase: M1 workflow proof (completed), M1.1 governance signal hardening (active)
+Phase: M1 workflow proof (completed), M1.1 governance signal hardening (completed), Preview Release preparation (active)
 
 Checklist:
 - [x] Add canonical BEAR workflow source texts in `bear-cli` (`doc/bear-package/BEAR_PRIMER.md`, `doc/bear-package/AGENTS.md`, `doc/bear-package/BEAR_AGENT.md`, `doc/bear-package/WORKFLOW.md`)
@@ -43,12 +43,12 @@ M1 acceptance required:
 
 ## Next Concrete Task
 
-Harden and prove multi-block repo orchestration contract:
+Finalize preview-release checkpoint:
 
-1. Run full test suite and capture proof for new `--all` scenarios (`continue-all`, `fail-fast`, strict orphan policy).
-2. Add/verify operator runbook examples using `bear.blocks.yaml` and canonical `--all` commands.
-3. Evaluate follow-up work for richer block index diagnostics and strict-mode UX.
-4. Validate shared-root demo path and document migration from legacy single-marker layout.
+1. Freeze command contracts and exit-code policy as release baseline (`check`, `pr-check`, `exit-codes`).
+2. Publish user-facing lock-troubleshooting guidance and confirm `IO_ERROR` classification path.
+3. Draft and review preview checkpoint release notes.
+4. Open first post-preview P2 backlog item (`bear fix` for generated artifacts only).
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -203,3 +203,8 @@ No essays. No philosophy.
 - Made compile generation lock-resilient on Windows using staging-tree sync plus bounded retry/backoff and deterministic `WINDOWS_FILE_LOCK` IO diagnostics.
 - Updated `bear check` project-test execution to default `GRADLE_USER_HOME` isolation and classify Gradle wrapper lock signatures as `IO_ERROR` (not `TEST_FAILURE`).
 - Strengthened BEAR package rules to stop on tooling/IO defects and forbid workaround non-`*Impl.java` classes under `com.bear.generated.*`.
+- Verified full CLI test suite passes after stabilization changes (`.\gradlew.bat --no-daemon test`).
+- Added user-facing lock troubleshooting and classification guidance to `doc/USER_GUIDE.md`.
+- Marked M1.1 governance signal hardening as complete; moved active phase to Preview Release preparation.
+- Added preview checkpoint release note (`doc/releases/PREVIEW_CHECKPOINT_2026-02-19.md`).
+- Opened first P2 backlog item for `bear fix` generated-only scope (`doc/backlog/P2_BEAR_FIX_GENERATED_ONLY.md`).

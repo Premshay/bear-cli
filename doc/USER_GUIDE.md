@@ -174,6 +174,19 @@ Disallowed:
 
 For `check --all` and `pr-check --all`, final exit code is aggregated via explicit severity ranking (not numeric max), defined in `spec/commands/exit-codes.md`.
 
+## Lock troubleshooting (Windows/Gradle)
+
+If `check`/`check --all` fails with lock signatures (for example `.zip.lck`, `Access is denied`, wrapper dist lock paths), treat this as tooling/IO, not domain-test failure.
+
+Deterministic remediation order:
+1. Ensure no concurrent Gradle/BEAR gate process is running on the same repo.
+2. Rerun the command and let BEAR use isolated Gradle home (`<project>/.bear-gradle-user-home`) unless you intentionally set `GRADLE_USER_HOME`.
+3. If lock persists, clear local wrapper lock holders and rerun the same command.
+
+Expected classification:
+- lock/tooling faults -> `IO_ERROR` (`74`)
+- real failing tests -> `TEST_FAILURE` (`4`)
+
 ## Invariant Contract (preview)
 
 `bear check` enforces:
