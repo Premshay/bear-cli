@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +39,6 @@ final class BlockIndexParser {
 
         List<BlockIndexEntry> blocks = new ArrayList<>();
         Set<String> names = new HashSet<>();
-        Map<String, String> enabledProjectRoots = new HashMap<>();
         for (int i = 0; i < rawBlocks.size(); i++) {
             Object blockObject = rawBlocks.get(i);
             String blockPath = "bear.blocks.yaml#blocks[" + i + "]";
@@ -64,15 +62,6 @@ final class BlockIndexParser {
                 blockPath + ".projectRoot"
             );
             boolean enabled = readEnabled(blockMap.get("enabled"), blockPath + ".enabled");
-            if (enabled) {
-                String previous = enabledProjectRoots.putIfAbsent(projectRoot, name);
-                if (previous != null) {
-                    throw new BlockIndexValidationException(
-                        "INDEX_INVALID: enabled blocks must have unique projectRoot (conflict: " + previous + ", " + name + ")",
-                        blockPath + ".projectRoot"
-                    );
-                }
-            }
 
             ensureUnderRepoRoot(repoRoot, ir, blockPath + ".ir");
             ensureUnderRepoRoot(repoRoot, projectRoot, blockPath + ".projectRoot");

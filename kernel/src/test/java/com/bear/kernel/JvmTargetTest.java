@@ -44,8 +44,9 @@ class JvmTargetTest {
         assertEquals(expected, first);
         String withdrawJava = first.get("src/main/java/com/bear/generated/withdraw/Withdraw.java");
         assertTrue(withdrawJava.contains("idempotency replay payload missing field: result.balance"));
-        String manifest = first.get("bear.surface.json");
+        String manifest = first.get("surfaces/withdraw.surface.json");
         assertTrue(manifest.contains("\"schemaVersion\":\"v0\""));
+        assertTrue(manifest.contains("\"surfaceVersion\":2"));
         assertTrue(manifest.contains("\"target\":\"jvm\""));
         assertTrue(manifest.contains("\"capabilities\":[{\"name\":\"idempotency\",\"ops\":[\"get\",\"put\"]},{\"name\":\"ledger\",\"ops\":[\"getBalance\",\"setBalance\"]}]"));
         assertTrue(manifest.contains("\"invariants\":[{\"kind\":\"non_negative\",\"field\":\"balance\"}]"));

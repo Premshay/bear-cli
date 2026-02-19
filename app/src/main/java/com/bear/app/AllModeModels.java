@@ -59,6 +59,9 @@ record RepoAggregationResult(
     int passed,
     int failed,
     int skipped,
-    boolean failFastTriggered
+    boolean failFastTriggered,
+    int rootReachFailed,
+    int rootTestFailed,
+    int rootTestSkippedDueToReach
 ) {
 }

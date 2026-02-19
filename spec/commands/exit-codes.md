@@ -68,6 +68,7 @@ Use `IO_GIT` when failure comes from:
 Use `IO_ERROR` when failure comes from:
 - filesystem/path/permission operations
 - project-root file reads/writes not owned by git invocation/result handling
+- marker layout/orphan checks (`ORPHAN_MARKER`, `LEGACY_SURFACE_MARKER`)
 
 ## Undeclared Reach Classification Rule
 

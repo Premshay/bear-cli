@@ -1,4 +1,4 @@
-# `bear check` (v1.4)
+# `bear check` (v1.5)
 
 ## Command
 `bear check <ir-file> --project <path>`
@@ -85,9 +85,9 @@ Missing baseline:
 
 ## Boundary manifest source
 - Baseline manifest:
-  - `<project>/build/generated/bear/bear.surface.json`
+  - `<project>/build/generated/bear/surfaces/<blockKey>.surface.json`
 - Candidate manifest:
-  - `<tempRoot>/build/generated/bear/bear.surface.json`
+  - `<tempRoot>/build/generated/bear/surfaces/<blockKey>.surface.json`
 
 Boundary classification uses manifest data only (no Java source parsing).
 
@@ -123,7 +123,7 @@ Relationship to drift:
 - not a separate verdict channel
 - exit codes remain unchanged
 
-## Undeclared Reach Enforcement (v1.3 preview)
+## Undeclared Reach Enforcement (v1.5 preview)
 Detection runs only after drift pass and before project tests.
 
 Fatal output lines (stderr):
@@ -148,6 +148,7 @@ Ordering (deterministic):
 Verdict:
 - any undeclared-reach finding fails with exit `6` and `CODE=UNDECLARED_REACH`
 - project tests do not run when undeclared-reach is detected
+- in shared-root multi-block orchestration, undeclared-reach is a projectRoot-wide gate
 
 ## Manifest diagnostics
 Baseline manifest problems are warning-only:
@@ -199,7 +200,7 @@ Candidate manifest problems are fatal internal errors:
 `bear check` does not modify project baseline files.
 It is compare-only against temp-generated output.
 
-## `--all` Mode (v1.4)
+## `--all` Mode (v1.5)
 
 Index source:
 - default: `<repoRoot>/bear.blocks.yaml`
@@ -222,10 +223,18 @@ Execution:
     - `REASON: FAIL_FAST_ABORT`
 
 Strict orphan mode:
-- default (no strict flag): index validation only; no repo-wide marker scan
-- `--strict-orphans`: repo-wide marker scan (`**/build/generated/bear/bear.surface.json`)
-  with orphan detection against enabled index entries
+- default (no strict flag): managed-root marker guard only
+  - scan `<managedRoot>/build/generated/bear/surfaces/*.surface.json`
+  - orphan marker under managed root fails
+  - legacy marker `<managedRoot>/build/generated/bear/bear.surface.json` fails
+- `--strict-orphans`: repo-wide marker scan (`**/build/generated/bear/surfaces/*.surface.json`)
+  plus repo-wide legacy marker scan (`**/build/generated/bear/bear.surface.json`)
 - with `--only`, strict mode remains repo-wide (strict means strict)
+
+Execution details:
+- per block: validation + block-scoped drift/boundary checks
+- per root: undeclared-reach once and tests once (for roots with structural pass blocks)
+- root-level reach/test failure is applied to all structurally-passed blocks in that root
 
 Per-block output section (deterministic):
 - `BLOCK: <name>`
@@ -250,4 +259,7 @@ Summary section:
 - `<F> failed`
 - `<S> skipped`
 - `FAIL_FAST_TRIGGERED: true|false`
+- `ROOT_REACH_FAILED: <n>`
+- `ROOT_TEST_FAILED: <n>`
+- `ROOT_TEST_SKIPPED_DUE_TO_REACH: <n>`
 - `EXIT_CODE: <n>`

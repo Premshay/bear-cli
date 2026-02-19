@@ -29,7 +29,7 @@ class BlockIndexParserTest {
     }
 
     @Test
-    void rejectsDuplicateEnabledProjectRoot(@TempDir Path tempDir) throws Exception {
+    void allowsDuplicateEnabledProjectRoot(@TempDir Path tempDir) throws Exception {
         Path index = tempDir.resolve("bear.blocks.yaml");
         Files.writeString(index, ""
             + "version: v0\n"
@@ -41,11 +41,8 @@ class BlockIndexParserTest {
             + "    ir: spec/b.bear.yaml\n"
             + "    projectRoot: services/a\n", StandardCharsets.UTF_8);
 
-        BlockIndexValidationException error = assertThrows(
-            BlockIndexValidationException.class,
-            () -> new BlockIndexParser().parse(tempDir, index)
-        );
-        assertTrue(error.getMessage().contains("unique projectRoot"));
+        BlockIndex parsed = new BlockIndexParser().parse(tempDir, index);
+        assertEquals(2, parsed.blocks().size());
     }
 
     @Test

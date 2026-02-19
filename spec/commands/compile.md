@@ -23,7 +23,7 @@ Location:
 - `<project>/build/generated/bear/src/test/java/...`
 
 Rules:
-- `<project>/build/generated/bear` is fully recreated on every compile run.
+- compile is block-scoped; BEAR deletes/regenerates only owned paths for the current IR block.
 - File paths and content are deterministic.
 - User edits in this tree are not preserved.
 
@@ -65,11 +65,12 @@ Generated tests (conditional):
 - `<BlockName>InvariantNonNegativeTest.java` when invariant is declared
 
 Generated metadata:
-- `bear.surface.json` at `<project>/build/generated/bear/bear.surface.json`
+- `<blockKey>.surface.json` at `<project>/build/generated/bear/surfaces/<blockKey>.surface.json`
   - deterministic surface manifest used by `bear check` boundary classification
   - minified canonical JSON, UTF-8, LF, trailing newline
   - fields:
     - `schemaVersion` (`v0`)
+    - `surfaceVersion` (`2`)
     - `target` (`jvm`)
     - `block` (IR `block.name`)
     - `irHash` (SHA-256 of canonical normalized IR YAML bytes)

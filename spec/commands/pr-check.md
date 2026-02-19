@@ -214,8 +214,12 @@ Selection:
   - `REASON: DISABLED`
 
 Strict orphan mode:
-- default: index validation only (no marker scan)
+- default: managed-root marker guard only
+  - scan `<managedRoot>/build/generated/bear/surfaces/*.surface.json`
+  - orphan marker under managed root fails
+  - legacy marker `<managedRoot>/build/generated/bear/bear.surface.json` fails
 - `--strict-orphans`: repo-wide marker scan with orphan detection against enabled index entries
+  plus repo-wide legacy marker scan
 - with `--only`, strict mode still scans repo-wide
 
 Per-block section (deterministic):

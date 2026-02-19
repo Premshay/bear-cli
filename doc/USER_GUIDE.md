@@ -108,6 +108,7 @@ Optional flags:
 Use when:
 - a repo has multiple BEAR-managed blocks declared in `bear.blocks.yaml`
 - CI/local workflow needs one deterministic gate for all managed blocks
+- multiple blocks can share one `projectRoot`; `check --all` runs undeclared-reach/tests once per root
 
 ### 4. PR governance gate (base diff classification)
 

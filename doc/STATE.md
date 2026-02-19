@@ -9,7 +9,7 @@ Last Updated: 2026-02-19
 
 ## Current Focus
 
-Post-v0 milestone execution toward Preview Release: repo-level multi-block enforcement (`check --all`, `pr-check --all`) implemented with block-index orchestration and deterministic aggregation contracts.
+Post-v0 milestone execution toward Preview Release: shared-root multi-block hardening (block-scoped generation/markers, root-level reach/tests aggregation, managed-root orphan guards).
 
 ---
 
@@ -48,6 +48,7 @@ Harden and prove multi-block repo orchestration contract:
 1. Run full test suite and capture proof for new `--all` scenarios (`continue-all`, `fail-fast`, strict orphan policy).
 2. Add/verify operator runbook examples using `bear.blocks.yaml` and canonical `--all` commands.
 3. Evaluate follow-up work for richer block index diagnostics and strict-mode UX.
+4. Validate shared-root demo path and document migration from legacy single-marker layout.
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -176,3 +177,8 @@ No essays. No philosophy.
 - Refactored single-block `check`/`pr-check` execution into structured result paths used by both single-block and `--all` modes (no stderr/footer parsing).
 - Added deterministic global multi-block footer code `REPO_MULTI_BLOCK_FAILED` and updated exit-code/spec docs accordingly.
 - Added CLI tests for `--all` pass/fail behavior, fail-fast skip semantics, strict orphan scan behavior, unknown `--only` handling, disabled-block skips, and mixed `pr-check --all` classifications.
+- Upgraded compile ownership to block-scoped regeneration in shared roots (no full `build/generated/bear` wipe per compile).
+- Switched surface marker contract to per-block files at `build/generated/bear/surfaces/<blockKey>.surface.json` with `surfaceVersion: 2`.
+- Refactored `check --all` to run structural checks per block, then undeclared-reach/tests once per `projectRoot`, and emit root-level summary counters.
+- Added managed-root default orphan guard and strict repo-wide orphan/legacy marker scans for `check --all` / `pr-check --all`.
+- Removed block-index unique-enabled-`projectRoot` constraint and aligned tests/specs for shared-root multi-block behavior.

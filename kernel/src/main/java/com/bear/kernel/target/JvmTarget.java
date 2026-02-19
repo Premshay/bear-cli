@@ -33,17 +33,25 @@ public final class JvmTarget implements Target {
         Files.createDirectories(projectRoot);
 
         String blockName = toPascalCase(ir.block().name());
-        String packageName = "com.bear.generated." + sanitizePackageSegment(ir.block().name());
+        String blockKey = sanitizeBlockKey(ir.block().name());
+        String packageSegment = sanitizePackageSegment(ir.block().name());
+        String packageName = "com.bear.generated." + packageSegment;
         String packagePath = packageName.replace('.', '/');
 
         Path generatedRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
         Path generatedMain = generatedRoot.resolve("src").resolve("main").resolve("java").resolve(packagePath);
         Path generatedTest = generatedRoot.resolve("src").resolve("test").resolve("java").resolve(packagePath);
+        Path generatedSurfaces = generatedRoot.resolve("surfaces");
+        Path surfaceMarker = generatedSurfaces.resolve(blockKey + ".surface.json");
         Path userMain = projectRoot.resolve("src").resolve("main").resolve("java").resolve(packagePath);
 
-        recreateDirectory(generatedRoot);
+        deleteDirectoryIfExists(generatedMain);
+        deleteDirectoryIfExists(generatedTest);
+        Files.deleteIfExists(surfaceMarker);
+        Files.createDirectories(generatedRoot);
         Files.createDirectories(generatedMain);
         Files.createDirectories(generatedTest);
+        Files.createDirectories(generatedSurfaces);
         Files.createDirectories(userMain);
 
         List<PortModel> ports = mapPorts(ir.block().effects().allow());
@@ -67,7 +75,7 @@ public final class JvmTarget implements Target {
         if (ir.block().invariants() != null && !ir.block().invariants().isEmpty()) {
             write(generatedTest.resolve(blockName + "InvariantNonNegativeTest.java"), renderInvariantTest(packageName, blockName));
         }
-        write(generatedRoot.resolve("bear.surface.json"), renderSurfaceManifest(ir));
+        write(surfaceMarker, renderSurfaceManifest(ir));
 
         Path userImpl = userMain.resolve(blockName + "Impl.java");
         if (!Files.exists(userImpl)) {
@@ -369,6 +377,7 @@ public final class JvmTarget implements Target {
         StringBuilder out = new StringBuilder();
         out.append("{");
         out.append("\"schemaVersion\":\"v0\",");
+        out.append("\"surfaceVersion\":2,");
         out.append("\"target\":\"jvm\",");
         out.append("\"block\":\"").append(jsonEscape(ir.block().name())).append("\",");
         out.append("\"irHash\":\"").append(irHash).append("\",");
@@ -520,6 +529,14 @@ public final class JvmTarget implements Target {
         return out.toString();
     }
 
+    private String sanitizeBlockKey(String raw) {
+        List<String> tokens = splitTokens(raw);
+        if (tokens.isEmpty()) {
+            return "block";
+        }
+        return String.join("-", tokens);
+    }
+
     private String toPascalCase(String raw) {
         List<String> tokens = splitTokens(raw);
         if (tokens.isEmpty()) {
@@ -572,24 +589,24 @@ public final class JvmTarget implements Target {
         return tokens;
     }
 
-    private void recreateDirectory(Path directory) throws IOException {
-        if (Files.exists(directory)) {
-            try (var stream = Files.walk(directory)) {
-                stream.sorted(Comparator.reverseOrder()).forEach(path -> {
-                    try {
-                        Files.delete(path);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            } catch (RuntimeException e) {
-                if (e.getCause() instanceof IOException io) {
-                    throw io;
-                }
-                throw e;
-            }
+    private void deleteDirectoryIfExists(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            return;
         }
-        Files.createDirectories(directory);
+        try (var stream = Files.walk(directory)) {
+            stream.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.delete(path);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof IOException io) {
+                throw io;
+            }
+            throw e;
+        }
     }
 
     private void write(Path file, String content) throws IOException {

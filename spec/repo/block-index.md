@@ -31,7 +31,8 @@ Each block entry:
 - fail on duplicate block names
 - fail on non repo-relative paths
 - fail when path escapes repo root
-- v0 hard constraint: enabled blocks must have unique `projectRoot`
+- enabled blocks may share `projectRoot`
+- index `name` is canonical block key and must match normalized IR `block.name`
 
 ## Canonicalization
 
@@ -41,16 +42,26 @@ Each block entry:
 ## Marker Path Invariant (v0)
 
 Canonical marker path per enabled block:
-- `<projectRoot>/build/generated/bear/bear.surface.json`
+- `<projectRoot>/build/generated/bear/surfaces/<blockKey>.surface.json`
+
+Marker payload includes:
+- `surfaceVersion: 2`
 
 This path is a v0 BEAR-owned contract path.
 Changing it is a breaking change and requires a spec/version update.
 
-## Strict Orphan Mode
+Legacy marker path (deprecated):
+- `<projectRoot>/build/generated/bear/bear.surface.json`
+- treated as invalid legacy layout; command fails with deterministic remediation
 
-`--strict-orphans` performs repo-wide marker scan for:
-- `**/build/generated/bear/bear.surface.json`
+## Orphan / Legacy Marker Guards
 
-Any found marker not mapped to an enabled block index entry is an orphan and fails the command.
+Default `--all` guard (managed roots only):
+- scan `<managedRoot>/build/generated/bear/surfaces/*.surface.json`
+- any marker not mapped to enabled selected blocks for that root is orphan -> fail
+- any legacy marker under managed roots -> fail
 
-Without `--strict-orphans`, v0 enforces index validity only (no repo-wide marker scan).
+`--strict-orphans`:
+- repo-wide scan for `**/build/generated/bear/surfaces/*.surface.json`
+- repo-wide legacy marker scan for `**/build/generated/bear/bear.surface.json`
+- any unmatched marker or legacy marker -> fail

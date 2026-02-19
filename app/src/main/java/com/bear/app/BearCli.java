@@ -33,6 +33,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class BearCli {
+    private static final Set<String> JAVA_KEYWORDS = Set.of(
+        "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const",
+        "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float",
+        "for", "goto", "if", "implements", "import", "instanceof", "int", "interface", "long", "native",
+        "new", "package", "private", "protected", "public", "return", "short", "static", "strictfp",
+        "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void",
+        "volatile", "while", "record", "sealed", "permits", "var", "yield", "non-sealed"
+    );
+
     private BearCli() {
     }
 
@@ -211,7 +220,7 @@ public final class BearCli {
 
         Path irFile = Path.of(args[1]);
         Path projectRoot = Path.of(args[3]);
-        CheckResult result = executeCheck(irFile, projectRoot);
+        CheckResult result = executeCheck(irFile, projectRoot, true, null);
         return emitCheckResult(result, out, err);
     }
 
@@ -317,29 +326,43 @@ public final class BearCli {
             );
         }
 
-        if (options.strictOrphans()) {
-            try {
-                List<String> orphanMarkers = computeOrphanMarkers(options.repoRoot(), index);
-                if (!orphanMarkers.isEmpty()) {
-                    return failWithLegacy(
-                        err,
-                        ExitCode.IO,
-                        "check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
-                        FailureCode.IO_ERROR,
-                        orphanMarkers.get(0),
-                        "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
-                    );
-                }
-            } catch (IOException e) {
+        try {
+            List<String> legacyMarkers = options.strictOrphans()
+                ? computeLegacyMarkersRepoWide(options.repoRoot())
+                : computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
+            if (!legacyMarkers.isEmpty()) {
                 return failWithLegacy(
                     err,
                     ExitCode.IO,
-                    "check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
+                    "check: IO_ERROR: LEGACY_SURFACE_MARKER: " + legacyMarkers.get(0),
                     FailureCode.IO_ERROR,
-                    "bear.blocks.yaml",
-                    "Ensure repo paths are readable and rerun `bear check --all`."
+                    legacyMarkers.get(0),
+                    "Delete legacy marker paths and recompile managed blocks, then rerun `bear check --all`."
                 );
             }
+
+            List<String> orphanMarkers = options.strictOrphans()
+                ? computeOrphanMarkersRepoWide(options.repoRoot(), index)
+                : computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
+            if (!orphanMarkers.isEmpty()) {
+                return failWithLegacy(
+                    err,
+                    ExitCode.IO,
+                    "check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
+                    FailureCode.IO_ERROR,
+                    orphanMarkers.get(0),
+                    "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
+                );
+            }
+        } catch (IOException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.IO,
+                "check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
+                FailureCode.IO_ERROR,
+                "bear.blocks.yaml",
+                "Ensure repo paths are readable and rerun `bear check --all`."
+            );
         }
 
         List<BlockExecutionResult> blockResults = new ArrayList<>();
@@ -358,7 +381,9 @@ public final class BearCli {
 
             CheckResult checkResult = executeCheck(
                 options.repoRoot().resolve(block.ir()).normalize(),
-                options.repoRoot().resolve(block.projectRoot()).normalize()
+                options.repoRoot().resolve(block.projectRoot()).normalize(),
+                false,
+                block.name()
             );
             BlockExecutionResult blockResult = toCheckBlockResult(block, checkResult);
             blockResults.add(blockResult);
@@ -367,7 +392,103 @@ public final class BearCli {
             }
         }
 
-        RepoAggregationResult summary = aggregateCheckResults(blockResults, failFastTriggered);
+        Map<String, List<Integer>> rootPassIndexes = new TreeMap<>();
+        for (int i = 0; i < blockResults.size(); i++) {
+            BlockExecutionResult blockResult = blockResults.get(i);
+            if (blockResult.status() != BlockStatus.PASS) {
+                continue;
+            }
+            rootPassIndexes.computeIfAbsent(blockResult.project(), ignored -> new ArrayList<>()).add(i);
+        }
+
+        int rootReachFailed = 0;
+        int rootTestFailed = 0;
+        int rootTestSkippedDueToReach = 0;
+        for (Map.Entry<String, List<Integer>> entry : rootPassIndexes.entrySet()) {
+            Path root = options.repoRoot().resolve(entry.getKey()).normalize();
+            try {
+                List<UndeclaredReachFinding> undeclaredReach = scanUndeclaredReach(root);
+                if (!undeclaredReach.isEmpty()) {
+                    rootReachFailed++;
+                    rootTestSkippedDueToReach++;
+                    String locator = undeclaredReach.get(0).path();
+                    String detail = "root-level undeclared reach in projectRoot " + entry.getKey();
+                    for (int idx : entry.getValue()) {
+                        blockResults.set(idx, rootFailure(
+                            blockResults.get(idx),
+                            ExitCode.UNDECLARED_REACH,
+                            "UNDECLARED_REACH",
+                            FailureCode.UNDECLARED_REACH,
+                            locator,
+                            detail,
+                            "Declare a port/op in IR, run bear compile, and route call through generated port interface."
+                        ));
+                    }
+                    continue;
+                }
+
+                ProjectTestResult testResult = runProjectTests(root);
+                if (testResult.status == ProjectTestStatus.FAILED) {
+                    rootTestFailed++;
+                    for (int idx : entry.getValue()) {
+                        blockResults.set(idx, rootFailure(
+                            blockResults.get(idx),
+                            ExitCode.TEST_FAILURE,
+                            "TEST_FAILURE",
+                            FailureCode.TEST_FAILURE,
+                            "project.tests",
+                            "root-level project tests failed for projectRoot " + entry.getKey(),
+                            "Fix project tests and rerun `bear check --all`."
+                        ));
+                    }
+                } else if (testResult.status == ProjectTestStatus.TIMEOUT) {
+                    rootTestFailed++;
+                    for (int idx : entry.getValue()) {
+                        blockResults.set(idx, rootFailure(
+                            blockResults.get(idx),
+                            ExitCode.TEST_FAILURE,
+                            "TEST_FAILURE",
+                            FailureCode.TEST_TIMEOUT,
+                            "project.tests",
+                            "root-level project tests timed out for projectRoot " + entry.getKey(),
+                            "Reduce test runtime or increase timeout, then rerun `bear check --all`."
+                        ));
+                    }
+                }
+            } catch (IOException e) {
+                for (int idx : entry.getValue()) {
+                    blockResults.set(idx, rootFailure(
+                        blockResults.get(idx),
+                        ExitCode.IO,
+                        "IO_ERROR",
+                        FailureCode.IO_ERROR,
+                        "project.root",
+                        "io: IO_ERROR: " + squash(e.getMessage()),
+                        "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check --all`."
+                    ));
+                }
+            } catch (InterruptedException e) {
+                for (int idx : entry.getValue()) {
+                    blockResults.set(idx, rootFailure(
+                        blockResults.get(idx),
+                        ExitCode.INTERNAL,
+                        "INTERNAL_ERROR",
+                        FailureCode.INTERNAL_ERROR,
+                        "internal",
+                        "internal: INTERNAL_ERROR:",
+                        "Capture stderr and file an issue against bear-cli."
+                    ));
+                }
+            }
+        }
+
+        RepoAggregationResult summary = aggregateCheckResults(
+            blockResults,
+            failFastTriggered,
+            rootReachFailed,
+            rootTestFailed,
+            rootTestSkippedDueToReach
+        );
         List<String> lines = renderCheckAllOutput(blockResults, summary);
         if (summary.exitCode() == ExitCode.OK) {
             printLines(out, lines);
@@ -424,35 +545,68 @@ public final class BearCli {
             );
         }
 
-        if (options.strictOrphans()) {
-            try {
-                List<String> orphanMarkers = computeOrphanMarkers(options.repoRoot(), index);
-                if (!orphanMarkers.isEmpty()) {
-                    return failWithLegacy(
-                        err,
-                        ExitCode.IO,
-                        "pr-check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
-                        FailureCode.IO_ERROR,
-                        orphanMarkers.get(0),
-                        "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
-                    );
-                }
-            } catch (IOException e) {
+        try {
+            List<String> legacyMarkers = options.strictOrphans()
+                ? computeLegacyMarkersRepoWide(options.repoRoot())
+                : computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
+            if (!legacyMarkers.isEmpty()) {
                 return failWithLegacy(
                     err,
                     ExitCode.IO,
-                    "pr-check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
+                    "pr-check: IO_ERROR: LEGACY_SURFACE_MARKER: " + legacyMarkers.get(0),
                     FailureCode.IO_ERROR,
-                    "bear.blocks.yaml",
-                    "Ensure repo paths are readable and rerun `bear pr-check --all`."
+                    legacyMarkers.get(0),
+                    "Delete legacy marker paths and recompile managed blocks, then rerun `bear pr-check --all`."
                 );
             }
+
+            List<String> orphanMarkers = options.strictOrphans()
+                ? computeOrphanMarkersRepoWide(options.repoRoot(), index)
+                : computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
+            if (!orphanMarkers.isEmpty()) {
+                return failWithLegacy(
+                    err,
+                    ExitCode.IO,
+                    "pr-check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
+                    FailureCode.IO_ERROR,
+                    orphanMarkers.get(0),
+                    "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
+                );
+            }
+        } catch (IOException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.IO,
+                "pr-check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
+                FailureCode.IO_ERROR,
+                "bear.blocks.yaml",
+                "Ensure repo paths are readable and rerun `bear pr-check --all`."
+            );
         }
 
         List<BlockExecutionResult> blockResults = new ArrayList<>();
         for (BlockIndexEntry block : selected) {
             if (!block.enabled()) {
                 blockResults.add(skipBlock(block, "DISABLED"));
+                continue;
+            }
+            String mappingError = validateIndexIrNameMatch(options.repoRoot().resolve(block.ir()).normalize(), block.name());
+            if (mappingError != null) {
+                blockResults.add(new BlockExecutionResult(
+                    block.name(),
+                    block.ir(),
+                    block.projectRoot(),
+                    BlockStatus.FAIL,
+                    ExitCode.VALIDATION,
+                    "VALIDATION",
+                    FailureCode.IR_VALIDATION,
+                    "block.name",
+                    mappingError,
+                    "Set `block.name` to match index `name` and rerun `bear pr-check --all`.",
+                    null,
+                    null,
+                    List.of()
+                ));
                 continue;
             }
             PrCheckResult prResult = executePrCheck(options.repoRoot(), block.ir(), options.baseRef());
@@ -505,7 +659,12 @@ public final class BearCli {
         );
     }
 
-    private static CheckResult executeCheck(Path irFile, Path projectRoot) {
+    private static CheckResult executeCheck(
+        Path irFile,
+        Path projectRoot,
+        boolean runReachAndTests,
+        String expectedBlockKey
+    ) {
         Path baselineRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
         Path tempRoot = null;
         try {
@@ -518,8 +677,39 @@ public final class BearCli {
             BearIr ir = parser.parse(irFile);
             validator.validate(ir);
             BearIr normalized = normalizer.normalize(ir);
+            String blockKey = toBlockKey(normalized.block().name());
+            if (expectedBlockKey != null && !expectedBlockKey.equals(blockKey)) {
+                String line = "schema at block.name: INVALID_VALUE: block name must match index name: " + expectedBlockKey;
+                return checkFailure(
+                    ExitCode.VALIDATION,
+                    List.of(line),
+                    "VALIDATION",
+                    FailureCode.IR_VALIDATION,
+                    "block.name",
+                    "Set `block.name` to match index `name` and rerun `bear check --all`.",
+                    line
+                );
+            }
+            String packageSegment = toGeneratedPackageSegment(normalized.block().name());
+            Set<String> ownedPrefixes = Set.of(
+                "src/main/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
+                "src/test/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/"
+            );
+            String markerRelPath = "surfaces/" + blockKey + ".surface.json";
+            Path legacyMarkerPath = baselineRoot.resolve("bear.surface.json");
+            if (Files.isRegularFile(legacyMarkerPath)) {
+                return checkFailure(
+                    ExitCode.IO,
+                    List.of("check: IO_ERROR: LEGACY_SURFACE_MARKER: build/generated/bear/bear.surface.json"),
+                    "IO_ERROR",
+                    FailureCode.IO_ERROR,
+                    "build/generated/bear/bear.surface.json",
+                    "Delete legacy marker and rerun compile for managed blocks, then rerun `bear check`.",
+                    "check: IO_ERROR: LEGACY_SURFACE_MARKER: build/generated/bear/bear.surface.json"
+                );
+            }
 
-            if (!Files.isDirectory(baselineRoot) || !hasRegularFiles(baselineRoot)) {
+            if (!hasOwnedBaselineFiles(baselineRoot, ownedPrefixes, markerRelPath)) {
                 String line = "drift: MISSING_BASELINE: build/generated/bear (run: bear compile "
                     + irFile + " --project " + projectRoot + ")";
                 return checkFailure(
@@ -536,8 +726,8 @@ public final class BearCli {
             tempRoot = Files.createTempDirectory("bear-check-");
             target.compile(normalized, tempRoot);
             Path candidateRoot = tempRoot.resolve("build").resolve("generated").resolve("bear");
-            Path baselineManifestPath = baselineRoot.resolve("bear.surface.json");
-            Path candidateManifestPath = candidateRoot.resolve("bear.surface.json");
+            Path baselineManifestPath = baselineRoot.resolve(markerRelPath);
+            Path candidateManifestPath = candidateRoot.resolve(markerRelPath);
 
             applyCandidateManifestTestMode(candidateManifestPath);
 
@@ -558,7 +748,7 @@ public final class BearCli {
                     List.of("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING"),
                     "INTERNAL_ERROR",
                     FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/bear.surface.json",
+                    "build/generated/bear/" + markerRelPath,
                     "Capture stderr and file an issue against bear-cli.",
                     "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING"
                 );
@@ -572,7 +762,7 @@ public final class BearCli {
                     List.of("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:" + e.reasonCode()),
                     "INTERNAL_ERROR",
                     FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/bear.surface.json",
+                    "build/generated/bear/" + markerRelPath,
                     "Capture stderr and file an issue against bear-cli.",
                     "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:" + e.reasonCode()
                 );
@@ -590,7 +780,11 @@ public final class BearCli {
                 diagnostics.add("boundary: EXPANSION: " + signal.type().label + ": " + signal.key());
             }
 
-            List<DriftItem> drift = computeDrift(baselineRoot, candidateRoot);
+            List<DriftItem> drift = computeDrift(
+                baselineRoot,
+                candidateRoot,
+                path -> path.equals(markerRelPath) || startsWithAny(path, ownedPrefixes)
+            );
             if (!drift.isEmpty()) {
                 for (DriftItem item : drift) {
                     diagnostics.add("drift: " + item.type().label + ": " + item.path());
@@ -604,6 +798,10 @@ public final class BearCli {
                     "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
                     diagnostics.get(diagnostics.size() - 1)
                 );
+            }
+
+            if (!runReachAndTests) {
+                return new CheckResult(ExitCode.OK, List.of(), List.of(), null, null, null, null, null);
             }
 
             List<UndeclaredReachFinding> undeclaredReach = scanUndeclaredReach(projectRoot);
@@ -1287,7 +1485,7 @@ public final class BearCli {
         return selected;
     }
 
-    private static List<String> computeOrphanMarkers(Path repoRoot, BlockIndex index) throws IOException {
+    private static List<String> computeOrphanMarkersRepoWide(Path repoRoot, BlockIndex index) throws IOException {
         Set<String> expected = new HashSet<>();
         for (BlockIndexEntry entry : index.blocks()) {
             if (!entry.enabled()) {
@@ -1297,7 +1495,8 @@ public final class BearCli {
                 .resolve("build")
                 .resolve("generated")
                 .resolve("bear")
-                .resolve("bear.surface.json")
+                .resolve("surfaces")
+                .resolve(entry.name() + ".surface.json")
                 .normalize()
                 .toString()
                 .replace('\\', '/'));
@@ -1307,7 +1506,7 @@ public final class BearCli {
         try (var stream = Files.walk(repoRoot)) {
             stream.filter(Files::isRegularFile).forEach(path -> {
                 String rel = repoRoot.relativize(path).toString().replace('\\', '/');
-                if (rel.endsWith("build/generated/bear/bear.surface.json")) {
+                if (rel.contains("build/generated/bear/surfaces/") && rel.endsWith(".surface.json")) {
                     found.add(rel);
                 }
             });
@@ -1320,6 +1519,79 @@ public final class BearCli {
             }
         }
         return orphan;
+    }
+
+    private static List<String> computeOrphanMarkersInManagedRoots(Path repoRoot, List<BlockIndexEntry> selected) throws IOException {
+        Map<String, Set<String>> expectedByRoot = new TreeMap<>();
+        for (BlockIndexEntry entry : selected) {
+            if (!entry.enabled()) {
+                continue;
+            }
+            expectedByRoot.computeIfAbsent(entry.projectRoot(), ignored -> new HashSet<>())
+                .add(entry.name() + ".surface.json");
+        }
+
+        List<String> orphan = new ArrayList<>();
+        for (Map.Entry<String, Set<String>> rootEntry : expectedByRoot.entrySet()) {
+            Path surfacesDir = repoRoot.resolve(rootEntry.getKey())
+                .resolve("build")
+                .resolve("generated")
+                .resolve("bear")
+                .resolve("surfaces");
+            if (!Files.isDirectory(surfacesDir)) {
+                continue;
+            }
+            try (var stream = Files.list(surfacesDir)) {
+                stream.filter(Files::isRegularFile).forEach(path -> {
+                    String fileName = path.getFileName().toString();
+                    if (!fileName.endsWith(".surface.json")) {
+                        return;
+                    }
+                    if (!rootEntry.getValue().contains(fileName)) {
+                        String rel = repoRoot.relativize(path).toString().replace('\\', '/');
+                        orphan.add(rel);
+                    }
+                });
+            }
+        }
+        orphan.sort(String::compareTo);
+        return orphan;
+    }
+
+    private static List<String> computeLegacyMarkersRepoWide(Path repoRoot) throws IOException {
+        List<String> legacy = new ArrayList<>();
+        try (var stream = Files.walk(repoRoot)) {
+            stream.filter(Files::isRegularFile).forEach(path -> {
+                String rel = repoRoot.relativize(path).toString().replace('\\', '/');
+                if (rel.endsWith("build/generated/bear/bear.surface.json")) {
+                    legacy.add(rel);
+                }
+            });
+        }
+        legacy.sort(String::compareTo);
+        return legacy;
+    }
+
+    private static List<String> computeLegacyMarkersInManagedRoots(Path repoRoot, List<BlockIndexEntry> selected) {
+        Set<String> managedRoots = new HashSet<>();
+        for (BlockIndexEntry entry : selected) {
+            if (entry.enabled()) {
+                managedRoots.add(entry.projectRoot());
+            }
+        }
+        List<String> legacy = new ArrayList<>();
+        for (String root : managedRoots) {
+            Path marker = repoRoot.resolve(root)
+                .resolve("build")
+                .resolve("generated")
+                .resolve("bear")
+                .resolve("bear.surface.json");
+            if (Files.isRegularFile(marker)) {
+                legacy.add(repoRoot.relativize(marker).toString().replace('\\', '/'));
+            }
+        }
+        legacy.sort(String::compareTo);
+        return legacy;
     }
 
     private static BlockExecutionResult skipBlock(BlockIndexEntry block, String reason) {
@@ -1375,6 +1647,48 @@ public final class BearCli {
         );
     }
 
+    private static BlockExecutionResult rootFailure(
+        BlockExecutionResult base,
+        int exitCode,
+        String category,
+        String blockCode,
+        String blockPath,
+        String detail,
+        String remediation
+    ) {
+        return new BlockExecutionResult(
+            base.name(),
+            base.ir(),
+            base.project(),
+            BlockStatus.FAIL,
+            exitCode,
+            category,
+            blockCode,
+            normalizeLocator(blockPath),
+            squash(detail),
+            remediation,
+            null,
+            base.classification(),
+            base.deltaLines()
+        );
+    }
+
+    private static String validateIndexIrNameMatch(Path irFile, String expectedBlockKey) {
+        try {
+            BearIrParser parser = new BearIrParser();
+            BearIrValidator validator = new BearIrValidator();
+            BearIrNormalizer normalizer = new BearIrNormalizer();
+            BearIr normalized = normalizer.normalize(parseAndValidateIr(parser, validator, irFile));
+            String actualBlockKey = toBlockKey(normalized.block().name());
+            if (!expectedBlockKey.equals(actualBlockKey)) {
+                return "index name `" + expectedBlockKey + "` does not match IR block.name `" + normalized.block().name() + "`";
+            }
+            return null;
+        } catch (Exception e) {
+            return "unable to validate block name mapping: " + squash(e.getMessage());
+        }
+    }
+
     private static BlockExecutionResult toPrBlockResult(BlockIndexEntry block, PrCheckResult result) {
         if (result.exitCode() == ExitCode.OK) {
             String classification = result.hasDeltas() ? "ORDINARY" : "NO_CHANGES";
@@ -1412,7 +1726,13 @@ public final class BearCli {
         );
     }
 
-    private static RepoAggregationResult aggregateCheckResults(List<BlockExecutionResult> results, boolean failFastTriggered) {
+    private static RepoAggregationResult aggregateCheckResults(
+        List<BlockExecutionResult> results,
+        boolean failFastTriggered,
+        int rootReachFailed,
+        int rootTestFailed,
+        int rootTestSkippedDueToReach
+    ) {
         int passed = 0;
         int failed = 0;
         int skipped = 0;
@@ -1439,7 +1759,10 @@ public final class BearCli {
             passed,
             failed,
             skipped,
-            failFastTriggered
+            failFastTriggered,
+            rootReachFailed,
+            rootTestFailed,
+            rootTestSkippedDueToReach
         );
     }
 
@@ -1470,7 +1793,10 @@ public final class BearCli {
             passed,
             failed,
             skipped,
-            false
+            false,
+            0,
+            0,
+            0
         );
     }
 
@@ -1525,6 +1851,9 @@ public final class BearCli {
         lines.add(summary.passed() + " passed");
         lines.add(summary.failed() + " failed");
         lines.add(summary.skipped() + " skipped");
+        lines.add("ROOT_REACH_FAILED: " + summary.rootReachFailed());
+        lines.add("ROOT_TEST_FAILED: " + summary.rootTestFailed());
+        lines.add("ROOT_TEST_SKIPPED_DUE_TO_REACH: " + summary.rootTestSkippedDueToReach());
         lines.add("FAIL_FAST_TRIGGERED: " + summary.failFastTriggered());
         lines.add("EXIT_CODE: " + summary.exitCode());
         return lines;
@@ -1575,7 +1904,11 @@ public final class BearCli {
         return lines;
     }
 
-    private static List<DriftItem> computeDrift(Path baselineRoot, Path candidateRoot) throws IOException {
+    private static List<DriftItem> computeDrift(
+        Path baselineRoot,
+        Path candidateRoot,
+        java.util.function.Predicate<String> includePath
+    ) throws IOException {
         Map<String, byte[]> baseline = readRegularFiles(baselineRoot);
         Map<String, byte[]> candidate = readRegularFiles(candidateRoot);
 
@@ -1585,6 +1918,9 @@ public final class BearCli {
 
         List<DriftItem> drift = new ArrayList<>();
         for (String path : allPaths) {
+            if (!includePath.test(path)) {
+                continue;
+            }
             boolean inBaseline = baseline.containsKey(path);
             boolean inCandidate = candidate.containsKey(path);
             if (inBaseline && !inCandidate) {
@@ -2055,6 +2391,74 @@ public final class BearCli {
             || relPath.startsWith(".gradle/")
             || relPath.startsWith("src/test/")
             || relPath.startsWith("build/generated/bear/");
+    }
+
+    private static boolean hasOwnedBaselineFiles(Path baselineRoot, Set<String> ownedPrefixes, String markerRelPath) throws IOException {
+        if (!Files.isDirectory(baselineRoot)) {
+            return false;
+        }
+        Path marker = baselineRoot.resolve(markerRelPath);
+        if (Files.isRegularFile(marker)) {
+            return true;
+        }
+        try (var stream = Files.walk(baselineRoot)) {
+            return stream.filter(Files::isRegularFile)
+                .map(path -> baselineRoot.relativize(path).toString().replace('\\', '/'))
+                .anyMatch(path -> startsWithAny(path, ownedPrefixes));
+        }
+    }
+
+    private static boolean startsWithAny(String value, Set<String> prefixes) {
+        for (String prefix : prefixes) {
+            if (value.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String toBlockKey(String raw) {
+        List<String> tokens = splitTokens(raw);
+        if (tokens.isEmpty()) {
+            return "block";
+        }
+        return String.join("-", tokens);
+    }
+
+    private static String toGeneratedPackageSegment(String raw) {
+        String normalized = raw.toLowerCase().replaceAll("[^a-z0-9]+", " ").trim();
+        if (normalized.isEmpty()) {
+            return "block";
+        }
+        StringBuilder out = new StringBuilder();
+        String[] parts = normalized.split("\\s+");
+        for (int i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                out.append('.');
+            }
+            String segment = parts[i];
+            if (Character.isDigit(segment.charAt(0))) {
+                segment = "_" + segment;
+            }
+            if (JAVA_KEYWORDS.contains(segment)) {
+                segment = segment + "_";
+            }
+            out.append(segment);
+        }
+        return out.toString();
+    }
+
+    private static List<String> splitTokens(String raw) {
+        String adjusted = raw.replaceAll("([a-z0-9])([A-Z])", "$1 $2").replaceAll("[^A-Za-z0-9]+", " ").trim();
+        if (adjusted.isEmpty()) {
+            return List.of();
+        }
+        String[] parts = adjusted.split("\\s+");
+        List<String> tokens = new ArrayList<>();
+        for (String part : parts) {
+            tokens.add(part.toLowerCase());
+        }
+        return tokens;
     }
 
     private static ProjectTestResult runProjectTests(Path projectRoot) throws IOException, InterruptedException {

@@ -351,8 +351,7 @@ class BearCliTest {
         List<String> lines = nonEnvelopeLines(check.stderr);
         assertEquals(List.of(
             "drift: REMOVED: src/main/java/com/bear/generated/withdraw/BearValue.java",
-            "drift: CHANGED: src/main/java/com/bear/generated/withdraw/Withdraw.java",
-            "drift: ADDED: zzz_extra.txt"
+            "drift: CHANGED: src/main/java/com/bear/generated/withdraw/Withdraw.java"
         ), lines);
         assertFailureEnvelope(
             check.stderr,
@@ -372,7 +371,7 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Path manifest = tempDir.resolve("build/generated/bear/bear.surface.json");
+        Path manifest = tempDir.resolve("build/generated/bear/surfaces/withdraw.surface.json");
         ManifestData baseline = readManifestData(manifest);
         baseline.capabilities.remove("idempotency");
         writeManifestData(manifest, baseline);
@@ -381,7 +380,7 @@ class BearCliTest {
         String stderr = normalizeLf(run.stderr);
         assertEquals(3, run.exitCode);
         assertTrue(stderr.contains("boundary: EXPANSION: CAPABILITY_ADDED: idempotency"));
-        assertTrue(stderr.contains("drift: CHANGED: bear.surface.json"));
+        assertTrue(stderr.contains("drift: CHANGED: surfaces/withdraw.surface.json"));
         assertFailureEnvelope(
             run.stderr,
             "DRIFT_DETECTED",
@@ -396,7 +395,7 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Path manifest = tempDir.resolve("build/generated/bear/bear.surface.json");
+        Path manifest = tempDir.resolve("build/generated/bear/surfaces/withdraw.surface.json");
         ManifestData baseline = readManifestData(manifest);
         baseline.capabilities.put("idempotency", new ArrayList<>(List.of("get")));
         writeManifestData(manifest, baseline);
@@ -405,7 +404,7 @@ class BearCliTest {
         String stderr = normalizeLf(run.stderr);
         assertEquals(3, run.exitCode);
         assertTrue(stderr.contains("boundary: EXPANSION: CAPABILITY_OP_ADDED: idempotency.put"));
-        assertTrue(stderr.contains("drift: CHANGED: bear.surface.json"));
+        assertTrue(stderr.contains("drift: CHANGED: surfaces/withdraw.surface.json"));
         assertFailureEnvelope(
             run.stderr,
             "DRIFT_DETECTED",
@@ -420,7 +419,7 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Path manifest = tempDir.resolve("build/generated/bear/bear.surface.json");
+        Path manifest = tempDir.resolve("build/generated/bear/surfaces/withdraw.surface.json");
         ManifestData baseline = readManifestData(manifest);
         baseline.invariants.add("non_negative:shadow");
         writeManifestData(manifest, baseline);
@@ -429,7 +428,7 @@ class BearCliTest {
         String stderr = normalizeLf(run.stderr);
         assertEquals(3, run.exitCode);
         assertTrue(stderr.contains("boundary: EXPANSION: INVARIANT_RELAXED: non_negative:shadow"));
-        assertTrue(stderr.contains("drift: CHANGED: bear.surface.json"));
+        assertTrue(stderr.contains("drift: CHANGED: surfaces/withdraw.surface.json"));
         assertFailureEnvelope(
             run.stderr,
             "DRIFT_DETECTED",
@@ -444,7 +443,7 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Path manifest = tempDir.resolve("build/generated/bear/bear.surface.json");
+        Path manifest = tempDir.resolve("build/generated/bear/surfaces/withdraw.surface.json");
         ManifestData baseline = readManifestData(manifest);
         baseline.capabilities.remove("idempotency");
         baseline.capabilities.put("ledger", new ArrayList<>(List.of("getBalance")));
@@ -474,7 +473,7 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Path manifest = tempDir.resolve("build/generated/bear/bear.surface.json");
+        Path manifest = tempDir.resolve("build/generated/bear/surfaces/withdraw.surface.json");
         Files.delete(manifest);
 
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
@@ -494,7 +493,7 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Path manifest = tempDir.resolve("build/generated/bear/bear.surface.json");
+        Path manifest = tempDir.resolve("build/generated/bear/surfaces/withdraw.surface.json");
         Files.writeString(manifest, "{invalid", StandardCharsets.UTF_8);
 
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
@@ -514,7 +513,7 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Path manifest = tempDir.resolve("build/generated/bear/bear.surface.json");
+        Path manifest = tempDir.resolve("build/generated/bear/surfaces/withdraw.surface.json");
         ManifestData baseline = readManifestData(manifest);
         baseline.irHash = "0000000000000000000000000000000000000000000000000000000000000000";
         writeManifestData(manifest, baseline);
@@ -546,7 +545,7 @@ class BearCliTest {
             assertFailureEnvelope(
                 missing.stderr,
                 "INTERNAL_ERROR",
-                "build/generated/bear/bear.surface.json",
+                "build/generated/bear/surfaces/withdraw.surface.json",
                 "Capture stderr and file an issue against bear-cli."
             );
 
@@ -557,7 +556,7 @@ class BearCliTest {
             assertFailureEnvelope(
                 invalid.stderr,
                 "INTERNAL_ERROR",
-                "build/generated/bear/bear.surface.json",
+                "build/generated/bear/surfaces/withdraw.surface.json",
                 "Capture stderr and file an issue against bear-cli."
             );
         } finally {
@@ -687,7 +686,7 @@ class BearCliTest {
             "#!/usr/bin/env sh\necho ran > \"" + markerPath.replace("\\", "\\\\") + "\"\nexit 0\n"
         );
 
-        Path driftFile = tempDir.resolve("build/generated/bear/drift-added.txt");
+        Path driftFile = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/withdraw/Withdraw.java");
         Files.writeString(driftFile, "drift");
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
@@ -814,7 +813,11 @@ class BearCliTest {
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
 
-        Files.writeString(tempDir.resolve("build/generated/bear/drift-added.txt"), "drift");
+        Files.writeString(
+            tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/withdraw/Withdraw.java"),
+            "drift",
+            StandardOpenOption.APPEND
+        );
         Path impl = tempDir.resolve("src/main/java/com/bear/generated/withdraw/WithdrawImpl.java");
         Files.writeString(impl, "\njava.net.http.HttpClient\n", StandardOpenOption.APPEND);
 
@@ -918,7 +921,7 @@ class BearCliTest {
     @Test
     void checkAllStrictOrphansFailsOnRepoMarker(@TempDir Path tempDir) throws Exception {
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
-        Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/bear.surface.json");
+        Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/surfaces/orphan.surface.json");
         Files.createDirectories(orphan.getParent());
         Files.writeString(orphan, "{}\n");
 
@@ -926,19 +929,33 @@ class BearCliTest {
             "check", "--all", "--project", fixture.repoRoot().toString(), "--strict-orphans"
         });
         assertEquals(74, run.exitCode);
-        assertTrue(run.stderr.startsWith("check: IO_ERROR: ORPHAN_MARKER: orphan-root/build/generated/bear/bear.surface.json"));
+        assertTrue(run.stderr.startsWith("check: IO_ERROR: ORPHAN_MARKER: orphan-root/build/generated/bear/surfaces/orphan.surface.json"));
         assertFailureEnvelope(
             run.stderr,
             "IO_ERROR",
-            "orphan-root/build/generated/bear/bear.surface.json",
+            "orphan-root/build/generated/bear/surfaces/orphan.surface.json",
             "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
         );
     }
 
     @Test
+    void checkAllDefaultManagedRootGuardFailsOnUnexpectedManagedMarker(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path orphan = fixture.repoRoot().resolve("services/alpha/build/generated/bear/surfaces/orphan.surface.json");
+        Files.createDirectories(orphan.getParent());
+        Files.writeString(orphan, "{}\n");
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString()
+        });
+        assertEquals(74, run.exitCode);
+        assertTrue(run.stderr.startsWith("check: IO_ERROR: ORPHAN_MARKER: services/alpha/build/generated/bear/surfaces/orphan.surface.json"));
+    }
+
+    @Test
     void checkAllOnlyWithStrictStillUsesRepoWideOrphanScan(@TempDir Path tempDir) throws Exception {
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
-        Path orphan = fixture.repoRoot().resolve("z/build/generated/bear/bear.surface.json");
+        Path orphan = fixture.repoRoot().resolve("z/build/generated/bear/surfaces/orphan.surface.json");
         Files.createDirectories(orphan.getParent());
         Files.writeString(orphan, "{}\n");
 
@@ -946,7 +963,7 @@ class BearCliTest {
             "check", "--all", "--project", fixture.repoRoot().toString(), "--only", "alpha", "--strict-orphans"
         });
         assertEquals(74, run.exitCode);
-        assertTrue(run.stderr.startsWith("check: IO_ERROR: ORPHAN_MARKER: z/build/generated/bear/bear.surface.json"));
+        assertTrue(run.stderr.startsWith("check: IO_ERROR: ORPHAN_MARKER: z/build/generated/bear/surfaces/orphan.surface.json"));
     }
 
     @Test
@@ -970,9 +987,10 @@ class BearCliTest {
         Path irA = repo.resolve("spec/alpha.bear.yaml");
         Path irB = repo.resolve("spec/beta.bear.yaml");
         Files.createDirectories(irA.getParent());
-        String base = fixtureIrContent();
-        Files.writeString(irA, base, StandardCharsets.UTF_8);
-        Files.writeString(irB, base, StandardCharsets.UTF_8);
+        String baseAlpha = fixtureIrForBlockName("alpha");
+        String baseBeta = fixtureIrForBlockName("beta");
+        Files.writeString(irA, baseAlpha, StandardCharsets.UTF_8);
+        Files.writeString(irB, baseBeta, StandardCharsets.UTF_8);
         writeBlockIndex(repo, ""
             + "version: v0\n"
             + "blocks:\n"
@@ -984,8 +1002,8 @@ class BearCliTest {
             + "    projectRoot: services/b\n");
         gitCommitAll(repo, "base");
 
-        String ordinary = base.replace("          - setBalance\n", "          - setBalance\n          - reverse\n");
-        String boundary = base.replace(
+        String ordinary = baseAlpha.replace("          - setBalance\n", "          - setBalance\n          - reverse\n");
+        String boundary = baseBeta.replace(
             "      - port: idempotency\n        ops:\n          - get\n          - put\n",
             "      - port: audit\n        ops:\n          - write\n      - port: idempotency\n        ops:\n          - get\n          - put\n"
         );
@@ -1306,13 +1324,12 @@ class BearCliTest {
     private static MultiBlockFixture createMultiBlockFixture(Path repoRoot) throws Exception {
         Path specDir = repoRoot.resolve("spec");
         Files.createDirectories(specDir);
-        String ir = fixtureIrContent();
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
         Path betaIr = specDir.resolve("beta.bear.yaml");
         Path gammaIr = specDir.resolve("gamma.bear.yaml");
-        Files.writeString(alphaIr, ir, StandardCharsets.UTF_8);
-        Files.writeString(betaIr, ir, StandardCharsets.UTF_8);
-        Files.writeString(gammaIr, ir, StandardCharsets.UTF_8);
+        Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
+        Files.writeString(betaIr, fixtureIrForBlockName("beta"), StandardCharsets.UTF_8);
+        Files.writeString(gammaIr, fixtureIrForBlockName("gamma"), StandardCharsets.UTF_8);
 
         Path alphaProject = repoRoot.resolve("services/alpha");
         Path betaProject = repoRoot.resolve("services/beta");
@@ -1572,6 +1589,10 @@ class BearCliTest {
 
     private static String fixtureIrContent() throws Exception {
         return Files.readString(TestRepoPaths.repoRoot().resolve("spec/fixtures/withdraw.bear.yaml"), StandardCharsets.UTF_8);
+    }
+
+    private static String fixtureIrForBlockName(String blockName) throws Exception {
+        return fixtureIrContent().replaceFirst("(?im)^\\s*name:\\s*withdraw\\s*$", "  name: " + blockName);
     }
 
     private static void writeFixtureIr(Path path) throws Exception {
