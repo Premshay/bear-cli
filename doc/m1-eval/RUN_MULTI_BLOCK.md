@@ -30,6 +30,35 @@ Prove this claim in realistic agent workflow:
 - if no index and exactly one IR file, single-block fallback is allowed
 - if no index and two or more IR files, fail `64` and require index creation (no fallback)
 
+## Pre-Run Cleanup (Mandatory)
+
+Before every rerun, clean prior run artifacts in `bear-account-demo` so agent behavior is measured from a consistent baseline.
+
+PowerShell (from `bear-cli` repo root):
+
+```powershell
+$paths = @(
+  '..\bear-account-demo\bin\main',
+  '..\bear-account-demo\bin\test',
+  '..\bear-account-demo\build',
+  '..\bear-account-demo\spec',
+  '..\bear-account-demo\.tmp-compile-work',
+  '..\bear-account-demo\.data',
+  '..\bear-account-demo\src\main\java\com\bear\generated',
+  '..\bear-account-demo\src\test\java\com\bear\generated'
+)
+foreach ($p in $paths) {
+  if (Test-Path $p) {
+    Remove-Item -Recurse -Force $p
+  }
+}
+git -C ..\bear-account-demo status --short
+```
+
+Expected post-clean status:
+- only intentionally kept package/wrapper changes are present (or clean working tree).
+- no generated BEAR artifacts under `spec/`, `build/`, `bin/main`, `bin/test`, or `src/**/com/bear/generated`.
+
 ## Scenario 1: Greenfield Multi-Block Build
 
 Branch:
@@ -37,7 +66,7 @@ Branch:
 
 Prompt:
 
-`Build an account service with immediate DEPOSIT, WITHDRAW, and TRANSFER APIs. Also add scheduled transfers with these requirements: (1) scheduling is durable (survives restart) and has its own create/cancel/query API, (2) execution is asynchronous via a background worker, (3) failed executions are retried with backoff, (4) enforce daily transfer limits by account tier at execution time, (5) keep immediate transfer APIs synchronous and unchanged in behavior, (6) every schedule/create/cancel and every execution attempt/success/failure must write append-only audit records and emit events, (7) enforce non-negative balances and idempotent request handling for both scheduling and execution paths.`
+`Build an account service with immediate DEPOSIT only. Add scheduled transfers with create-only API (no cancel/query), asynchronous worker execution, no retries, fixed single daily transfer limit per account, and audit/event emission for schedule create and execution success/failure. Enforce non-negative balances and idempotency for immediate and worker paths.`
 
 Prompt note:
 - This is the tracked Scenario 1 prompt version for current multi-block reruns.
