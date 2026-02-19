@@ -3,6 +3,8 @@
 ## Command
 `bear pr-check <ir-file> --project <path> --base <ref>`
 
+`bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]`
+
 `bear pr-check` is a deterministic PR governance classifier.
 It compares normalized IR in the current workspace (`HEAD` working tree) against the IR at merge-base with the provided base ref.
 
@@ -55,6 +57,8 @@ Exit codes are defined centrally in `spec/commands/exit-codes.md`.
 
 `pr-check` does not use drift exit code `3`.
 
+For `--all`, final exit code uses explicit severity-rank aggregation from `spec/commands/exit-codes.md`.
+
 ## Failure Envelope (non-zero exits)
 For every non-zero exit, `pr-check` appends the standard failure footer defined in `spec/commands/exit-codes.md`:
 - `CODE=<enum>`
@@ -65,6 +69,11 @@ Envelope invariants:
 - emitted exactly once
 - last three stderr lines
 - no stderr output after `REMEDIATION=...`
+
+For `--all` aggregated failures:
+- `CODE=REPO_MULTI_BLOCK_FAILED`
+- `PATH=bear.blocks.yaml`
+- `REMEDIATION=Review per-block results above and fix failing blocks, then rerun the command.`
 
 ## Git/IO error prefixes
 Git/IO failures are emitted with stable reason prefixes:
@@ -189,3 +198,52 @@ Ordinary-only example (op add under existing port):
 pr-delta: ORDINARY: OPS: ADDED: ledger.reverse
 pr-check: OK: NO_BOUNDARY_EXPANSION
 ```
+
+## `--all` Mode (v1.1 addendum)
+
+Index source:
+- default: `<repoRoot>/bear.blocks.yaml`
+- override: `--blocks <path>` (repo-relative)
+- schema and constraints: `spec/repo/block-index.md`
+
+Selection:
+- default: all index blocks
+- `--only <csv>`: selected names only; unknown name => usage error (`64`)
+- disabled selected blocks render as:
+  - `STATUS: SKIP`
+  - `REASON: DISABLED`
+
+Strict orphan mode:
+- default: index validation only (no marker scan)
+- `--strict-orphans`: repo-wide marker scan with orphan detection against enabled index entries
+- with `--only`, strict mode still scans repo-wide
+
+Per-block section (deterministic):
+- `BLOCK: <name>`
+- `IR: <path>`
+- `PROJECT: <path>`
+- `STATUS: PASS|FAIL|SKIP`
+- `EXIT_CODE: <n>`
+- `CLASSIFICATION:`
+  - `BOUNDARY_EXPANDING` iff block exit code is `5`
+  - `ORDINARY` iff block exit code is `0` and delta set is non-empty
+  - `NO_CHANGES` iff block exit code is `0` and delta set is empty
+- `DELTA:`:
+  - sorted `pr-delta:` lines, or `(no changes)`
+
+On non-boundary failures (`2`, `64`, `70`, `74`), include:
+- `CATEGORY`
+- `BLOCK_CODE`
+- `BLOCK_PATH`
+- `DETAIL`
+- `BLOCK_REMEDIATION`
+
+Summary section:
+- `SUMMARY:`
+- `<N> blocks total`
+- `<C> checked`
+- `<P> passed`
+- `<F> failed`
+- `<S> skipped`
+- `BOUNDARY_EXPANDING: <count>`
+- `EXIT_CODE: <n>`

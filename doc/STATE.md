@@ -9,7 +9,7 @@ Last Updated: 2026-02-19
 
 ## Current Focus
 
-Post-v0 milestone execution toward Preview Release: invariant charter aligned as normative contract and preview undeclared-reach enforcement activated in `check` with exit `6` contract coverage.
+Post-v0 milestone execution toward Preview Release: repo-level multi-block enforcement (`check --all`, `pr-check --all`) implemented with block-index orchestration and deterministic aggregation contracts.
 
 ---
 
@@ -43,11 +43,11 @@ M1 acceptance required:
 
 ## Next Concrete Task
 
-Harden preview undeclared-reach rollout and CI/operator proofs:
+Harden and prove multi-block repo orchestration contract:
 
-1. Execute and capture full CLI test pass for new `UNDECLARED_REACH` check-stage contract.
-2. Validate docs/spec consistency for invariant charter references and preview scope caveat language.
-3. Run end-to-end demo scenario that shows undeclared direct HTTP failure in `bear check`.
+1. Run full test suite and capture proof for new `--all` scenarios (`continue-all`, `fail-fast`, strict orphan policy).
+2. Add/verify operator runbook examples using `bear.blocks.yaml` and canonical `--all` commands.
+3. Evaluate follow-up work for richer block index diagnostics and strict-mode UX.
 
 Notes:
 - Gradle wrapper is available: use `.\gradlew.bat` (Windows) to build/run without a global Gradle install.
@@ -171,3 +171,8 @@ No essays. No philosophy.
 - Activated preview undeclared-reach enforcement in `bear check`: deterministic JVM covered direct-HTTP detection, dedicated exit `6`, `CODE=UNDECLARED_REACH`, and fixed remediation guidance.
 - Updated command contracts in `spec/commands/check.md` and `spec/commands/exit-codes.md` to freeze undeclared-reach stage ordering, detection scope/exclusions, and failure-envelope semantics.
 - Added CLI tests for undeclared-reach detection scope, exclusions, deterministic ordering, drift precedence, envelope correctness, and check-stage short-circuit before project tests.
+- Added repo-level multi-block contracts and parser model: new `bear.blocks.yaml` spec (`spec/repo/block-index.md`) and app-side index parser/validation.
+- Implemented `bear check --all` and `bear pr-check --all` orchestration with canonical block ordering, `--only`, `--fail-fast`, optional `--strict-orphans`, deterministic summaries, and explicit severity-rank exit aggregation.
+- Refactored single-block `check`/`pr-check` execution into structured result paths used by both single-block and `--all` modes (no stderr/footer parsing).
+- Added deterministic global multi-block footer code `REPO_MULTI_BLOCK_FAILED` and updated exit-code/spec docs accordingly.
+- Added CLI tests for `--all` pass/fail behavior, fail-fast skip semantics, strict orphan scan behavior, unknown `--only` handling, disabled-block skips, and mixed `pr-check --all` classifications.

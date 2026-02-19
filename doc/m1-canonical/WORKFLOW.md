@@ -23,6 +23,7 @@ Purpose:
 6. Implement in `*Impl.java` and tests only.
 7. Run canonical gate:
 - `.\bin\bear-all.ps1` or `./bin/bear-all.sh`
+ - if repo uses `bear.blocks.yaml`, canonical CLI gate is `bear check --all --project <repoRoot>`
 8. Resolve failures by category until gate exits `0`.
 
 ## Failure Triage

@@ -1,9 +1,11 @@
-# `bear check` (v1.3)
+# `bear check` (v1.4)
 
 ## Command
 `bear check <ir-file> --project <path>`
 
-`bear check` v1.3 is a deterministic gate for:
+`bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`
+
+`bear check` v1.4 is a deterministic gate for:
 1. drift regeneration enforcement on BEAR-owned artifacts
 2. undeclared-reach enforcement for covered preview JVM direct HTTP surfaces
 3. project test execution after drift and undeclared-reach pass
@@ -18,6 +20,9 @@ It performs:
 4. If drift passes, run undeclared-reach scan on project source tree.
 5. If undeclared-reach passes, execute project tests via Gradle wrapper.
 6. Fail deterministically on mismatch or test failure.
+
+`--all` mode orchestrates the same single-block gate for every selected index block in canonical order.
+It is deterministic and uses the block index as inclusion source.
 
 ## Scope (v1)
 - Includes:
@@ -46,6 +51,8 @@ Exit codes are defined centrally in `spec/commands/exit-codes.md`.
 - `74`: IO error
 - `70`: internal/unexpected error
 
+For `--all`, final exit code uses explicit severity-rank aggregation from `spec/commands/exit-codes.md` (not numeric max).
+
 ## Failure Envelope (non-zero exits)
 For every non-zero exit, `check` appends the standard failure footer defined in `spec/commands/exit-codes.md`:
 - `CODE=<enum>`
@@ -56,6 +63,12 @@ Envelope invariants:
 - emitted exactly once
 - last three stderr lines
 - no stderr output after `REMEDIATION=...`
+
+For `--all`:
+- aggregated multi-block failures use:
+  - `CODE=REPO_MULTI_BLOCK_FAILED`
+  - `PATH=bear.blocks.yaml`
+  - `REMEDIATION=Review per-block results above and fix failing blocks, then rerun the command.`
 
 ## Drift output format
 All drift lines go to stderr:
@@ -185,3 +198,56 @@ Candidate manifest problems are fatal internal errors:
 ## No-mutation guarantee
 `bear check` does not modify project baseline files.
 It is compare-only against temp-generated output.
+
+## `--all` Mode (v1.4)
+
+Index source:
+- default: `<repoRoot>/bear.blocks.yaml`
+- override: `--blocks <path>` (repo-relative)
+- schema and constraints: `spec/repo/block-index.md`
+
+Selection:
+- default: all index blocks
+- `--only <csv>`: selected names only; unknown names fail with usage error (`64`)
+- disabled blocks render as:
+  - `STATUS: SKIP`
+  - `REASON: DISABLED`
+
+Execution:
+- selected enabled blocks run in canonical `name` order
+- default is continue-all (all selected enabled blocks are evaluated)
+- `--fail-fast`:
+  - after first block failure, remaining selected enabled blocks are rendered as:
+    - `STATUS: SKIP`
+    - `REASON: FAIL_FAST_ABORT`
+
+Strict orphan mode:
+- default (no strict flag): index validation only; no repo-wide marker scan
+- `--strict-orphans`: repo-wide marker scan (`**/build/generated/bear/bear.surface.json`)
+  with orphan detection against enabled index entries
+- with `--only`, strict mode remains repo-wide (strict means strict)
+
+Per-block output section (deterministic):
+- `BLOCK: <name>`
+- `IR: <path>`
+- `PROJECT: <path>`
+- `STATUS: PASS|FAIL|SKIP`
+- `EXIT_CODE: <n>`
+- on FAIL:
+  - `CATEGORY: <...>`
+  - `BLOCK_CODE: <...>`
+  - `BLOCK_PATH: <...>`
+  - `DETAIL: <single-line>`
+  - `BLOCK_REMEDIATION: <single-line>`
+- on SKIP:
+  - `REASON: DISABLED|FAIL_FAST_ABORT`
+
+Summary section:
+- `SUMMARY:`
+- `<N> blocks total`
+- `<C> checked`
+- `<P> passed`
+- `<F> failed`
+- `<S> skipped`
+- `FAIL_FAST_TRIGGERED: true|false`
+- `EXIT_CODE: <n>`

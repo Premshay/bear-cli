@@ -830,6 +830,182 @@ class BearCliTest {
     }
 
     @Test
+    void checkAllPassesInCanonicalOrder(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
+
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("BLOCK: alpha"));
+        assertTrue(stdout.contains("BLOCK: beta"));
+        assertTrue(stdout.contains("BLOCK: gamma"));
+        assertTrue(stdout.indexOf("BLOCK: alpha") < stdout.indexOf("BLOCK: beta"));
+        assertTrue(stdout.indexOf("BLOCK: beta") < stdout.indexOf("BLOCK: gamma"));
+        assertTrue(stdout.contains("SUMMARY:"));
+        assertTrue(stdout.contains("EXIT_CODE: 0"));
+        assertEquals("", run.stderr);
+    }
+
+    @Test
+    void checkAllDefaultContinueAllEvaluatesRemainingBlocks(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        deleteGeneratedBaseline(fixture.projectRoots().get(1));
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
+
+        assertEquals(3, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: alpha"));
+        assertTrue(stderr.contains("BLOCK: beta"));
+        assertTrue(stderr.contains("BLOCK: gamma"));
+        assertTrue(stderr.contains("BLOCK: gamma\nIR: spec/gamma.bear.yaml\nPROJECT: services/gamma\nSTATUS: PASS"));
+        assertTrue(stderr.contains("CODE=REPO_MULTI_BLOCK_FAILED"));
+        assertTrue(stderr.contains("PATH=bear.blocks.yaml"));
+    }
+
+    @Test
+    void checkAllFailFastMarksRemainingAsSkip(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        deleteGeneratedBaseline(fixture.projectRoots().get(0));
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString(), "--fail-fast"
+        });
+
+        assertEquals(3, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: beta\nIR: spec/beta.bear.yaml\nPROJECT: services/beta\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: FAIL_FAST_ABORT"));
+        assertTrue(stderr.contains("BLOCK: gamma\nIR: spec/gamma.bear.yaml\nPROJECT: services/gamma\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: FAIL_FAST_ABORT"));
+        assertTrue(stderr.contains("FAIL_FAST_TRIGGERED: true"));
+    }
+
+    @Test
+    void checkAllUnknownOnlyNameIsUsageError(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString(), "--only", "not-a-block"
+        });
+        assertEquals(64, run.exitCode);
+        assertTrue(run.stderr.startsWith("usage: INVALID_ARGS: unknown block in --only"));
+        assertFailureEnvelope(
+            run.stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Use only block names declared in `bear.blocks.yaml`."
+        );
+    }
+
+    @Test
+    void checkAllDisabledBlockRenderedAsSkip(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        writeBlockIndex(fixture.repoRoot(), ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/alpha\n"
+            + "  - name: beta\n"
+            + "    ir: spec/beta.bear.yaml\n"
+            + "    projectRoot: services/beta\n"
+            + "    enabled: false\n");
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("BLOCK: beta\nIR: spec/beta.bear.yaml\nPROJECT: services/beta\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: DISABLED"));
+    }
+
+    @Test
+    void checkAllStrictOrphansFailsOnRepoMarker(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/bear.surface.json");
+        Files.createDirectories(orphan.getParent());
+        Files.writeString(orphan, "{}\n");
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString(), "--strict-orphans"
+        });
+        assertEquals(74, run.exitCode);
+        assertTrue(run.stderr.startsWith("check: IO_ERROR: ORPHAN_MARKER: orphan-root/build/generated/bear/bear.surface.json"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_ERROR",
+            "orphan-root/build/generated/bear/bear.surface.json",
+            "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
+        );
+    }
+
+    @Test
+    void checkAllOnlyWithStrictStillUsesRepoWideOrphanScan(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path orphan = fixture.repoRoot().resolve("z/build/generated/bear/bear.surface.json");
+        Files.createDirectories(orphan.getParent());
+        Files.writeString(orphan, "{}\n");
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString(), "--only", "alpha", "--strict-orphans"
+        });
+        assertEquals(74, run.exitCode);
+        assertTrue(run.stderr.startsWith("check: IO_ERROR: ORPHAN_MARKER: z/build/generated/bear/bear.surface.json"));
+    }
+
+    @Test
+    void prCheckAllProducesMixedClassifications(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path servicesA = repo.resolve("services/a");
+        Path servicesB = repo.resolve("services/b");
+        Files.createDirectories(servicesA);
+        Files.createDirectories(servicesB);
+        writeProjectWrapper(
+            servicesA,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        writeProjectWrapper(
+            servicesB,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path irA = repo.resolve("spec/alpha.bear.yaml");
+        Path irB = repo.resolve("spec/beta.bear.yaml");
+        Files.createDirectories(irA.getParent());
+        String base = fixtureIrContent();
+        Files.writeString(irA, base, StandardCharsets.UTF_8);
+        Files.writeString(irB, base, StandardCharsets.UTF_8);
+        writeBlockIndex(repo, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/a\n"
+            + "  - name: beta\n"
+            + "    ir: spec/beta.bear.yaml\n"
+            + "    projectRoot: services/b\n");
+        gitCommitAll(repo, "base");
+
+        String ordinary = base.replace("          - setBalance\n", "          - setBalance\n          - reverse\n");
+        String boundary = base.replace(
+            "      - port: idempotency\n        ops:\n          - get\n          - put\n",
+            "      - port: audit\n        ops:\n          - write\n      - port: idempotency\n        ops:\n          - get\n          - put\n"
+        );
+        Files.writeString(irA, ordinary, StandardCharsets.UTF_8);
+        Files.writeString(irB, boundary, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "head");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "--all", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(5, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: alpha"));
+        assertTrue(stderr.contains("CLASSIFICATION: ORDINARY"));
+        assertTrue(stderr.contains("BLOCK: beta"));
+        assertTrue(stderr.contains("CLASSIFICATION: BOUNDARY_EXPANDING"));
+        assertTrue(stderr.contains("CODE=REPO_MULTI_BLOCK_FAILED"));
+    }
+
+    @Test
     void prCheckRequiresExpectedArgs() {
         CliRunResult run = runCli(new String[] { "pr-check" });
         assertEquals(64, run.exitCode);
@@ -1127,6 +1303,83 @@ class BearCliTest {
         }
     }
 
+    private static MultiBlockFixture createMultiBlockFixture(Path repoRoot) throws Exception {
+        Path specDir = repoRoot.resolve("spec");
+        Files.createDirectories(specDir);
+        String ir = fixtureIrContent();
+        Path alphaIr = specDir.resolve("alpha.bear.yaml");
+        Path betaIr = specDir.resolve("beta.bear.yaml");
+        Path gammaIr = specDir.resolve("gamma.bear.yaml");
+        Files.writeString(alphaIr, ir, StandardCharsets.UTF_8);
+        Files.writeString(betaIr, ir, StandardCharsets.UTF_8);
+        Files.writeString(gammaIr, ir, StandardCharsets.UTF_8);
+
+        Path alphaProject = repoRoot.resolve("services/alpha");
+        Path betaProject = repoRoot.resolve("services/beta");
+        Path gammaProject = repoRoot.resolve("services/gamma");
+        Files.createDirectories(alphaProject);
+        Files.createDirectories(betaProject);
+        Files.createDirectories(gammaProject);
+
+        assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", alphaProject.toString() }).exitCode);
+        assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", betaProject.toString() }).exitCode);
+        assertEquals(0, runCli(new String[] { "compile", gammaIr.toString(), "--project", gammaProject.toString() }).exitCode);
+
+        writeProjectWrapper(
+            alphaProject,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        writeProjectWrapper(
+            betaProject,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        writeProjectWrapper(
+            gammaProject,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        writeBlockIndex(repoRoot, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/alpha\n"
+            + "  - name: beta\n"
+            + "    ir: spec/beta.bear.yaml\n"
+            + "    projectRoot: services/beta\n"
+            + "  - name: gamma\n"
+            + "    ir: spec/gamma.bear.yaml\n"
+            + "    projectRoot: services/gamma\n");
+
+        return new MultiBlockFixture(
+            repoRoot,
+            List.of(alphaProject, betaProject, gammaProject)
+        );
+    }
+
+    private static void writeBlockIndex(Path repoRoot, String content) throws Exception {
+        Files.writeString(repoRoot.resolve("bear.blocks.yaml"), content, StandardCharsets.UTF_8);
+    }
+
+    private static void deleteGeneratedBaseline(Path projectRoot) throws Exception {
+        Path generated = projectRoot.resolve("build/generated/bear");
+        if (!Files.exists(generated)) {
+            return;
+        }
+        try (var stream = Files.walk(generated)) {
+            stream.sorted((a, b) -> b.getNameCount() - a.getNameCount()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+    }
+
     private static List<String> nonEnvelopeLines(String stderr) {
         List<String> lines = normalizeLf(stderr).lines().filter(line -> !line.isBlank()).toList();
         if (lines.size() < 3) {
@@ -1364,5 +1617,8 @@ class BearCliTest {
     }
 
     private record CliRunResult(int exitCode, String stdout, String stderr) {
+    }
+
+    private record MultiBlockFixture(Path repoRoot, List<Path> projectRoots) {
     }
 }

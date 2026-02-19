@@ -56,6 +56,7 @@ Disallowed:
 - `TEST_TIMEOUT`
 - `BOUNDARY_EXPANSION`
 - `UNDECLARED_REACH`
+- `REPO_MULTI_BLOCK_FAILED`
 - `INTERNAL_ERROR`
 
 ## IO Classification Rule
@@ -78,3 +79,21 @@ Expected locator/remediation pattern:
   - declare required port/op in IR
   - regenerate via `bear compile`
   - route call through generated port interface
+
+## Multi-Block Aggregation Rule (`--all`)
+
+For `check --all` and `pr-check --all`, do not use numeric max for final exit code.
+Use explicit severity rank order and return the code of the highest-ranked failure observed.
+
+`check --all` rank:
+- `70` > `74` > `64` > `2` > `3` > `6` > `4` > `0`
+
+`pr-check --all` rank:
+- `70` > `74` > `64` > `2` > `5` > `0`
+
+Global footer contract in `--all` mode:
+- still emitted exactly once as final stderr footer on non-zero exit
+- for aggregated multi-block failures:
+  - `CODE=REPO_MULTI_BLOCK_FAILED`
+  - `PATH=bear.blocks.yaml`
+  - `REMEDIATION=Review per-block results above and fix failing blocks, then rerun the command.`

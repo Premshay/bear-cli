@@ -12,13 +12,14 @@ These docs are primarily for in-repo sessions (Codex/agent with repo access).
 4. `doc/NORTH_STAR.md` -- broader motivation and long-horizon success criteria.
 5. `doc/GOVERNANCE.md` -- normative IR diff classification (`ordinary` vs `boundary-expanding`) and review policy.
 6. `doc/IR_SPEC.md` -- canonical v0 IR schema, validation, normalization, and demo IR shape.
-7. `doc/ROADMAP_V0.md` -- concrete post-v0 execution roadmap (historical filename) and milestone checkpoints.
-8. `doc/ROADMAP.md` -- broader target roadmap beyond immediate v0 execution.
-9. `doc/m1-canonical/` -- canonical BEAR workflow source texts (`AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`) for demo-copied resources.
-10. `doc/PROJECT_LOG.md` -- historical rationale and major decisions.
-11. `doc/FUTURE.md` -- deferred ideas (explicitly not v0).
-12. `doc/PROMPT_BOOTSTRAP.md` -- copy/paste seed for a fresh AI session.
-13. `doc/USER_GUIDE.md` -- user-facing command usage and failure/exit contract quick reference.
+7. `spec/repo/block-index.md` -- canonical `bear.blocks.yaml` contract for repo-level `--all` enforcement.
+8. `doc/ROADMAP_V0.md` -- concrete post-v0 execution roadmap (historical filename) and milestone checkpoints.
+9. `doc/ROADMAP.md` -- broader target roadmap beyond immediate v0 execution.
+10. `doc/m1-canonical/` -- canonical BEAR workflow source texts (`AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`) for demo-copied resources.
+11. `doc/PROJECT_LOG.md` -- historical rationale and major decisions.
+12. `doc/FUTURE.md` -- deferred ideas (explicitly not v0).
+13. `doc/PROMPT_BOOTSTRAP.md` -- copy/paste seed for a fresh AI session.
+14. `doc/USER_GUIDE.md` -- user-facing command usage and failure/exit contract quick reference.
 
 ## What each file is for
 
@@ -28,6 +29,7 @@ These docs are primarily for in-repo sessions (Codex/agent with repo access).
 - `doc/NORTH_STAR.md`: broader BEAR motivation and long-term success litmus.
 - `doc/GOVERNANCE.md`: normative governance contract for classifying IR changes and signaling boundary expansion.
 - `doc/IR_SPEC.md`: schema contract; if fields conflict elsewhere, this wins for IR shape.
+- `spec/repo/block-index.md`: repo-level multi-block index schema and invariants for `check --all` / `pr-check --all`.
 - `doc/ROADMAP_V0.md`: implementation order for current post-v0 milestone execution.
 - `doc/ROADMAP.md`: broader target direction and longer-horizon phases.
 - `doc/m1-canonical/`: canonical BEAR workflow source texts (`AGENTS.md`, `BEAR_AGENT.md`, `WORKFLOW.md`) used by demo copies.

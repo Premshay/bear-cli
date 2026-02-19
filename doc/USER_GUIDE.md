@@ -93,6 +93,22 @@ Behavior:
 - fails with undeclared-reach exit code when covered direct HTTP client usage bypasses declared ports
 - runs project tests only after no-drift result
 
+### 3b. Repo gate (multi-block)
+
+```text
+bear check --all --project <repoRoot>
+```
+
+Optional flags:
+- `--blocks <path>`
+- `--only <name1,name2,...>`
+- `--fail-fast`
+- `--strict-orphans`
+
+Use when:
+- a repo has multiple BEAR-managed blocks declared in `bear.blocks.yaml`
+- CI/local workflow needs one deterministic gate for all managed blocks
+
 ### 4. PR governance gate (base diff classification)
 
 ```text
@@ -105,6 +121,17 @@ Use when:
 Behavior:
 - exits `5` when boundary expansion is detected
 - exits `0` for no-boundary-expansion outcomes
+
+### 4b. PR governance gate (multi-block)
+
+```text
+bear pr-check --all --project <repoRoot> --base <ref>
+```
+
+Optional flags:
+- `--blocks <path>`
+- `--only <name1,name2,...>`
+- `--strict-orphans`
 
 ## Non-zero failure envelope
 
@@ -143,6 +170,8 @@ Disallowed:
 - `64` usage/argument failure
 - `70` internal/unexpected failure
 - `74` IO/git failure
+
+For `check --all` and `pr-check --all`, final exit code is aggregated via explicit severity ranking (not numeric max), defined in `spec/commands/exit-codes.md`.
 
 ## Invariant Contract (preview)
 

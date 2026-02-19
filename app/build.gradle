@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     implementation project(':kernel')
+    implementation 'org.yaml:snakeyaml:2.2'
 }
 
 application {

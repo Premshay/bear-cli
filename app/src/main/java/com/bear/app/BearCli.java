@@ -20,8 +20,12 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
@@ -190,6 +194,10 @@ public final class BearCli {
             return ExitCode.OK;
         }
 
+        if (args.length >= 2 && "--all".equals(args[1])) {
+            return runCheckAll(args, out, err);
+        }
+
         if (args.length != 4 || !"--project".equals(args[2])) {
             return failWithLegacy(
                 err,
@@ -203,182 +211,17 @@ public final class BearCli {
 
         Path irFile = Path.of(args[1]);
         Path projectRoot = Path.of(args[3]);
-        Path baselineRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
-
-        Path tempRoot = null;
-        try {
-            maybeFailInternalForTest("check");
-            BearIrParser parser = new BearIrParser();
-            BearIrValidator validator = new BearIrValidator();
-            BearIrNormalizer normalizer = new BearIrNormalizer();
-            JvmTarget target = new JvmTarget();
-
-            BearIr ir = parser.parse(irFile);
-            validator.validate(ir);
-            BearIr normalized = normalizer.normalize(ir);
-
-            if (!Files.isDirectory(baselineRoot) || !hasRegularFiles(baselineRoot)) {
-                err.println("drift: MISSING_BASELINE: build/generated/bear (run: bear compile "
-                    + irFile + " --project " + projectRoot + ")");
-                return fail(
-                    err,
-                    ExitCode.DRIFT,
-                    FailureCode.DRIFT_MISSING_BASELINE,
-                    "build/generated/bear",
-                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
-                );
-            }
-
-            tempRoot = Files.createTempDirectory("bear-check-");
-            target.compile(normalized, tempRoot);
-            Path candidateRoot = tempRoot.resolve("build").resolve("generated").resolve("bear");
-            Path baselineManifestPath = baselineRoot.resolve("bear.surface.json");
-            Path candidateManifestPath = candidateRoot.resolve("bear.surface.json");
-
-            applyCandidateManifestTestMode(candidateManifestPath);
-
-            List<String> manifestWarnings = new ArrayList<>();
-            BoundaryManifest baselineManifest = null;
-            if (!Files.isRegularFile(baselineManifestPath)) {
-                manifestWarnings.add("check: BASELINE_MANIFEST_MISSING: " + baselineManifestPath);
-            } else {
-                try {
-                    baselineManifest = parseManifest(baselineManifestPath);
-                } catch (ManifestParseException e) {
-                    manifestWarnings.add("check: BASELINE_MANIFEST_INVALID: " + e.reasonCode());
-                }
-            }
-            if (!Files.isRegularFile(candidateManifestPath)) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.INTERNAL,
-                    "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING",
-                    FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/bear.surface.json",
-                    "Capture stderr and file an issue against bear-cli."
-                );
-            }
-            BoundaryManifest candidateManifest;
-            try {
-                candidateManifest = parseManifest(candidateManifestPath);
-            } catch (ManifestParseException e) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.INTERNAL,
-                    "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:" + e.reasonCode(),
-                    FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/bear.surface.json",
-                    "Capture stderr and file an issue against bear-cli."
-                );
-            }
-
-            List<BoundarySignal> boundarySignals = List.of();
-            if (baselineManifest != null) {
-                if (!baselineManifest.irHash().equals(candidateManifest.irHash())
-                    || !baselineManifest.generatorVersion().equals(candidateManifest.generatorVersion())) {
-                    manifestWarnings.add("check: BASELINE_STAMP_MISMATCH: irHash/generatorVersion differ; classification may be stale");
-                }
-                boundarySignals = computeBoundarySignals(baselineManifest, candidateManifest);
-            }
-
-            List<DriftItem> drift = computeDrift(baselineRoot, candidateRoot);
-            for (String warning : manifestWarnings) {
-                err.println(warning);
-            }
-            for (BoundarySignal signal : boundarySignals) {
-                err.println("boundary: EXPANSION: " + signal.type().label + ": " + signal.key());
-            }
-            if (!drift.isEmpty()) {
-                for (DriftItem item : drift) {
-                    err.println("drift: " + item.type().label + ": " + item.path());
-                }
-                return fail(
-                    err,
-                    ExitCode.DRIFT,
-                    FailureCode.DRIFT_DETECTED,
-                    "build/generated/bear",
-                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
-                );
-            }
-
-            List<UndeclaredReachFinding> undeclaredReach = scanUndeclaredReach(projectRoot);
-            if (!undeclaredReach.isEmpty()) {
-                for (UndeclaredReachFinding finding : undeclaredReach) {
-                    err.println("check: UNDECLARED_REACH: " + finding.path() + ": " + finding.surface());
-                }
-                return fail(
-                    err,
-                    ExitCode.UNDECLARED_REACH,
-                    FailureCode.UNDECLARED_REACH,
-                    undeclaredReach.get(0).path(),
-                    "Declare a port/op in IR, run bear compile, and route call through generated port interface."
-                );
-            }
-
-            ProjectTestResult testResult = runProjectTests(projectRoot);
-            if (testResult.status == ProjectTestStatus.FAILED) {
-                err.println("check: TEST_FAILED: project tests failed");
-                printTail(err, testResult.output);
-                return fail(
-                    err,
-                    ExitCode.TEST_FAILURE,
-                    FailureCode.TEST_FAILURE,
-                    "project.tests",
-                    "Fix project tests and rerun `bear check <ir-file> --project <path>`."
-                );
-            }
-            if (testResult.status == ProjectTestStatus.TIMEOUT) {
-                err.println("check: TEST_TIMEOUT: project tests exceeded " + testTimeoutSeconds() + "s");
-                printTail(err, testResult.output);
-                return fail(
-                    err,
-                    ExitCode.TEST_FAILURE,
-                    FailureCode.TEST_TIMEOUT,
-                    "project.tests",
-                    "Reduce test runtime or increase timeout, then rerun `bear check <ir-file> --project <path>`."
-                );
-            }
-
-            out.println("check: OK");
-            return ExitCode.OK;
-        } catch (BearIrValidationException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.VALIDATION,
-                e.formatLine(),
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix the IR issue at the reported path and rerun `bear check <ir-file> --project <path>`."
-            );
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "io: IO_ERROR: " + e.getMessage(),
-                FailureCode.IO_ERROR,
-                "project.root",
-                "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check`."
-            );
-        } catch (Exception e) {
-            return failWithLegacy(
-                err,
-                ExitCode.INTERNAL,
-                "internal: INTERNAL_ERROR:",
-                FailureCode.INTERNAL_ERROR,
-                "internal",
-                "Capture stderr and file an issue against bear-cli."
-            );
-        } finally {
-            if (tempRoot != null) {
-                deleteRecursivelyBestEffort(tempRoot);
-            }
-        }
+        CheckResult result = executeCheck(irFile, projectRoot);
+        return emitCheckResult(result, out, err);
     }
 
     private static int runPrCheck(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             printUsage(out);
             return ExitCode.OK;
+        }
+        if (args.length >= 2 && "--all".equals(args[1])) {
+            return runPrCheckAll(args, out, err);
         }
         if (args.length != 6 || !"--project".equals(args[2]) || !"--base".equals(args[4])) {
             return failWithLegacy(
@@ -417,7 +260,8 @@ public final class BearCli {
 
         Path projectRoot = Path.of(args[3]).toAbsolutePath().normalize();
         String baseRef = args[5];
-        Path headIrPath = projectRoot.resolve(normalizedRelative).normalize();
+        String repoRelativePath = normalizedRelative.toString().replace('\\', '/');
+        Path headIrPath = projectRoot.resolve(repoRelativePath).normalize();
         if (!headIrPath.startsWith(projectRoot)) {
             return failWithLegacy(
                 err,
@@ -428,18 +272,424 @@ public final class BearCli {
                 "Pass a repo-relative `ir-file` path for `bear pr-check`."
             );
         }
-        String repoRelativePath = normalizedRelative.toString().replace('\\', '/');
-        if (!Files.isRegularFile(headIrPath)) {
+        PrCheckResult result = executePrCheck(projectRoot, repoRelativePath, baseRef);
+        return emitPrCheckResult(result, out, err);
+    }
+
+    private static int runCheckAll(String[] args, PrintStream out, PrintStream err) {
+        AllCheckOptions options = parseAllCheckOptions(args, err);
+        if (options == null) {
+            return ExitCode.USAGE;
+        }
+
+        BlockIndex index;
+        try {
+            index = new BlockIndexParser().parse(options.repoRoot(), options.blocksPath());
+        } catch (BlockIndexValidationException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.VALIDATION,
+                "index: VALIDATION_ERROR: " + e.getMessage(),
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                "Fix `bear.blocks.yaml` and rerun `bear check --all`."
+            );
+        } catch (IOException e) {
             return failWithLegacy(
                 err,
                 ExitCode.IO,
-                "pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath,
+                "io: IO_ERROR: " + squash(e.getMessage()),
                 FailureCode.IO_ERROR,
-                repoRelativePath,
-                "Ensure the IR file exists at HEAD and rerun `bear pr-check`."
+                "bear.blocks.yaml",
+                "Ensure `bear.blocks.yaml` is readable and rerun `bear check --all`."
             );
         }
 
+        List<BlockIndexEntry> selected = selectBlocks(index, options.onlyNames());
+        if (selected == null) {
+            return failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: unknown block in --only",
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Use only block names declared in `bear.blocks.yaml`."
+            );
+        }
+
+        if (options.strictOrphans()) {
+            try {
+                List<String> orphanMarkers = computeOrphanMarkers(options.repoRoot(), index);
+                if (!orphanMarkers.isEmpty()) {
+                    return failWithLegacy(
+                        err,
+                        ExitCode.IO,
+                        "check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
+                        FailureCode.IO_ERROR,
+                        orphanMarkers.get(0),
+                        "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
+                    );
+                }
+            } catch (IOException e) {
+                return failWithLegacy(
+                    err,
+                    ExitCode.IO,
+                    "check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
+                    FailureCode.IO_ERROR,
+                    "bear.blocks.yaml",
+                    "Ensure repo paths are readable and rerun `bear check --all`."
+                );
+            }
+        }
+
+        List<BlockExecutionResult> blockResults = new ArrayList<>();
+        boolean failed = false;
+        boolean failFastTriggered = false;
+        for (BlockIndexEntry block : selected) {
+            if (!block.enabled()) {
+                blockResults.add(skipBlock(block, "DISABLED"));
+                continue;
+            }
+            if (options.failFast() && failed) {
+                failFastTriggered = true;
+                blockResults.add(skipBlock(block, "FAIL_FAST_ABORT"));
+                continue;
+            }
+
+            CheckResult checkResult = executeCheck(
+                options.repoRoot().resolve(block.ir()).normalize(),
+                options.repoRoot().resolve(block.projectRoot()).normalize()
+            );
+            BlockExecutionResult blockResult = toCheckBlockResult(block, checkResult);
+            blockResults.add(blockResult);
+            if (blockResult.status() == BlockStatus.FAIL) {
+                failed = true;
+            }
+        }
+
+        RepoAggregationResult summary = aggregateCheckResults(blockResults, failFastTriggered);
+        List<String> lines = renderCheckAllOutput(blockResults, summary);
+        if (summary.exitCode() == ExitCode.OK) {
+            printLines(out, lines);
+            return ExitCode.OK;
+        }
+        printLines(err, lines);
+        return fail(
+            err,
+            summary.exitCode(),
+            FailureCode.REPO_MULTI_BLOCK_FAILED,
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    private static int runPrCheckAll(String[] args, PrintStream out, PrintStream err) {
+        AllPrCheckOptions options = parseAllPrCheckOptions(args, err);
+        if (options == null) {
+            return ExitCode.USAGE;
+        }
+
+        BlockIndex index;
+        try {
+            index = new BlockIndexParser().parse(options.repoRoot(), options.blocksPath());
+        } catch (BlockIndexValidationException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.VALIDATION,
+                "index: VALIDATION_ERROR: " + e.getMessage(),
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                "Fix `bear.blocks.yaml` and rerun `bear pr-check --all`."
+            );
+        } catch (IOException e) {
+            return failWithLegacy(
+                err,
+                ExitCode.IO,
+                "io: IO_ERROR: " + squash(e.getMessage()),
+                FailureCode.IO_ERROR,
+                "bear.blocks.yaml",
+                "Ensure `bear.blocks.yaml` is readable and rerun `bear pr-check --all`."
+            );
+        }
+
+        List<BlockIndexEntry> selected = selectBlocks(index, options.onlyNames());
+        if (selected == null) {
+            return failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: unknown block in --only",
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Use only block names declared in `bear.blocks.yaml`."
+            );
+        }
+
+        if (options.strictOrphans()) {
+            try {
+                List<String> orphanMarkers = computeOrphanMarkers(options.repoRoot(), index);
+                if (!orphanMarkers.isEmpty()) {
+                    return failWithLegacy(
+                        err,
+                        ExitCode.IO,
+                        "pr-check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
+                        FailureCode.IO_ERROR,
+                        orphanMarkers.get(0),
+                        "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
+                    );
+                }
+            } catch (IOException e) {
+                return failWithLegacy(
+                    err,
+                    ExitCode.IO,
+                    "pr-check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
+                    FailureCode.IO_ERROR,
+                    "bear.blocks.yaml",
+                    "Ensure repo paths are readable and rerun `bear pr-check --all`."
+                );
+            }
+        }
+
+        List<BlockExecutionResult> blockResults = new ArrayList<>();
+        for (BlockIndexEntry block : selected) {
+            if (!block.enabled()) {
+                blockResults.add(skipBlock(block, "DISABLED"));
+                continue;
+            }
+            PrCheckResult prResult = executePrCheck(options.repoRoot(), block.ir(), options.baseRef());
+            blockResults.add(toPrBlockResult(block, prResult));
+        }
+
+        RepoAggregationResult summary = aggregatePrResults(blockResults);
+        List<String> lines = renderPrAllOutput(blockResults, summary);
+        if (summary.exitCode() == ExitCode.OK) {
+            printLines(out, lines);
+            return ExitCode.OK;
+        }
+        printLines(err, lines);
+        return fail(
+            err,
+            summary.exitCode(),
+            FailureCode.REPO_MULTI_BLOCK_FAILED,
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    private static int emitCheckResult(CheckResult result, PrintStream out, PrintStream err) {
+        printLines(out, result.stdoutLines());
+        printLines(err, result.stderrLines());
+        if (result.exitCode() == ExitCode.OK) {
+            return ExitCode.OK;
+        }
+        return fail(
+            err,
+            result.exitCode(),
+            result.failureCode(),
+            result.failurePath(),
+            result.failureRemediation()
+        );
+    }
+
+    private static int emitPrCheckResult(PrCheckResult result, PrintStream out, PrintStream err) {
+        printLines(out, result.stdoutLines());
+        printLines(err, result.stderrLines());
+        if (result.exitCode() == ExitCode.OK) {
+            return ExitCode.OK;
+        }
+        return fail(
+            err,
+            result.exitCode(),
+            result.failureCode(),
+            result.failurePath(),
+            result.failureRemediation()
+        );
+    }
+
+    private static CheckResult executeCheck(Path irFile, Path projectRoot) {
+        Path baselineRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
+        Path tempRoot = null;
+        try {
+            maybeFailInternalForTest("check");
+            BearIrParser parser = new BearIrParser();
+            BearIrValidator validator = new BearIrValidator();
+            BearIrNormalizer normalizer = new BearIrNormalizer();
+            JvmTarget target = new JvmTarget();
+
+            BearIr ir = parser.parse(irFile);
+            validator.validate(ir);
+            BearIr normalized = normalizer.normalize(ir);
+
+            if (!Files.isDirectory(baselineRoot) || !hasRegularFiles(baselineRoot)) {
+                String line = "drift: MISSING_BASELINE: build/generated/bear (run: bear compile "
+                    + irFile + " --project " + projectRoot + ")";
+                return checkFailure(
+                    ExitCode.DRIFT,
+                    List.of(line),
+                    "DRIFT",
+                    FailureCode.DRIFT_MISSING_BASELINE,
+                    "build/generated/bear",
+                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
+                    "drift: MISSING_BASELINE: build/generated/bear"
+                );
+            }
+
+            tempRoot = Files.createTempDirectory("bear-check-");
+            target.compile(normalized, tempRoot);
+            Path candidateRoot = tempRoot.resolve("build").resolve("generated").resolve("bear");
+            Path baselineManifestPath = baselineRoot.resolve("bear.surface.json");
+            Path candidateManifestPath = candidateRoot.resolve("bear.surface.json");
+
+            applyCandidateManifestTestMode(candidateManifestPath);
+
+            List<String> diagnostics = new ArrayList<>();
+            BoundaryManifest baselineManifest = null;
+            if (!Files.isRegularFile(baselineManifestPath)) {
+                diagnostics.add("check: BASELINE_MANIFEST_MISSING: " + baselineManifestPath);
+            } else {
+                try {
+                    baselineManifest = parseManifest(baselineManifestPath);
+                } catch (ManifestParseException e) {
+                    diagnostics.add("check: BASELINE_MANIFEST_INVALID: " + e.reasonCode());
+                }
+            }
+            if (!Files.isRegularFile(candidateManifestPath)) {
+                return checkFailure(
+                    ExitCode.INTERNAL,
+                    List.of("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING"),
+                    "INTERNAL_ERROR",
+                    FailureCode.INTERNAL_ERROR,
+                    "build/generated/bear/bear.surface.json",
+                    "Capture stderr and file an issue against bear-cli.",
+                    "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING"
+                );
+            }
+            BoundaryManifest candidateManifest;
+            try {
+                candidateManifest = parseManifest(candidateManifestPath);
+            } catch (ManifestParseException e) {
+                return checkFailure(
+                    ExitCode.INTERNAL,
+                    List.of("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:" + e.reasonCode()),
+                    "INTERNAL_ERROR",
+                    FailureCode.INTERNAL_ERROR,
+                    "build/generated/bear/bear.surface.json",
+                    "Capture stderr and file an issue against bear-cli.",
+                    "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:" + e.reasonCode()
+                );
+            }
+
+            List<BoundarySignal> boundarySignals = List.of();
+            if (baselineManifest != null) {
+                if (!baselineManifest.irHash().equals(candidateManifest.irHash())
+                    || !baselineManifest.generatorVersion().equals(candidateManifest.generatorVersion())) {
+                    diagnostics.add("check: BASELINE_STAMP_MISMATCH: irHash/generatorVersion differ; classification may be stale");
+                }
+                boundarySignals = computeBoundarySignals(baselineManifest, candidateManifest);
+            }
+            for (BoundarySignal signal : boundarySignals) {
+                diagnostics.add("boundary: EXPANSION: " + signal.type().label + ": " + signal.key());
+            }
+
+            List<DriftItem> drift = computeDrift(baselineRoot, candidateRoot);
+            if (!drift.isEmpty()) {
+                for (DriftItem item : drift) {
+                    diagnostics.add("drift: " + item.type().label + ": " + item.path());
+                }
+                return checkFailure(
+                    ExitCode.DRIFT,
+                    diagnostics,
+                    "DRIFT",
+                    FailureCode.DRIFT_DETECTED,
+                    "build/generated/bear",
+                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
+                    diagnostics.get(diagnostics.size() - 1)
+                );
+            }
+
+            List<UndeclaredReachFinding> undeclaredReach = scanUndeclaredReach(projectRoot);
+            if (!undeclaredReach.isEmpty()) {
+                for (UndeclaredReachFinding finding : undeclaredReach) {
+                    diagnostics.add("check: UNDECLARED_REACH: " + finding.path() + ": " + finding.surface());
+                }
+                return checkFailure(
+                    ExitCode.UNDECLARED_REACH,
+                    diagnostics,
+                    "UNDECLARED_REACH",
+                    FailureCode.UNDECLARED_REACH,
+                    undeclaredReach.get(0).path(),
+                    "Declare a port/op in IR, run bear compile, and route call through generated port interface.",
+                    diagnostics.get(diagnostics.size() - 1)
+                );
+            }
+
+            ProjectTestResult testResult = runProjectTests(projectRoot);
+            if (testResult.status == ProjectTestStatus.FAILED) {
+                diagnostics.add("check: TEST_FAILED: project tests failed");
+                diagnostics.addAll(tailLines(testResult.output));
+                return checkFailure(
+                    ExitCode.TEST_FAILURE,
+                    diagnostics,
+                    "TEST_FAILURE",
+                    FailureCode.TEST_FAILURE,
+                    "project.tests",
+                    "Fix project tests and rerun `bear check <ir-file> --project <path>`.",
+                    "check: TEST_FAILED: project tests failed"
+                );
+            }
+            if (testResult.status == ProjectTestStatus.TIMEOUT) {
+                String timeoutLine = "check: TEST_TIMEOUT: project tests exceeded " + testTimeoutSeconds() + "s";
+                diagnostics.add(timeoutLine);
+                diagnostics.addAll(tailLines(testResult.output));
+                return checkFailure(
+                    ExitCode.TEST_FAILURE,
+                    diagnostics,
+                    "TEST_FAILURE",
+                    FailureCode.TEST_TIMEOUT,
+                    "project.tests",
+                    "Reduce test runtime or increase timeout, then rerun `bear check <ir-file> --project <path>`.",
+                    timeoutLine
+                );
+            }
+
+            return new CheckResult(ExitCode.OK, List.of("check: OK"), List.of(), null, null, null, null, null);
+        } catch (BearIrValidationException e) {
+            return checkFailure(
+                ExitCode.VALIDATION,
+                List.of(e.formatLine()),
+                "VALIDATION",
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                "Fix the IR issue at the reported path and rerun `bear check <ir-file> --project <path>`.",
+                e.formatLine()
+            );
+        } catch (IOException e) {
+            return checkFailure(
+                ExitCode.IO,
+                List.of("io: IO_ERROR: " + e.getMessage()),
+                "IO_ERROR",
+                FailureCode.IO_ERROR,
+                "project.root",
+                "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check`.",
+                "io: IO_ERROR: " + e.getMessage()
+            );
+        } catch (Exception e) {
+            return checkFailure(
+                ExitCode.INTERNAL,
+                List.of("internal: INTERNAL_ERROR:"),
+                "INTERNAL_ERROR",
+                FailureCode.INTERNAL_ERROR,
+                "internal",
+                "Capture stderr and file an issue against bear-cli.",
+                "internal: INTERNAL_ERROR:"
+            );
+        } finally {
+            if (tempRoot != null) {
+                deleteRecursivelyBestEffort(tempRoot);
+            }
+        }
+    }
+
+    private static PrCheckResult executePrCheck(Path projectRoot, String repoRelativePath, String baseRef) {
         Path tempRoot = null;
         try {
             maybeFailInternalForTest("pr-check");
@@ -447,43 +697,72 @@ public final class BearCli {
             BearIrValidator validator = new BearIrValidator();
             BearIrNormalizer normalizer = new BearIrNormalizer();
 
+            Path headIrPath = projectRoot.resolve(repoRelativePath).normalize();
+            if (!headIrPath.startsWith(projectRoot) || !Files.isRegularFile(headIrPath)) {
+                return prFailure(
+                    ExitCode.IO,
+                    List.of("pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath),
+                    "IO_ERROR",
+                    FailureCode.IO_ERROR,
+                    repoRelativePath,
+                    "Ensure the IR file exists at HEAD and rerun `bear pr-check`.",
+                    "pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath,
+                    List.of(),
+                    false,
+                    false
+                );
+            }
+
             BearIr head = normalizer.normalize(parseAndValidateIr(parser, validator, headIrPath));
 
             GitResult isRepoResult = runGitForPrCheck(projectRoot, List.of("rev-parse", "--is-inside-work-tree"), "git.repo");
             if (isRepoResult.exitCode() != 0 || !"true".equals(isRepoResult.stdout().trim())) {
-                return failWithLegacy(
-                    err,
+                return prFailure(
                     ExitCode.IO,
-                    "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
+                    List.of("pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot),
+                    "IO_ERROR",
                     FailureCode.IO_GIT,
                     "git.repo",
-                    "Run `bear pr-check` from a git working tree with a valid project path."
+                    "Run `bear pr-check` from a git working tree with a valid project path.",
+                    "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
+                    List.of(),
+                    false,
+                    false
                 );
             }
 
             GitResult mergeBaseResult = runGitForPrCheck(projectRoot, List.of("merge-base", "HEAD", baseRef), "git.baseRef");
             if (mergeBaseResult.exitCode() != 0) {
-                return failWithLegacy(
-                    err,
+                return prFailure(
                     ExitCode.IO,
-                    "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
+                    List.of("pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef),
+                    "IO_ERROR",
                     FailureCode.IO_GIT,
                     "git.baseRef",
-                    "Ensure base ref exists and is fetchable, then rerun `bear pr-check`."
+                    "Ensure base ref exists and is fetchable, then rerun `bear pr-check`.",
+                    "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
+                    List.of(),
+                    false,
+                    false
                 );
             }
             String mergeBase = mergeBaseResult.stdout().trim();
             if (mergeBase.isBlank()) {
-                return failWithLegacy(
-                    err,
+                return prFailure(
                     ExitCode.IO,
-                    "pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base",
+                    List.of("pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base"),
+                    "IO_ERROR",
                     FailureCode.IO_GIT,
                     "git.baseRef",
-                    "Ensure base ref resolves to a merge base with HEAD, then rerun `bear pr-check`."
+                    "Ensure base ref resolves to a merge base with HEAD, then rerun `bear pr-check`.",
+                    "pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base",
+                    List.of(),
+                    false,
+                    false
                 );
             }
 
+            List<String> stderrLines = new ArrayList<>();
             BearIr base = null;
             GitResult catFileResult = runGitForPrCheck(
                 projectRoot,
@@ -497,25 +776,33 @@ public final class BearCli {
                     repoRelativePath
                 );
                 if (existsResult.exitCode() != 0) {
-                    return failWithLegacy(
-                        err,
+                    return prFailure(
                         ExitCode.IO,
-                        "pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath,
+                        List.of("pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath),
+                        "IO_ERROR",
                         FailureCode.IO_GIT,
                         repoRelativePath,
-                        "Ensure base ref and IR path are readable in git history, then rerun `bear pr-check`."
+                        "Ensure base ref and IR path are readable in git history, then rerun `bear pr-check`.",
+                        "pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath,
+                        List.of(),
+                        false,
+                        false
                     );
                 }
                 if (existsResult.stdout().trim().isEmpty()) {
-                    err.println("pr-check: INFO: BASE_IR_MISSING_AT_MERGE_BASE: " + repoRelativePath + ": treated_as_empty_base");
+                    stderrLines.add("pr-check: INFO: BASE_IR_MISSING_AT_MERGE_BASE: " + repoRelativePath + ": treated_as_empty_base");
                 } else {
-                    return failWithLegacy(
-                        err,
+                    return prFailure(
                         ExitCode.IO,
-                        "pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath,
+                        List.of("pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath),
+                        "IO_ERROR",
                         FailureCode.IO_GIT,
                         repoRelativePath,
-                        "Ensure base ref and IR path are readable in git history, then rerun `bear pr-check`."
+                        "Ensure base ref and IR path are readable in git history, then rerun `bear pr-check`.",
+                        "pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath,
+                        List.of(),
+                        false,
+                        false
                     );
                 }
             } else {
@@ -525,13 +812,17 @@ public final class BearCli {
                     repoRelativePath
                 );
                 if (showResult.exitCode() != 0) {
-                    return failWithLegacy(
-                        err,
+                    return prFailure(
                         ExitCode.IO,
-                        "pr-check: IO_ERROR: BASE_IR_READ_FAILED: " + repoRelativePath,
+                        List.of("pr-check: IO_ERROR: BASE_IR_READ_FAILED: " + repoRelativePath),
+                        "IO_ERROR",
                         FailureCode.IO_GIT,
                         repoRelativePath,
-                        "Ensure base IR snapshot is readable from git history, then rerun `bear pr-check`."
+                        "Ensure base IR snapshot is readable from git history, then rerun `bear pr-check`.",
+                        "pr-check: IO_ERROR: BASE_IR_READ_FAILED: " + repoRelativePath,
+                        List.of(),
+                        false,
+                        false
                     );
                 }
                 tempRoot = Files.createTempDirectory("bear-pr-check-");
@@ -541,75 +832,747 @@ public final class BearCli {
             }
 
             List<PrDelta> deltas = computePrDeltas(base, head);
+            List<String> deltaLines = new ArrayList<>();
             for (PrDelta delta : deltas) {
-                err.println("pr-delta: " + delta.clazz().label + ": " + delta.category().label + ": " + delta.change().label + ": " + delta.key());
+                String line = "pr-delta: " + delta.clazz().label + ": " + delta.category().label + ": " + delta.change().label + ": " + delta.key();
+                deltaLines.add(line);
+                stderrLines.add(line);
             }
 
             boolean hasBoundary = deltas.stream().anyMatch(delta -> delta.clazz() == PrClass.BOUNDARY_EXPANDING);
             if (hasBoundary) {
-                err.println("pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED");
-                return fail(
-                    err,
+                stderrLines.add("pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED");
+                return prFailure(
                     ExitCode.BOUNDARY_EXPANSION,
+                    stderrLines,
+                    "BOUNDARY_EXPANSION",
                     FailureCode.BOUNDARY_EXPANSION,
                     repoRelativePath,
-                    "Review boundary-expanding deltas and route through explicit boundary review."
+                    "Review boundary-expanding deltas and route through explicit boundary review.",
+                    "pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED",
+                    deltaLines,
+                    true,
+                    !deltaLines.isEmpty()
                 );
             }
 
-            out.println("pr-check: OK: NO_BOUNDARY_EXPANSION");
-            return ExitCode.OK;
+            return new PrCheckResult(
+                ExitCode.OK,
+                List.of("pr-check: OK: NO_BOUNDARY_EXPANSION"),
+                stderrLines,
+                null,
+                null,
+                null,
+                null,
+                null,
+                deltaLines,
+                false,
+                !deltaLines.isEmpty()
+            );
         } catch (PrCheckGitException e) {
-            return failWithLegacy(
-                err,
+            return prFailure(
                 ExitCode.IO,
-                e.legacyLine(),
+                List.of(e.legacyLine()),
+                "IO_ERROR",
                 FailureCode.IO_GIT,
                 e.pathLocator(),
-                "Resolve git invocation/base-reference issues and rerun `bear pr-check`."
+                "Resolve git invocation/base-reference issues and rerun `bear pr-check`.",
+                e.legacyLine(),
+                List.of(),
+                false,
+                false
             );
         } catch (BearIrValidationException e) {
-            return failWithLegacy(
-                err,
+            return prFailure(
                 ExitCode.VALIDATION,
-                e.formatLine(),
+                List.of(e.formatLine()),
+                "VALIDATION",
                 FailureCode.IR_VALIDATION,
                 e.path(),
-                "Fix the IR issue at the reported path and rerun `bear pr-check`."
+                "Fix the IR issue at the reported path and rerun `bear pr-check`.",
+                e.formatLine(),
+                List.of(),
+                false,
+                false
             );
         } catch (IOException e) {
-            return failWithLegacy(
-                err,
+            return prFailure(
                 ExitCode.IO,
-                "pr-check: IO_ERROR: INTERNAL_IO: " + squash(e.getMessage()),
+                List.of("pr-check: IO_ERROR: INTERNAL_IO: " + squash(e.getMessage())),
+                "IO_ERROR",
                 FailureCode.IO_ERROR,
                 "internal",
-                "Ensure local filesystem paths are accessible, then rerun `bear pr-check`."
+                "Ensure local filesystem paths are accessible, then rerun `bear pr-check`.",
+                "pr-check: IO_ERROR: INTERNAL_IO: " + squash(e.getMessage()),
+                List.of(),
+                false,
+                false
             );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return failWithLegacy(
-                err,
+            return prFailure(
                 ExitCode.IO,
-                "pr-check: IO_ERROR: INTERRUPTED",
+                List.of("pr-check: IO_ERROR: INTERRUPTED"),
+                "IO_ERROR",
                 FailureCode.IO_GIT,
                 "git.repo",
-                "Retry `bear pr-check`; if interruption persists, rerun in a stable shell/CI environment."
+                "Retry `bear pr-check`; if interruption persists, rerun in a stable shell/CI environment.",
+                "pr-check: IO_ERROR: INTERRUPTED",
+                List.of(),
+                false,
+                false
             );
         } catch (Exception e) {
-            return failWithLegacy(
-                err,
+            return prFailure(
                 ExitCode.INTERNAL,
-                "internal: INTERNAL_ERROR:",
+                List.of("internal: INTERNAL_ERROR:"),
+                "INTERNAL_ERROR",
                 FailureCode.INTERNAL_ERROR,
                 "internal",
-                "Capture stderr and file an issue against bear-cli."
+                "Capture stderr and file an issue against bear-cli.",
+                "internal: INTERNAL_ERROR:",
+                List.of(),
+                false,
+                false
             );
         } finally {
             if (tempRoot != null) {
                 deleteRecursivelyBestEffort(tempRoot);
             }
         }
+    }
+
+    private static CheckResult checkFailure(
+        int exitCode,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail
+    ) {
+        return new CheckResult(
+            exitCode,
+            List.of(),
+            List.copyOf(stderrLines),
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail
+        );
+    }
+
+    private static PrCheckResult prFailure(
+        int exitCode,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail,
+        List<String> deltaLines,
+        boolean hasBoundary,
+        boolean hasDeltas
+    ) {
+        return new PrCheckResult(
+            exitCode,
+            List.of(),
+            List.copyOf(stderrLines),
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail,
+            List.copyOf(deltaLines),
+            hasBoundary,
+            hasDeltas
+        );
+    }
+
+    private static List<String> tailLines(String output) {
+        List<String> lines = normalizeLf(output).lines().toList();
+        int start = Math.max(0, lines.size() - 40);
+        return new ArrayList<>(lines.subList(start, lines.size()));
+    }
+
+    private static void printLines(PrintStream stream, List<String> lines) {
+        for (String line : lines) {
+            stream.println(line);
+        }
+    }
+
+    private static AllCheckOptions parseAllCheckOptions(String[] args, PrintStream err) {
+        Path repoRoot = null;
+        String blocksArg = null;
+        String onlyArg = null;
+        boolean failFast = false;
+        boolean strictOrphans = false;
+        for (int i = 2; i < args.length; i++) {
+            String token = args[i];
+            switch (token) {
+                case "--project" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --project",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Run `bear check --all --project <repoRoot>` with required arguments."
+                        );
+                        return null;
+                    }
+                    repoRoot = Path.of(args[++i]).toAbsolutePath().normalize();
+                }
+                case "--blocks" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --blocks",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass a repo-relative path after `--blocks`."
+                        );
+                        return null;
+                    }
+                    blocksArg = args[++i];
+                }
+                case "--only" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --only",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass comma-separated block names after `--only`."
+                        );
+                        return null;
+                    }
+                    onlyArg = args[++i];
+                }
+                case "--fail-fast" -> failFast = true;
+                case "--strict-orphans" -> strictOrphans = true;
+                default -> {
+                    failWithLegacy(
+                        err,
+                        ExitCode.USAGE,
+                        "usage: INVALID_ARGS: unexpected argument: " + token,
+                        FailureCode.USAGE_INVALID_ARGS,
+                        "cli.args",
+                        "Run `bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`."
+                    );
+                    return null;
+                }
+            }
+        }
+        if (repoRoot == null) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: expected: bear check --all --project <repoRoot>",
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Run `bear check --all --project <repoRoot>` with required arguments."
+            );
+            return null;
+        }
+        Path blocksPath;
+        try {
+            blocksPath = resolveBlocksPath(repoRoot, blocksArg);
+        } catch (IllegalArgumentException e) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass a repo-relative path for `--blocks`."
+            );
+            return null;
+        }
+        Set<String> onlyNames;
+        try {
+            onlyNames = parseOnlyNames(onlyArg);
+        } catch (IllegalArgumentException e) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass comma-separated block names for `--only`."
+            );
+            return null;
+        }
+        return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans);
+    }
+
+    private static AllPrCheckOptions parseAllPrCheckOptions(String[] args, PrintStream err) {
+        Path repoRoot = null;
+        String blocksArg = null;
+        String onlyArg = null;
+        String baseRef = null;
+        boolean strictOrphans = false;
+        for (int i = 2; i < args.length; i++) {
+            String token = args[i];
+            switch (token) {
+                case "--project" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --project",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Run `bear pr-check --all --project <repoRoot> --base <ref>` with required arguments."
+                        );
+                        return null;
+                    }
+                    repoRoot = Path.of(args[++i]).toAbsolutePath().normalize();
+                }
+                case "--blocks" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --blocks",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass a repo-relative path after `--blocks`."
+                        );
+                        return null;
+                    }
+                    blocksArg = args[++i];
+                }
+                case "--only" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --only",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass comma-separated block names after `--only`."
+                        );
+                        return null;
+                    }
+                    onlyArg = args[++i];
+                }
+                case "--base" -> {
+                    if (i + 1 >= args.length) {
+                        failWithLegacy(
+                            err,
+                            ExitCode.USAGE,
+                            "usage: INVALID_ARGS: expected value after --base",
+                            FailureCode.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass a base ref after `--base`."
+                        );
+                        return null;
+                    }
+                    baseRef = args[++i];
+                }
+                case "--strict-orphans" -> strictOrphans = true;
+                default -> {
+                    failWithLegacy(
+                        err,
+                        ExitCode.USAGE,
+                        "usage: INVALID_ARGS: unexpected argument: " + token,
+                        FailureCode.USAGE_INVALID_ARGS,
+                        "cli.args",
+                        "Run `bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]`."
+                    );
+                    return null;
+                }
+            }
+        }
+        if (repoRoot == null || baseRef == null || baseRef.isBlank()) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: expected: bear pr-check --all --project <repoRoot> --base <ref>",
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Run `bear pr-check --all --project <repoRoot> --base <ref>` with required arguments."
+            );
+            return null;
+        }
+        Path blocksPath;
+        try {
+            blocksPath = resolveBlocksPath(repoRoot, blocksArg);
+        } catch (IllegalArgumentException e) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass a repo-relative path for `--blocks`."
+            );
+            return null;
+        }
+        Set<String> onlyNames;
+        try {
+            onlyNames = parseOnlyNames(onlyArg);
+        } catch (IllegalArgumentException e) {
+            failWithLegacy(
+                err,
+                ExitCode.USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                FailureCode.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass comma-separated block names for `--only`."
+            );
+            return null;
+        }
+        return new AllPrCheckOptions(repoRoot, blocksPath, onlyNames, strictOrphans, baseRef);
+    }
+
+    private static Path resolveBlocksPath(Path repoRoot, String blocksArg) {
+        if (blocksArg == null) {
+            return repoRoot.resolve("bear.blocks.yaml").normalize();
+        }
+        Path relative = Path.of(blocksArg).normalize();
+        if (relative.isAbsolute() || relative.toString().isBlank() || relative.startsWith("..")) {
+            throw new IllegalArgumentException("blocks path must be repo-relative");
+        }
+        Path resolved = repoRoot.resolve(relative).normalize();
+        if (!resolved.startsWith(repoRoot)) {
+            throw new IllegalArgumentException("blocks path must be repo-relative");
+        }
+        return resolved;
+    }
+
+    private static Set<String> parseOnlyNames(String onlyArg) {
+        if (onlyArg == null) {
+            return Set.of();
+        }
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        for (String raw : onlyArg.split(",")) {
+            String name = raw.trim();
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
+        }
+        if (names.isEmpty()) {
+            throw new IllegalArgumentException("--only requires at least one block name");
+        }
+        return names;
+    }
+
+    private static List<BlockIndexEntry> selectBlocks(BlockIndex index, Set<String> onlyNames) {
+        List<BlockIndexEntry> sorted = new ArrayList<>(index.blocks());
+        sorted.sort(Comparator.comparing(BlockIndexEntry::name));
+        if (onlyNames == null || onlyNames.isEmpty()) {
+            return sorted;
+        }
+        Set<String> known = new HashSet<>();
+        for (BlockIndexEntry entry : sorted) {
+            known.add(entry.name());
+        }
+        for (String name : onlyNames) {
+            if (!known.contains(name)) {
+                return null;
+            }
+        }
+        List<BlockIndexEntry> selected = new ArrayList<>();
+        for (BlockIndexEntry entry : sorted) {
+            if (onlyNames.contains(entry.name())) {
+                selected.add(entry);
+            }
+        }
+        return selected;
+    }
+
+    private static List<String> computeOrphanMarkers(Path repoRoot, BlockIndex index) throws IOException {
+        Set<String> expected = new HashSet<>();
+        for (BlockIndexEntry entry : index.blocks()) {
+            if (!entry.enabled()) {
+                continue;
+            }
+            expected.add(Path.of(entry.projectRoot())
+                .resolve("build")
+                .resolve("generated")
+                .resolve("bear")
+                .resolve("bear.surface.json")
+                .normalize()
+                .toString()
+                .replace('\\', '/'));
+        }
+
+        List<String> found = new ArrayList<>();
+        try (var stream = Files.walk(repoRoot)) {
+            stream.filter(Files::isRegularFile).forEach(path -> {
+                String rel = repoRoot.relativize(path).toString().replace('\\', '/');
+                if (rel.endsWith("build/generated/bear/bear.surface.json")) {
+                    found.add(rel);
+                }
+            });
+        }
+        found.sort(String::compareTo);
+        List<String> orphan = new ArrayList<>();
+        for (String marker : found) {
+            if (!expected.contains(marker)) {
+                orphan.add(marker);
+            }
+        }
+        return orphan;
+    }
+
+    private static BlockExecutionResult skipBlock(BlockIndexEntry block, String reason) {
+        return new BlockExecutionResult(
+            block.name(),
+            block.ir(),
+            block.projectRoot(),
+            BlockStatus.SKIP,
+            ExitCode.OK,
+            null,
+            null,
+            null,
+            null,
+            null,
+            reason,
+            null,
+            List.of()
+        );
+    }
+
+    private static BlockExecutionResult toCheckBlockResult(BlockIndexEntry block, CheckResult result) {
+        if (result.exitCode() == ExitCode.OK) {
+            return new BlockExecutionResult(
+                block.name(),
+                block.ir(),
+                block.projectRoot(),
+                BlockStatus.PASS,
+                ExitCode.OK,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of()
+            );
+        }
+        return new BlockExecutionResult(
+            block.name(),
+            block.ir(),
+            block.projectRoot(),
+            BlockStatus.FAIL,
+            result.exitCode(),
+            result.category(),
+            result.failureCode(),
+            normalizeLocator(result.failurePath()),
+            squash(result.detail()),
+            result.failureRemediation(),
+            null,
+            null,
+            List.of()
+        );
+    }
+
+    private static BlockExecutionResult toPrBlockResult(BlockIndexEntry block, PrCheckResult result) {
+        if (result.exitCode() == ExitCode.OK) {
+            String classification = result.hasDeltas() ? "ORDINARY" : "NO_CHANGES";
+            return new BlockExecutionResult(
+                block.name(),
+                block.ir(),
+                block.projectRoot(),
+                BlockStatus.PASS,
+                ExitCode.OK,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                classification,
+                result.deltaLines()
+            );
+        }
+        String classification = result.exitCode() == ExitCode.BOUNDARY_EXPANSION ? "BOUNDARY_EXPANDING" : null;
+        return new BlockExecutionResult(
+            block.name(),
+            block.ir(),
+            block.projectRoot(),
+            BlockStatus.FAIL,
+            result.exitCode(),
+            result.category(),
+            result.failureCode(),
+            normalizeLocator(result.failurePath()),
+            squash(result.detail()),
+            result.failureRemediation(),
+            null,
+            classification,
+            result.deltaLines()
+        );
+    }
+
+    private static RepoAggregationResult aggregateCheckResults(List<BlockExecutionResult> results, boolean failFastTriggered) {
+        int passed = 0;
+        int failed = 0;
+        int skipped = 0;
+        int exitCode = ExitCode.OK;
+        int rank = severityRankCheck(exitCode);
+        for (BlockExecutionResult result : results) {
+            if (result.status() == BlockStatus.PASS) {
+                passed++;
+            } else if (result.status() == BlockStatus.FAIL) {
+                failed++;
+                int candidateRank = severityRankCheck(result.exitCode());
+                if (candidateRank < rank) {
+                    rank = candidateRank;
+                    exitCode = result.exitCode();
+                }
+            } else {
+                skipped++;
+            }
+        }
+        return new RepoAggregationResult(
+            exitCode,
+            results.size(),
+            passed + failed,
+            passed,
+            failed,
+            skipped,
+            failFastTriggered
+        );
+    }
+
+    private static RepoAggregationResult aggregatePrResults(List<BlockExecutionResult> results) {
+        int passed = 0;
+        int failed = 0;
+        int skipped = 0;
+        int exitCode = ExitCode.OK;
+        int rank = severityRankPr(exitCode);
+        for (BlockExecutionResult result : results) {
+            if (result.status() == BlockStatus.PASS) {
+                passed++;
+            } else if (result.status() == BlockStatus.FAIL) {
+                failed++;
+                int candidateRank = severityRankPr(result.exitCode());
+                if (candidateRank < rank) {
+                    rank = candidateRank;
+                    exitCode = result.exitCode();
+                }
+            } else {
+                skipped++;
+            }
+        }
+        return new RepoAggregationResult(
+            exitCode,
+            results.size(),
+            passed + failed,
+            passed,
+            failed,
+            skipped,
+            false
+        );
+    }
+
+    private static int severityRankCheck(int code) {
+        return switch (code) {
+            case 70 -> 1;
+            case 74 -> 2;
+            case 64 -> 3;
+            case 2 -> 4;
+            case 3 -> 5;
+            case 6 -> 6;
+            case 4 -> 7;
+            case 0 -> 8;
+            default -> 1;
+        };
+    }
+
+    private static int severityRankPr(int code) {
+        return switch (code) {
+            case 70 -> 1;
+            case 74 -> 2;
+            case 64 -> 3;
+            case 2 -> 4;
+            case 5 -> 5;
+            case 0 -> 6;
+            default -> 1;
+        };
+    }
+
+    private static List<String> renderCheckAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
+        List<String> lines = new ArrayList<>();
+        for (BlockExecutionResult result : results) {
+            lines.add("BLOCK: " + result.name());
+            lines.add("IR: " + result.ir());
+            lines.add("PROJECT: " + result.project());
+            lines.add("STATUS: " + result.status());
+            lines.add("EXIT_CODE: " + result.exitCode());
+            if (result.status() == BlockStatus.FAIL) {
+                lines.add("CATEGORY: " + result.category());
+                lines.add("BLOCK_CODE: " + result.blockCode());
+                lines.add("BLOCK_PATH: " + result.blockPath());
+                lines.add("DETAIL: " + result.detail());
+                lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
+            } else if (result.status() == BlockStatus.SKIP) {
+                lines.add("REASON: " + result.reason());
+            }
+            lines.add("");
+        }
+        lines.add("SUMMARY:");
+        lines.add(summary.total() + " blocks total");
+        lines.add(summary.checked() + " checked");
+        lines.add(summary.passed() + " passed");
+        lines.add(summary.failed() + " failed");
+        lines.add(summary.skipped() + " skipped");
+        lines.add("FAIL_FAST_TRIGGERED: " + summary.failFastTriggered());
+        lines.add("EXIT_CODE: " + summary.exitCode());
+        return lines;
+    }
+
+    private static List<String> renderPrAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
+        List<String> lines = new ArrayList<>();
+        int boundaryCount = 0;
+        for (BlockExecutionResult result : results) {
+            lines.add("BLOCK: " + result.name());
+            lines.add("IR: " + result.ir());
+            lines.add("PROJECT: " + result.project());
+            lines.add("STATUS: " + result.status());
+            lines.add("EXIT_CODE: " + result.exitCode());
+            if (result.classification() != null) {
+                lines.add("CLASSIFICATION: " + result.classification());
+                if ("BOUNDARY_EXPANDING".equals(result.classification())) {
+                    boundaryCount++;
+                }
+            }
+            if (!result.deltaLines().isEmpty()) {
+                lines.add("DELTA:");
+                for (String deltaLine : result.deltaLines()) {
+                    lines.add("  " + deltaLine);
+                }
+            } else {
+                lines.add("DELTA: (no changes)");
+            }
+            if (result.status() == BlockStatus.FAIL && result.blockCode() != null) {
+                lines.add("CATEGORY: " + result.category());
+                lines.add("BLOCK_CODE: " + result.blockCode());
+                lines.add("BLOCK_PATH: " + result.blockPath());
+                lines.add("DETAIL: " + result.detail());
+                lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
+            } else if (result.status() == BlockStatus.SKIP) {
+                lines.add("REASON: " + result.reason());
+            }
+            lines.add("");
+        }
+        lines.add("SUMMARY:");
+        lines.add(summary.total() + " blocks total");
+        lines.add(summary.checked() + " checked");
+        lines.add(summary.passed() + " passed");
+        lines.add(summary.failed() + " failed");
+        lines.add(summary.skipped() + " skipped");
+        lines.add("BOUNDARY_EXPANDING: " + boundaryCount);
+        lines.add("EXIT_CODE: " + summary.exitCode());
+        return lines;
     }
 
     private static List<DriftItem> computeDrift(Path baselineRoot, Path candidateRoot) throws IOException {
@@ -1205,7 +2168,9 @@ public final class BearCli {
         out.println("Usage: bear validate <file>");
         out.println("       bear compile <ir-file> --project <path>");
         out.println("       bear check <ir-file> --project <path>");
+        out.println("       bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
         out.println("       bear pr-check <ir-file> --project <path> --base <ref>");
+        out.println("       bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]");
         out.println("       bear --help");
     }
 
@@ -1285,6 +2250,7 @@ public final class BearCli {
         private static final String TEST_TIMEOUT = "TEST_TIMEOUT";
         private static final String BOUNDARY_EXPANSION = "BOUNDARY_EXPANSION";
         private static final String UNDECLARED_REACH = "UNDECLARED_REACH";
+        private static final String REPO_MULTI_BLOCK_FAILED = "REPO_MULTI_BLOCK_FAILED";
         private static final String INTERNAL_ERROR = "INTERNAL_ERROR";
     }
 
@@ -1307,6 +2273,24 @@ public final class BearCli {
         ),
         new UndeclaredReachSurface("java.net.HttpURLConnection", Pattern.compile("\\bjava\\.net\\.HttpURLConnection\\b"))
     );
+
+    private record AllCheckOptions(
+        Path repoRoot,
+        Path blocksPath,
+        Set<String> onlyNames,
+        boolean failFast,
+        boolean strictOrphans
+    ) {
+    }
+
+    private record AllPrCheckOptions(
+        Path repoRoot,
+        Path blocksPath,
+        Set<String> onlyNames,
+        boolean strictOrphans,
+        String baseRef
+    ) {
+    }
 
     private enum DriftType {
         ADDED("ADDED", 0),
