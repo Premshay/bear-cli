@@ -1,4 +1,4 @@
-# BEAR Agent Package (Portable v0.1)
+# BEAR Agent Package (Portable v0.2)
 
 `doc/bear-package/` is the source of truth for BEAR-distributed agent package files copied into adopter repos.
 
@@ -30,15 +30,32 @@ Containment note (v1 preview):
 - evaluation answer keys
 - decomposition hints tied to one app/domain
 
+## Package Layout (Single Folder)
+
+Canonical layout in adopter repos:
+
+```
+<repoRoot>/.bear/agent/
+  BEAR_AGENT.md
+  WORKFLOW.md
+  doc/BEAR_PRIMER.md
+  doc/IR_QUICKREF.md
+  doc/IR_EXAMPLES.md
+  doc/BLOCK_INDEX_QUICKREF.md
+```
+
+Bootstrap entrypoint at repo root:
+- `AGENTS.md` (project-owned or template) points to `.bear/agent/BEAR_AGENT.md`
+
 ## Distributed File Set
 
 Required package files:
-- `BEAR_AGENT.md`
-- `WORKFLOW.md`
-- `doc/BEAR_PRIMER.md`
-- `doc/IR_QUICKREF.md`
-- `doc/IR_EXAMPLES.md`
-- `doc/BLOCK_INDEX_QUICKREF.md`
+- `.bear/agent/BEAR_AGENT.md`
+- `.bear/agent/WORKFLOW.md`
+- `.bear/agent/doc/BEAR_PRIMER.md`
+- `.bear/agent/doc/IR_QUICKREF.md`
+- `.bear/agent/doc/IR_EXAMPLES.md`
+- `.bear/agent/doc/BLOCK_INDEX_QUICKREF.md`
 - `AGENTS_SHIM.md`
 
 Optional package file:
@@ -62,5 +79,5 @@ Many projects already own a root `AGENTS.md`.
 When `AGENTS.md` already exists:
 1. Do not replace project-owned `AGENTS.md`.
 2. Append the one-line pointer from `AGENTS_SHIM.md`.
-3. Add BEAR package files (`BEAR_AGENT.md`, `WORKFLOW.md`, and `doc/*` package docs).
+3. Add BEAR package files under `.bear/agent/*`.
 

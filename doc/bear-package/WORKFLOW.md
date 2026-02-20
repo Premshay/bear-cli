@@ -5,10 +5,10 @@ Purpose:
 
 ## Read In This Order
 
-1. `doc/BEAR_PRIMER.md`
-2. `doc/IR_QUICKREF.md`
-3. `doc/IR_EXAMPLES.md`
-4. `doc/BLOCK_INDEX_QUICKREF.md`
+1. `.bear/agent/doc/BEAR_PRIMER.md`
+2. `.bear/agent/doc/IR_QUICKREF.md`
+3. `.bear/agent/doc/IR_EXAMPLES.md`
+4. `.bear/agent/doc/BLOCK_INDEX_QUICKREF.md`
 5. the feature request
 
 ## Canonical Flows
