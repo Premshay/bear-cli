@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.Files;
@@ -122,7 +123,7 @@ class BearCliTest {
     void validateSchemaErrorPrintsDeterministicPrefix(@TempDir Path tempDir) throws Exception {
         Path invalid = tempDir.resolve("invalid.bear.yaml");
         Files.writeString(invalid, ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -255,7 +256,7 @@ class BearCliTest {
     void fixInvalidIrReturnsValidationExitCode(@TempDir Path tempDir) throws Exception {
         Path invalid = tempDir.resolve("invalid.bear.yaml");
         Files.writeString(invalid, ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -344,7 +345,7 @@ class BearCliTest {
     void checkInvalidIrReturnsValidationExitCode(@TempDir Path tempDir) throws Exception {
         Path invalid = tempDir.resolve("invalid.bear.yaml");
         Files.writeString(invalid, ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -686,6 +687,103 @@ class BearCliTest {
     }
 
     @Test
+    void checkPureDepsWithoutWrapperFailsUnsupportedTarget(@TempDir Path tempDir) throws Exception {
+        Path ir = tempDir.resolve("withdraw-puredeps.bear.yaml");
+        Files.writeString(ir, fixtureIrWithPureDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
+
+        CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(0, compile.exitCode);
+
+        CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(74, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: CONTAINMENT_REQUIRED: UNSUPPORTED_TARGET: missing Gradle wrapper"));
+        assertFailureEnvelope(
+            check.stderr,
+            "CONTAINMENT_UNSUPPORTED_TARGET",
+            "project.root",
+            "Pure dependency containment in P2 requires Java+Gradle with wrapper at project root; remove `impl.pureDeps` or use supported target, then rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkPureDepsMissingMarkerFailsDeterministically(@TempDir Path tempDir) throws Exception {
+        Path ir = tempDir.resolve("withdraw-puredeps.bear.yaml");
+        Files.writeString(ir, fixtureIrWithPureDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
+
+        CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(0, compile.exitCode);
+
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(74, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: CONTAINMENT_REQUIRED: MARKER_MISSING: build/bear/containment/applied.marker"));
+        assertFailureEnvelope(
+            check.stderr,
+            "CONTAINMENT_NOT_VERIFIED",
+            "build/bear/containment/applied.marker",
+            "Run Gradle build once so BEAR containment compile tasks write markers, then rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkPureDepsStaleMarkerFailsDeterministically(@TempDir Path tempDir) throws Exception {
+        Path ir = tempDir.resolve("withdraw-puredeps.bear.yaml");
+        Files.writeString(ir, fixtureIrWithPureDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
+
+        CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(0, compile.exitCode);
+
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Path marker = tempDir.resolve("build/bear/containment/applied.marker");
+        Files.createDirectories(marker.getParent());
+        Files.writeString(marker, "hash=deadbeef\nblocks=withdraw\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(74, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: CONTAINMENT_REQUIRED: MARKER_STALE: build/bear/containment/applied.marker"));
+        assertFailureEnvelope(
+            check.stderr,
+            "CONTAINMENT_NOT_VERIFIED",
+            "build/bear/containment/applied.marker",
+            "Run Gradle build once after BEAR compile so containment markers refresh, then rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkPureDepsWithFreshMarkerPasses(@TempDir Path tempDir) throws Exception {
+        Path ir = tempDir.resolve("withdraw-puredeps.bear.yaml");
+        Files.writeString(ir, fixtureIrWithPureDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
+
+        CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(0, compile.exitCode);
+
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path required = tempDir.resolve("build/generated/bear/config/containment-required.json");
+        String hash = bytesToHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(required)));
+        Path marker = tempDir.resolve("build/bear/containment/applied.marker");
+        Files.createDirectories(marker.getParent());
+        Files.writeString(marker, "hash=" + hash + "\nblocks=withdraw\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+        assertTrue(check.stdout.startsWith("check: OK"));
+    }
+
+    @Test
     void checkRunsProjectTestsAndPasses(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
@@ -859,18 +957,18 @@ class BearCliTest {
             "#!/usr/bin/env sh\necho ran > \"" + markerPath.replace("\\", "\\\\") + "\"\nexit 0\n"
         );
 
-        Path impl = tempDir.resolve("src/main/java/com/bear/generated/withdraw/WithdrawImpl.java");
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
         Files.writeString(impl, "\n// violation\njava.net.http.HttpClient\n", StandardOpenOption.APPEND);
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(6, check.exitCode);
         String stderr = normalizeLf(check.stderr);
-        assertTrue(stderr.contains("check: UNDECLARED_REACH: src/main/java/com/bear/generated/withdraw/WithdrawImpl.java: java.net.http.HttpClient"));
+        assertTrue(stderr.contains("check: UNDECLARED_REACH: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: java.net.http.HttpClient"));
         assertFalse(Files.exists(marker));
         assertFailureEnvelope(
             check.stderr,
             "UNDECLARED_REACH",
-            "src/main/java/com/bear/generated/withdraw/WithdrawImpl.java",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
             "Declare a port/op in IR, run bear compile, and route call through generated port interface."
         );
     }
@@ -963,7 +1061,7 @@ class BearCliTest {
             "drift",
             StandardOpenOption.APPEND
         );
-        Path impl = tempDir.resolve("src/main/java/com/bear/generated/withdraw/WithdrawImpl.java");
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
         Files.writeString(impl, "\njava.net.http.HttpClient\n", StandardOpenOption.APPEND);
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
@@ -1191,7 +1289,7 @@ class BearCliTest {
     void fixAllFailFastMarksRemainingAsSkip(@TempDir Path tempDir) throws Exception {
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
-        Files.writeString(alphaIr, "version: v0\nblock:\n  name: alpha\n");
+        Files.writeString(alphaIr, "version: v1\nblock:\n  name: alpha\n");
 
         CliRunResult run = runCli(new String[] {
             "fix", "--all", "--project", fixture.repoRoot().toString(), "--fail-fast"
@@ -1228,7 +1326,7 @@ class BearCliTest {
     void fixAllAggregatedFailureUsesRepoFooter(@TempDir Path tempDir) throws Exception {
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
-        Files.writeString(alphaIr, "version: v0\nblock:\n  name: alpha\n");
+        Files.writeString(alphaIr, "version: v1\nblock:\n  name: alpha\n");
 
         CliRunResult run = runCli(new String[] { "fix", "--all", "--project", fixture.repoRoot().toString() });
         assertEquals(2, run.exitCode);
@@ -1882,11 +1980,64 @@ class BearCliTest {
     }
 
     private static String fixtureIrContent() throws Exception {
-        return Files.readString(TestRepoPaths.repoRoot().resolve("spec/fixtures/withdraw.bear.yaml"), StandardCharsets.UTF_8);
+        return normalizeLf(Files.readString(TestRepoPaths.repoRoot().resolve("spec/fixtures/withdraw.bear.yaml"), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void prCheckPureDepDeltaClassification(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        String base = fixtureIrContent();
+        Files.createDirectories(ir.getParent());
+        Files.writeString(ir, base, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "base ir");
+
+        String head = fixtureIrWithPureDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2");
+        Files.writeString(ir, head, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "add pure dep");
+
+        CliRunResult added = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(5, added.exitCode);
+        assertTrue(normalizeLf(added.stderr).contains(
+            "pr-delta: BOUNDARY_EXPANDING: PURE_DEPS: ADDED: com.fasterxml.jackson.core:jackson-databind@2.17.2"
+        ));
+
+        String changed = fixtureIrWithPureDep("com.fasterxml.jackson.core:jackson-databind", "2.18.0");
+        Files.writeString(ir, changed, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "change pure dep version");
+
+        CliRunResult versionChanged = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(5, versionChanged.exitCode);
+        assertTrue(normalizeLf(versionChanged.stderr).contains(
+            "pr-delta: BOUNDARY_EXPANDING: PURE_DEPS: CHANGED: com.fasterxml.jackson.core:jackson-databind@2.17.2->2.18.0"
+        ));
+
+        Files.writeString(ir, base, StandardCharsets.UTF_8);
+        gitCommitAll(repo, "remove pure dep");
+
+        CliRunResult removed = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(0, removed.exitCode);
+        assertTrue(normalizeLf(removed.stderr).contains(
+            "pr-delta: ORDINARY: PURE_DEPS: REMOVED: com.fasterxml.jackson.core:jackson-databind@2.18.0"
+        ));
     }
 
     private static String fixtureIrForBlockName(String blockName) throws Exception {
         return fixtureIrContent().replaceFirst("(?im)^\\s*name:\\s*withdraw\\s*$", "  name: " + blockName);
+    }
+
+    private static String fixtureIrWithPureDep(String maven, String version) throws Exception {
+        return fixtureIrContent()
+            + "  impl:\n"
+            + "    pureDeps:\n"
+            + "      - maven: " + maven + "\n"
+            + "        version: " + version + "\n";
     }
 
     private static void writeFixtureIr(Path path) throws Exception {
@@ -1937,3 +2088,4 @@ class BearCliTest {
     private record MultiBlockFixture(Path repoRoot, List<Path> projectRoots) {
     }
 }
+

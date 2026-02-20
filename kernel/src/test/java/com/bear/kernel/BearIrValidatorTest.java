@@ -37,7 +37,7 @@ class BearIrValidatorTest {
     @Test
     void rejectUnknownRootKey(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "extra: true\n"
             + "block:\n"
             + "  name: A\n"
@@ -56,7 +56,7 @@ class BearIrValidatorTest {
     @Test
     void rejectInvalidVersion(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v1\n"
+            + "version: v0\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -74,7 +74,7 @@ class BearIrValidatorTest {
     @Test
     void rejectInvalidBlockKind(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: capability\n"
@@ -92,7 +92,7 @@ class BearIrValidatorTest {
     @Test
     void rejectUnknownKeyInFieldObject(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -113,7 +113,7 @@ class BearIrValidatorTest {
     @Test
     void rejectInvalidFieldTypeEnum(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -130,7 +130,7 @@ class BearIrValidatorTest {
 
     @Test
     void rejectInvalidRootType(@TempDir Path tempDir) throws IOException {
-        String yaml = "- version: v0\n";
+        String yaml = "- version: v1\n";
 
         BearIrValidationException ex = assertSchemaError(tempDir, yaml);
         assertEquals(BearIrValidationException.Code.INVALID_TYPE, ex.code());
@@ -149,7 +149,7 @@ class BearIrValidatorTest {
     @Test
     void rejectMultiDocumentYaml(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -159,7 +159,7 @@ class BearIrValidatorTest {
             + "  effects:\n"
             + "    allow: []\n"
             + "---\n"
-            + "version: v0\n";
+            + "version: v1\n";
         Path file = tempDir.resolve("multi.yaml");
         Files.writeString(file, yaml);
 
@@ -173,7 +173,7 @@ class BearIrValidatorTest {
     @Test
     void rejectEmptyInputs(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -191,7 +191,7 @@ class BearIrValidatorTest {
     @Test
     void rejectEmptyOutputs(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -209,7 +209,7 @@ class BearIrValidatorTest {
     @Test
     void rejectDuplicateInputNames(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -231,7 +231,7 @@ class BearIrValidatorTest {
     @Test
     void rejectDuplicateOutputNames(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -253,7 +253,7 @@ class BearIrValidatorTest {
     @Test
     void rejectDuplicatePorts(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -275,7 +275,7 @@ class BearIrValidatorTest {
     @Test
     void rejectDuplicateOps(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -295,7 +295,7 @@ class BearIrValidatorTest {
     @Test
     void rejectUnknownIdempotencyKeyReference(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -321,7 +321,7 @@ class BearIrValidatorTest {
     @Test
     void rejectUnknownIdempotencyPortReference(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -347,7 +347,7 @@ class BearIrValidatorTest {
     @Test
     void rejectUnknownIdempotencyOpReference(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -373,7 +373,7 @@ class BearIrValidatorTest {
     @Test
     void rejectUnknownInvariantFieldReference(@TempDir Path tempDir) throws IOException {
         String yaml = ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: A\n"
             + "  kind: logic\n"
@@ -438,3 +438,4 @@ class BearIrValidatorTest {
         return ex;
     }
 }
+

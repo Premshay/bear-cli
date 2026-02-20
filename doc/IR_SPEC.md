@@ -1,18 +1,18 @@
-# BEAR IR v0 Spec (Canonical)
+# BEAR IR v1 Spec (Canonical)
 
 ## Purpose
 BEAR IR is a rigid, machine-checkable representation for one logic block.
 It is intentionally limited and must remain deterministic to validate, normalize, and compile.
 
 ## Scope Lock
-v0 supports:
+v1 supports:
 - one `logic` block per IR file
 - structured effect ports
 - contract inputs/outputs
 - idempotency by key with explicit store ops
 - invariant template `non_negative(field=<outputField>)`
 
-v0 does not support:
+v1 does not support:
 - capability blocks in IR
 - block graphs or block-to-block composition
 - behavior DSL
@@ -22,7 +22,7 @@ v0 does not support:
 
 ## Model
 Root object:
-- `version` (string, required, only `v0`)
+- `version` (string, required, only `v1`)
 - `block` (object, required)
 
 `block` fields:
@@ -32,6 +32,7 @@ Root object:
 - `effects` (object, required)
 - `idempotency` (object, optional)
 - `invariants` (array, optional)
+- `impl` (object, optional)
 
 `contract` fields:
 - `inputs` (array of fields, required)
@@ -39,7 +40,7 @@ Root object:
 
 Field shape:
 - `name` (string, required)
-- `type` (enum, required, allowed values in v0: `string`, `decimal`, `int`, `bool`, `enum`)
+- `type` (enum, required, allowed values in v1: `string`, `decimal`, `int`, `bool`, `enum`)
 
 `effects` fields:
 - `allow` (array of effect ports, required; may be empty)
@@ -61,6 +62,13 @@ Invariant shape:
 - `kind` (enum, required, only `non_negative`)
 - `field` (string, required, must reference an output field name)
 
+`impl` fields:
+- `pureDeps` (array, optional; may be empty)
+
+`impl.pureDeps` entry shape:
+- `maven` (string, required, exact `groupId:artifactId`)
+- `version` (string, required, pinned exact version)
+
 ## Validation Rules (Strict)
 - fail on unknown keys at any level
 - fail on invalid enum values
@@ -75,22 +83,27 @@ Invariant shape:
 - `idempotency.store.port` must reference a declared port
 - `idempotency.store.getOp` and `idempotency.store.putOp` must reference declared ops under that port
 - invariant `field` must reference an output field
+- `impl.pureDeps[*].maven` must be explicit `groupId:artifactId` (no wildcards)
+- `impl.pureDeps[*].version` must be pinned (no ranges/wildcards)
+- duplicate `groupId:artifactId` entries in `impl.pureDeps` are invalid
 
 ## Deterministic Normalization
 Canonical form must:
 - emit root keys in order: `version`, `block`
 - emit `block` keys in order: `name`, `kind`, `contract`, `effects`, `idempotency`, `invariants` (omit absent optionals)
+- emit `block` keys in order: `name`, `kind`, `contract`, `effects`, `idempotency`, `invariants`, `impl` (omit absent optionals)
 - sort inputs by `name`
 - sort outputs by `name`
 - sort ports by `port`
 - sort ops within each port
 - sort invariants deterministically by `kind` then `field`
+- sort `impl.pureDeps` deterministically by `maven`
 - omit `invariants` if it is absent or empty (`[]`)
 
-## Canonical Demo IR (v0)
+## Canonical Demo IR (v1)
 See `spec/fixtures/withdraw.bear.yaml`.
 ```yaml
-version: v0
+version: v1
 block:
   name: Withdraw
   kind: logic
@@ -134,7 +147,8 @@ block:
 
 ## Notes
 - This spec is structural, not behavioral.
-- v0 idempotency guarantees deterministic replay behavior in the test harness, not concurrency correctness.
+- v1 idempotency guarantees deterministic replay behavior in the test harness, not concurrency correctness.
 - In generated JVM artifacts, idempotency replay metadata key `hit` is compiler-generated protocol state, not an IR field.
-- Current v0 replay-hit behavior is: return the stored result payload (no exception-on-replay policy).
-- Do not expand IR expressiveness in v0.
+- Current v1 replay-hit behavior is: return the stored result payload (no exception-on-replay policy).
+- `impl.pureDeps` is governance + containment policy surface; add/version-change is boundary-expanding in `pr-check`.
+- Do not expand IR expressiveness beyond the active milestone contract.

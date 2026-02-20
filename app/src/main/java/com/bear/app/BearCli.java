@@ -17,6 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -1036,6 +1038,11 @@ public final class BearCli {
                     "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
                     diagnostics.get(diagnostics.size() - 1)
                 );
+            }
+
+            CheckResult containmentFailure = verifyContainmentIfRequired(normalized, projectRoot, diagnostics);
+            if (containmentFailure != null) {
+                return containmentFailure;
             }
 
             if (!runReachAndTests) {
@@ -2443,6 +2450,17 @@ public final class BearCli {
                 signals.add(new BoundarySignal(BoundaryType.CAPABILITY_ADDED, capability));
             }
         }
+        for (Map.Entry<String, String> dep : candidate.pureDeps().entrySet()) {
+            String ga = dep.getKey();
+            if (!baseline.pureDeps().containsKey(ga)) {
+                signals.add(new BoundarySignal(BoundaryType.PURE_DEP_ADDED, ga + "@" + dep.getValue()));
+                continue;
+            }
+            String oldVersion = baseline.pureDeps().get(ga);
+            if (!oldVersion.equals(dep.getValue())) {
+                signals.add(new BoundarySignal(BoundaryType.PURE_DEP_VERSION_CHANGED, ga + "@" + oldVersion + "->" + dep.getValue()));
+            }
+        }
         for (Map.Entry<String, TreeSet<String>> entry : candidate.capabilities().entrySet()) {
             String capability = entry.getKey();
             if (!baseline.capabilities().containsKey(capability)) {
@@ -2507,6 +2525,7 @@ public final class BearCli {
         }
 
         addIdempotencyDeltas(deltas, base.idempotency(), head.idempotency());
+        addPureDepDeltas(deltas, base.pureDeps(), head.pureDeps());
         addContractDeltas(deltas, base.inputs(), head.inputs(), true);
         addContractDeltas(deltas, base.outputs(), head.outputs(), false);
 
@@ -2527,6 +2546,32 @@ public final class BearCli {
             .thenComparing(delta -> delta.change().order)
             .thenComparing(PrDelta::key));
         return deltas;
+    }
+
+    private static void addPureDepDeltas(List<PrDelta> deltas, Map<String, String> base, Map<String, String> head) {
+        TreeSet<String> names = new TreeSet<>();
+        names.addAll(base.keySet());
+        names.addAll(head.keySet());
+        for (String ga : names) {
+            boolean inBase = base.containsKey(ga);
+            boolean inHead = head.containsKey(ga);
+            if (!inBase) {
+                deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.PURE_DEPS, PrChange.ADDED, ga + "@" + head.get(ga)));
+                continue;
+            }
+            if (!inHead) {
+                deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.PURE_DEPS, PrChange.REMOVED, ga + "@" + base.get(ga)));
+                continue;
+            }
+            if (!base.get(ga).equals(head.get(ga))) {
+                deltas.add(new PrDelta(
+                    PrClass.BOUNDARY_EXPANDING,
+                    PrCategory.PURE_DEPS,
+                    PrChange.CHANGED,
+                    ga + "@" + base.get(ga) + "->" + head.get(ga)
+                ));
+            }
+        }
     }
 
     private static void addIdempotencyDeltas(
@@ -2615,6 +2660,12 @@ public final class BearCli {
             ports.add(port.port());
             opsByPort.put(port.port(), new TreeSet<>(port.ops()));
         }
+        Map<String, String> pureDeps = new TreeMap<>();
+        if (ir.block().impl() != null && ir.block().impl().pureDeps() != null) {
+            for (BearIr.PureDep dep : ir.block().impl().pureDeps()) {
+                pureDeps.put(dep.maven(), dep.version());
+            }
+        }
 
         Map<String, BearIr.FieldType> inputs = new TreeMap<>();
         for (BearIr.Field input : ir.block().contract().inputs()) {
@@ -2631,12 +2682,13 @@ public final class BearCli {
                 invariants.add(invariant.kind().name().toLowerCase() + ":" + invariant.field());
             }
         }
-        return new PrSurface(ports, opsByPort, inputs, outputs, ir.block().idempotency(), invariants);
+        return new PrSurface(ports, opsByPort, pureDeps, inputs, outputs, ir.block().idempotency(), invariants);
     }
 
     private static PrSurface emptyPrSurface() {
         return new PrSurface(
             new TreeSet<>(),
+            new TreeMap<>(),
             new TreeMap<>(),
             new TreeMap<>(),
             new TreeMap<>(),
@@ -2699,10 +2751,12 @@ public final class BearCli {
         String generatorVersion = extractRequiredString(json, "generatorVersion");
 
         String capabilitiesPayload = extractRequiredArrayPayload(json, "capabilities");
+        String pureDepsPayload = extractOptionalArrayPayload(json, "pureDeps");
         String invariantsPayload = extractRequiredArrayPayload(json, "invariants");
         Map<String, TreeSet<String>> capabilities = parseCapabilities(capabilitiesPayload);
+        Map<String, String> pureDeps = parsePureDeps(pureDepsPayload);
         TreeSet<String> invariants = parseInvariants(invariantsPayload);
-        return new BoundaryManifest(schemaVersion, target, block, irHash, generatorVersion, capabilities, invariants);
+        return new BoundaryManifest(schemaVersion, target, block, irHash, generatorVersion, capabilities, pureDeps, invariants);
     }
 
     private static String extractRequiredString(String json, String key) throws ManifestParseException {
@@ -2717,6 +2771,30 @@ public final class BearCli {
         int keyIdx = json.indexOf("\"" + key + "\":[");
         if (keyIdx < 0) {
             throw new ManifestParseException("MISSING_KEY_" + key);
+        }
+        int start = json.indexOf('[', keyIdx);
+        if (start < 0) {
+            throw new ManifestParseException("MALFORMED_ARRAY_" + key);
+        }
+        int depth = 0;
+        for (int i = start; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (c == '[') {
+                depth++;
+            } else if (c == ']') {
+                depth--;
+                if (depth == 0) {
+                    return json.substring(start + 1, i);
+                }
+            }
+        }
+        throw new ManifestParseException("MALFORMED_ARRAY_" + key);
+    }
+
+    private static String extractOptionalArrayPayload(String json, String key) throws ManifestParseException {
+        int keyIdx = json.indexOf("\"" + key + "\":[");
+        if (keyIdx < 0) {
+            return null;
         }
         int start = json.indexOf('[', keyIdx);
         if (start < 0) {
@@ -2789,6 +2867,25 @@ public final class BearCli {
         return invariants;
     }
 
+    private static Map<String, String> parsePureDeps(String payload) throws ManifestParseException {
+        Map<String, String> pureDeps = new TreeMap<>();
+        if (payload == null || payload.isBlank()) {
+            return pureDeps;
+        }
+
+        Matcher m = Pattern.compile("\\{\\\"ga\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"version\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\"\\}")
+            .matcher(payload);
+        int count = 0;
+        while (m.find()) {
+            count++;
+            pureDeps.put(jsonUnescape(m.group(1)), jsonUnescape(m.group(2)));
+        }
+        if (count == 0) {
+            throw new ManifestParseException("INVALID_PURE_DEPS");
+        }
+        return pureDeps;
+    }
+
     private static String jsonUnescape(String value) {
         StringBuilder out = new StringBuilder(value.length());
         for (int i = 0; i < value.length(); i++) {
@@ -2823,6 +2920,108 @@ public final class BearCli {
         if ("invalid".equals(mode)) {
             Files.writeString(candidateManifestPath, "{", StandardCharsets.UTF_8);
         }
+    }
+
+    private static CheckResult verifyContainmentIfRequired(BearIr ir, Path projectRoot, List<String> diagnostics) throws IOException {
+        if (!hasPureDeps(ir)) {
+            return null;
+        }
+        Path gradlew = projectRoot.resolve("gradlew");
+        Path gradlewBat = projectRoot.resolve("gradlew.bat");
+        boolean hasWrapper = Files.isRegularFile(gradlew) || Files.isRegularFile(gradlewBat);
+        if (!hasWrapper) {
+            String line = "check: CONTAINMENT_REQUIRED: UNSUPPORTED_TARGET: missing Gradle wrapper";
+            diagnostics.add(line);
+            return checkFailure(
+                ExitCode.IO,
+                diagnostics,
+                "CONTAINMENT",
+                FailureCode.CONTAINMENT_UNSUPPORTED_TARGET,
+                "project.root",
+                "Pure dependency containment in P2 requires Java+Gradle with wrapper at project root; remove `impl.pureDeps` or use supported target, then rerun `bear check`.",
+                line
+            );
+        }
+
+        Path entrypoint = projectRoot.resolve("build/generated/bear/gradle/bear-containment.gradle");
+        if (!Files.isRegularFile(entrypoint)) {
+            String line = "check: CONTAINMENT_REQUIRED: SCRIPT_MISSING: build/generated/bear/gradle/bear-containment.gradle";
+            diagnostics.add(line);
+            return checkFailure(
+                ExitCode.IO,
+                diagnostics,
+                "CONTAINMENT",
+                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                "build/generated/bear/gradle/bear-containment.gradle",
+                "Run `bear compile <ir-file> --project <path>`, ensure Gradle applies the generated containment script, then rerun `bear check`.",
+                line
+            );
+        }
+
+        Path required = projectRoot.resolve("build/generated/bear/config/containment-required.json");
+        if (!Files.isRegularFile(required)) {
+            String line = "check: CONTAINMENT_REQUIRED: INDEX_MISSING: build/generated/bear/config/containment-required.json";
+            diagnostics.add(line);
+            return checkFailure(
+                ExitCode.IO,
+                diagnostics,
+                "CONTAINMENT",
+                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                "build/generated/bear/config/containment-required.json",
+                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check`.",
+                line
+            );
+        }
+
+        Path marker = projectRoot.resolve("build/bear/containment/applied.marker");
+        if (!Files.isRegularFile(marker)) {
+            String line = "check: CONTAINMENT_REQUIRED: MARKER_MISSING: build/bear/containment/applied.marker";
+            diagnostics.add(line);
+            return checkFailure(
+                ExitCode.IO,
+                diagnostics,
+                "CONTAINMENT",
+                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                "build/bear/containment/applied.marker",
+                "Run Gradle build once so BEAR containment compile tasks write markers, then rerun `bear check`.",
+                line
+            );
+        }
+
+        String expectedHash = sha256Hex(Files.readAllBytes(required));
+        String markerHash = readMarkerHash(marker);
+        if (markerHash == null || !markerHash.equals(expectedHash)) {
+            String line = "check: CONTAINMENT_REQUIRED: MARKER_STALE: build/bear/containment/applied.marker";
+            diagnostics.add(line);
+            return checkFailure(
+                ExitCode.IO,
+                diagnostics,
+                "CONTAINMENT",
+                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                "build/bear/containment/applied.marker",
+                "Run Gradle build once after BEAR compile so containment markers refresh, then rerun `bear check`.",
+                line
+            );
+        }
+
+        return null;
+    }
+
+    private static boolean hasPureDeps(BearIr ir) {
+        return ir.block().impl() != null
+            && ir.block().impl().pureDeps() != null
+            && !ir.block().impl().pureDeps().isEmpty();
+    }
+
+    private static String readMarkerHash(Path markerFile) throws IOException {
+        String content = normalizeLf(Files.readString(markerFile, StandardCharsets.UTF_8));
+        for (String line : content.lines().toList()) {
+            if (line.startsWith("hash=")) {
+                String hash = line.substring("hash=".length()).trim();
+                return hash.isEmpty() ? null : hash;
+            }
+        }
+        return null;
     }
 
     private static Map<String, byte[]> readRegularFiles(Path root) throws IOException {
@@ -3067,6 +3266,20 @@ public final class BearCli {
         return text.replace("\r\n", "\n");
     }
 
+    private static String sha256Hex(byte[] bytes) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(bytes);
+            StringBuilder out = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                out.append(String.format("%02x", b));
+            }
+            return out.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
     private static boolean hasRegularFiles(Path root) throws IOException {
         try (var stream = Files.walk(root)) {
             return stream.anyMatch(Files::isRegularFile);
@@ -3178,6 +3391,8 @@ public final class BearCli {
         private static final String TEST_TIMEOUT = "TEST_TIMEOUT";
         private static final String BOUNDARY_EXPANSION = "BOUNDARY_EXPANSION";
         private static final String UNDECLARED_REACH = "UNDECLARED_REACH";
+        private static final String CONTAINMENT_NOT_VERIFIED = "CONTAINMENT_NOT_VERIFIED";
+        private static final String CONTAINMENT_UNSUPPORTED_TARGET = "CONTAINMENT_UNSUPPORTED_TARGET";
         private static final String REPO_MULTI_BLOCK_FAILED = "REPO_MULTI_BLOCK_FAILED";
         private static final String INTERNAL_ERROR = "INTERNAL_ERROR";
     }
@@ -3248,8 +3463,10 @@ public final class BearCli {
 
     private enum BoundaryType {
         CAPABILITY_ADDED("CAPABILITY_ADDED", 0),
-        CAPABILITY_OP_ADDED("CAPABILITY_OP_ADDED", 1),
-        INVARIANT_RELAXED("INVARIANT_RELAXED", 2);
+        PURE_DEP_ADDED("PURE_DEP_ADDED", 1),
+        PURE_DEP_VERSION_CHANGED("PURE_DEP_VERSION_CHANGED", 2),
+        CAPABILITY_OP_ADDED("CAPABILITY_OP_ADDED", 3),
+        INVARIANT_RELAXED("INVARIANT_RELAXED", 4);
 
         private final String label;
         private final int order;
@@ -3278,10 +3495,11 @@ public final class BearCli {
 
     private enum PrCategory {
         PORTS("PORTS", 0),
-        OPS("OPS", 1),
-        IDEMPOTENCY("IDEMPOTENCY", 2),
-        CONTRACT("CONTRACT", 3),
-        INVARIANTS("INVARIANTS", 4);
+        PURE_DEPS("PURE_DEPS", 1),
+        OPS("OPS", 2),
+        IDEMPOTENCY("IDEMPOTENCY", 3),
+        CONTRACT("CONTRACT", 4),
+        INVARIANTS("INVARIANTS", 5);
 
         private final String label;
         private final int order;
@@ -3312,6 +3530,7 @@ public final class BearCli {
     private record PrSurface(
         TreeSet<String> ports,
         Map<String, TreeSet<String>> opsByPort,
+        Map<String, String> pureDeps,
         Map<String, BearIr.FieldType> inputs,
         Map<String, BearIr.FieldType> outputs,
         BearIr.Idempotency idempotency,
@@ -3348,6 +3567,7 @@ public final class BearCli {
         String irHash,
         String generatorVersion,
         Map<String, TreeSet<String>> capabilities,
+        Map<String, String> pureDeps,
         TreeSet<String> invariants
     ) {
     }

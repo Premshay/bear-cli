@@ -5,19 +5,20 @@ For milestone status and backlog ordering, use `doc/PROGRAM_BOARD.md`.
 
 ## Last Updated
 
-2026-02-19
+2026-02-20
 
 ## Current Focus
 
-Product-development planning:
+P2 feature delivery:
 - active milestone is `P2`
-- `bear fix` feature delivery is implemented and tests are passing
-- release-evidence documentation is not a delivery gate for ongoing feature development
+- `bear fix` remains implemented and green
+- active implementation is `Declared pure deps containment` (`v1` IR, Gradle containment artifacts, check/pr-check wiring)
 
 ## Next Concrete Task
 
-Define and execute next P2 feature:
-1. Generated structural tests.
+Complete P2 declared pure deps containment finish pass:
+1. verify demo-project integration path with generated `bear-containment.gradle`
+2. update demo repo IR/integration wiring to `v1` + containment marker flow
 
 ## Session Notes
 
@@ -30,3 +31,9 @@ Define and execute next P2 feature:
 - Added explicit Preview feature standing section in `doc/PROGRAM_BOARD.md` and aligned navigation docs to reference it.
 - Rebased active planning to product-development-first flow and removed release-evidence gating from active queue.
 - Implemented `bear fix` command (`single` + `--all`) with tests and synchronized agent-package/docs command surface.
+- Migrated core withdraw fixture/golden IR to `v1`.
+- Added `spec/golden/compile/withdraw-v1` generated fixture set (including containment outputs).
+- Restored full green build after pure-deps implementation updates (`./gradlew test` passing).
+- Added CLI containment acceptance tests (unsupported target, missing marker, stale marker, fresh marker pass).
+- Added `pr-check` pure-deps delta classification tests (add/version-change boundary-expanding, removal ordinary).
+- Synced core docs/spec text to v1 + pure-deps containment behavior (`AGENTS.md`, `doc/IR_SPEC.md`, `spec/commands/check.md`, `spec/commands/pr-check.md`, `README.md`).

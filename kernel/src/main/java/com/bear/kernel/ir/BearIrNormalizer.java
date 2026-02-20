@@ -14,6 +14,7 @@ public final class BearIrNormalizer {
 
         List<BearIr.EffectPort> ports = sortPorts(block.effects().allow());
         BearIr.Effects effects = new BearIr.Effects(ports);
+        BearIr.Impl impl = sortImpl(block.impl());
 
         List<BearIr.Invariant> invariants = block.invariants();
         if (invariants != null) {
@@ -28,6 +29,7 @@ public final class BearIrNormalizer {
             block.kind(),
             contract,
             effects,
+            impl,
             block.idempotency(),
             invariants
         );
@@ -57,5 +59,14 @@ public final class BearIrNormalizer {
             .comparing(BearIr.Invariant::kind)
             .thenComparing(BearIr.Invariant::field));
         return list;
+    }
+
+    private BearIr.Impl sortImpl(BearIr.Impl impl) {
+        if (impl == null || impl.pureDeps() == null || impl.pureDeps().isEmpty()) {
+            return new BearIr.Impl(List.of());
+        }
+        List<BearIr.PureDep> sorted = new ArrayList<>(impl.pureDeps());
+        sorted.sort(Comparator.comparing(BearIr.PureDep::maven));
+        return new BearIr.Impl(sorted);
     }
 }

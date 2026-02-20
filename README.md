@@ -17,16 +17,16 @@ Core governance litmus:
 - New external interaction capability must not be introduced silently.
 - Boundary-expanding IR changes must be visible/signaled deterministically.
 
-v0 guarantees:
+Current preview guarantees:
 - Structural contract and effect-boundary enforcement
 - Deterministic invariant/idempotency test gating
 - Drift detection for generated artifacts
 
-v0 non-guarantees:
+Current preview non-guarantees:
 - Business correctness beyond declared invariants
 - Real DB/concurrency/transaction semantics
 - Runtime enforcement beyond test harness
-- Concurrency-safe duplicate handling (v0 idempotency is deterministic replay in the test harness)
+- Concurrency-safe duplicate handling (idempotency is deterministic replay in the test harness)
 
 Start here: `doc/START_HERE.md`
 
@@ -79,9 +79,9 @@ Docs:
 - `doc/STATE.md` (short current-session handoff)
 - `doc/USER_GUIDE.md` (user-facing command usage + failure envelope quick reference)
 - `doc/NORTH_STAR.md` (broader motivation + long-horizon success criteria)
-- `doc/ARCHITECTURE.md` (what BEAR is + v0 scope)
+- `doc/ARCHITECTURE.md` (what BEAR is + active scope)
 - `doc/GOVERNANCE.md` (normative IR diff classification and boundary-expansion policy)
-- `doc/IR_SPEC.md` (canonical v0 IR model + validation rules)
+- `doc/IR_SPEC.md` (canonical v1 IR model + validation rules)
 - `doc/ROADMAP.md` (single roadmap: milestones, done criteria, post-preview priorities)
 - `doc/PROJECT_LOG.md` (background + major decisions)
 - `doc/FUTURE.md` (explicitly out-of-scope ideas)
@@ -90,6 +90,24 @@ Docs:
 
 Demo repo (sibling):
 - `../bear-account-demo/README.md` (realistic app-facing demo context)
+
+## Pure Deps Containment Integration (Java+Gradle)
+
+When an IR declares `block.impl.pureDeps`, BEAR generates containment wiring artifacts during `bear compile`:
+- `build/generated/bear/config/containment-required.json`
+- `build/generated/bear/gradle/bear-containment.gradle`
+
+Project integration requires one deterministic Gradle include:
+
+```gradle
+apply from: "$rootDir/build/generated/bear/gradle/bear-containment.gradle"
+```
+
+`bear check` verifies containment only by generated artifacts + marker hash:
+- marker: `build/bear/containment/applied.marker`
+- hash must match `sha256(build/generated/bear/config/containment-required.json)`
+
+`bear check` does not invoke Gradle. If marker is missing/stale, run Gradle once, then rerun `bear check`.
 
 M1 evaluator docs (this repo):
 - `doc/m1-eval/RUN_MILESTONE.md`

@@ -23,7 +23,7 @@ class JvmTargetTest {
     void compileIsDeterministicAndCreatesExpectedFiles(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
-        Path goldenRoot = repoRoot.resolve("spec/golden/compile/withdraw");
+        Path goldenRoot = repoRoot.resolve("spec/golden/compile/withdraw-v1");
 
         BearIrParser parser = new BearIrParser();
         BearIrValidator validator = new BearIrValidator();
@@ -45,12 +45,13 @@ class JvmTargetTest {
         String withdrawJava = first.get("src/main/java/com/bear/generated/withdraw/Withdraw.java");
         assertTrue(withdrawJava.contains("idempotency replay payload missing field: result.balance"));
         String manifest = first.get("surfaces/withdraw.surface.json");
-        assertTrue(manifest.contains("\"schemaVersion\":\"v0\""));
-        assertTrue(manifest.contains("\"surfaceVersion\":2"));
+        assertTrue(manifest.contains("\"schemaVersion\":\"v1\""));
+        assertTrue(manifest.contains("\"surfaceVersion\":3"));
         assertTrue(manifest.contains("\"target\":\"jvm\""));
         assertTrue(manifest.contains("\"capabilities\":[{\"name\":\"idempotency\",\"ops\":[\"get\",\"put\"]},{\"name\":\"ledger\",\"ops\":[\"getBalance\",\"setBalance\"]}]"));
+        assertTrue(manifest.contains("\"pureDeps\":[]"));
         assertTrue(manifest.contains("\"invariants\":[{\"kind\":\"non_negative\",\"field\":\"balance\"}]"));
-        assertTrue(manifest.contains("\"irHash\":\"1b6da2086a3ee4286d2f74fd10adb70e4c2cb9d7f49f826e562a0dc312ab6e38\""));
+        assertTrue(manifest.contains("\"irHash\":\"e760299bd88662c50dd411c90612a0d1007a434920a7644144abc7611da2720f\""));
     }
 
     @Test
@@ -67,7 +68,7 @@ class JvmTargetTest {
         validator.validate(ir);
         BearIr normalized = normalizer.normalize(ir);
 
-        Path impl = tempDir.resolve("src/main/java/com/bear/generated/withdraw/WithdrawImpl.java");
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
         Files.createDirectories(impl.getParent());
         Files.writeString(impl, "package com.bear.generated.withdraw;\nclass KeepMe {}\n");
 
@@ -79,7 +80,7 @@ class JvmTargetTest {
     void compileNoDecimalEntrypointStillImportsBigDecimalForReplayDecode(@TempDir Path tempDir) throws Exception {
         Path irFile = tempDir.resolve("status.bear.yaml");
         Files.writeString(irFile, ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: Status\n"
             + "  kind: logic\n"
@@ -121,7 +122,7 @@ class JvmTargetTest {
     void compilePortNameAlreadyEndingWithPortDoesNotDoubleSuffix(@TempDir Path tempDir) throws Exception {
         Path irFile = tempDir.resolve("notify.bear.yaml");
         Files.writeString(irFile, ""
-            + "version: v0\n"
+            + "version: v1\n"
             + "block:\n"
             + "  name: Notify\n"
             + "  kind: logic\n"
@@ -202,6 +203,9 @@ class JvmTargetTest {
                 .sorted(Comparator.comparing(path -> root.relativize(path).toString()))
                 .forEach(path -> {
                     String rel = root.relativize(path).toString().replace('\\', '/');
+                    if (rel.startsWith(".staging/")) {
+                        return;
+                    }
                     try {
                         files.put(rel, normalizeLf(Files.readString(path)));
                     } catch (IOException e) {
@@ -221,3 +225,4 @@ class JvmTargetTest {
         return text.replace("\r\n", "\n");
     }
 }
+

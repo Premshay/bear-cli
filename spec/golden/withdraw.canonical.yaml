@@ -1,4 +1,4 @@
-version: v0
+version: v1
 block:
   name: Withdraw
   kind: logic

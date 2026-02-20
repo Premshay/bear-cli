@@ -1,15 +1,16 @@
-# `bear check` (v1.5)
+# `bear check` (v1.6)
 
 ## Command
 `bear check <ir-file> --project <path>`
 
 `bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`
 
-`bear check` v1.4 is a deterministic gate for:
+`bear check` v1.6 is a deterministic gate for:
 1. drift regeneration enforcement on BEAR-owned artifacts
 2. undeclared-reach enforcement for covered preview JVM direct HTTP surfaces
 3. project test execution after drift and undeclared-reach pass
 4. boundary-expansion signaling derived from BEAR surface manifests
+5. pure-deps containment verification when IR declares `block.impl.pureDeps`
 
 For base-branch PR governance classification, use `bear pr-check`.
 
@@ -18,8 +19,10 @@ It performs:
 2. Compile normalized IR into a temporary project root.
 3. Diff temp BEAR-owned tree against project BEAR-owned tree.
 4. If drift passes, run undeclared-reach scan on project source tree.
-5. If undeclared-reach passes, execute project tests via Gradle wrapper.
-6. Fail deterministically on mismatch or test failure.
+5. If IR declares pure deps, verify containment script/index/marker hash handshake.
+6. If containment passes, run undeclared-reach scan on project source tree.
+7. If undeclared-reach passes, execute project tests via Gradle wrapper.
+8. Fail deterministically on mismatch or test failure.
 
 `--all` mode orchestrates the same single-block gate for every selected index block in canonical order.
 It is deterministic and uses the block index as inclusion source.
@@ -31,6 +34,8 @@ It is deterministic and uses the block index as inclusion source.
   - project test execution after no-drift result
 - Includes:
   - covered undeclared-reach static checks for preview JVM HTTP surfaces
+- Includes:
+  - pure-deps containment handshake gate for supported Java+Gradle targets
 - Excludes:
   - full static isolation checks for arbitrary external surfaces beyond preview coverage
 
@@ -94,29 +99,36 @@ Boundary classification uses manifest data only (no Java source parsing).
 ## Boundary signal format (stderr)
 Boundary lines:
 - `boundary: EXPANSION: CAPABILITY_ADDED: <capability>`
+- `boundary: EXPANSION: PURE_DEP_ADDED: <groupId:artifactId@version>`
+- `boundary: EXPANSION: PURE_DEP_VERSION_CHANGED: <groupId:artifactId@old->new>`
 - `boundary: EXPANSION: CAPABILITY_OP_ADDED: <capability>.<op>`
 - `boundary: EXPANSION: INVARIANT_RELAXED: non_negative:<field>`
 
-Scope in v0:
+Scope in v1 preview:
 - `CAPABILITY_ADDED`: capability appears in candidate but not baseline
 - `CAPABILITY_OP_ADDED`: op appears in candidate capability but not baseline capability
 - `INVARIANT_RELAXED`: baseline `non_negative:<field>` missing in candidate
+- `PURE_DEP_ADDED`: pure dep appears in candidate surface but not baseline
+- `PURE_DEP_VERSION_CHANGED`: same pure dep GA with version change between baseline/candidate
 
 Ordering (deterministic):
 - sort by `(typePrecedence, key)`
 - type precedence:
   1. `CAPABILITY_ADDED`
-  2. `CAPABILITY_OP_ADDED`
-  3. `INVARIANT_RELAXED`
+  2. `PURE_DEP_ADDED`
+  3. `PURE_DEP_VERSION_CHANGED`
+  4. `CAPABILITY_OP_ADDED`
+  5. `INVARIANT_RELAXED`
 - then key lexicographic
 
 Output order in `check`:
 1. baseline manifest diagnostics (if any)
 2. boundary signal lines
 3. drift lines
-4. undeclared-reach lines (if any)
-5. test failure/timeout output (if reached)
-6. failure envelope (if non-zero)
+4. containment lines (if any)
+5. undeclared-reach lines (if any)
+6. test failure/timeout output (if reached)
+7. failure envelope (if non-zero)
 
 Relationship to drift:
 - boundary signaling is a classification layer on top of drift context
@@ -125,6 +137,29 @@ Relationship to drift:
 
 ## Undeclared Reach Enforcement (v1.5 preview)
 Detection runs only after drift pass and before project tests.
+
+## Pure Deps Containment (v1.6 preview)
+Containment gate runs only when IR declares `block.impl.pureDeps` and drift has passed.
+
+Supported target:
+- Java+Gradle project root with `gradlew` or `gradlew.bat`
+
+Required artifacts:
+- `build/generated/bear/gradle/bear-containment.gradle`
+- `build/generated/bear/config/containment-required.json`
+- `build/bear/containment/applied.marker`
+
+Handshake:
+- `applied.marker` must contain `hash=<sha256(containment-required.json)>`
+- missing or stale marker fails deterministically
+- `bear check` never invokes Gradle automatically
+
+Deterministic failure lines:
+- `check: CONTAINMENT_REQUIRED: UNSUPPORTED_TARGET: ...`
+- `check: CONTAINMENT_REQUIRED: SCRIPT_MISSING: ...`
+- `check: CONTAINMENT_REQUIRED: INDEX_MISSING: ...`
+- `check: CONTAINMENT_REQUIRED: MARKER_MISSING: ...`
+- `check: CONTAINMENT_REQUIRED: MARKER_STALE: ...`
 
 Fatal output lines (stderr):
 - `check: UNDECLARED_REACH: <relative/path>: <surface>`

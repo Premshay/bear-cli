@@ -46,6 +46,9 @@ public final class BearIrYamlEmitter {
         });
         map.put("contract", toContractMap(block.contract()));
         map.put("effects", toEffectsMap(block.effects()));
+        if (block.impl() != null && block.impl().pureDeps() != null && !block.impl().pureDeps().isEmpty()) {
+            map.put("impl", toImplMap(block.impl()));
+        }
 
         if (block.idempotency() != null) {
             map.put("idempotency", toIdempotencyMap(block.idempotency()));
@@ -103,6 +106,19 @@ public final class BearIrYamlEmitter {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("key", idempotency.key());
         map.put("store", toIdempotencyStoreMap(idempotency.store()));
+        return map;
+    }
+
+    private Map<String, Object> toImplMap(BearIr.Impl impl) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        List<Object> deps = new ArrayList<>();
+        for (BearIr.PureDep dep : impl.pureDeps()) {
+            Map<String, Object> depMap = new LinkedHashMap<>();
+            depMap.put("maven", dep.maven());
+            depMap.put("version", dep.version());
+            deps.add(depMap);
+        }
+        map.put("pureDeps", deps);
         return map;
     }
 

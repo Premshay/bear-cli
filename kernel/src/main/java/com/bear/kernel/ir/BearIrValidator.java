@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public final class BearIrValidator {
+    private static final Pattern MAVEN_COORDINATE = Pattern.compile("[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+");
+
     public void validate(BearIr ir) {
         validateBlock(ir.block());
     }
@@ -17,6 +20,7 @@ public final class BearIrValidator {
 
         validateContract(block.contract());
         validateEffects(block.effects());
+        validateImpl(block.impl());
 
         if (block.idempotency() != null) {
             validateIdempotency(block);
@@ -117,6 +121,33 @@ public final class BearIrValidator {
             requireNonBlank(invariant.field(), basePath + ".field");
             if (!outputNames.contains(invariant.field())) {
                 throw semantic(basePath + ".field", BearIrValidationException.Code.UNKNOWN_REFERENCE, "must reference an output field");
+            }
+        }
+    }
+
+    private void validateImpl(BearIr.Impl impl) {
+        requireNonNull(impl, "block.impl");
+        requireNonNull(impl.pureDeps(), "block.impl.pureDeps");
+
+        Set<String> seenGa = new HashSet<>();
+        for (int i = 0; i < impl.pureDeps().size(); i++) {
+            BearIr.PureDep dep = impl.pureDeps().get(i);
+            String depPath = "block.impl.pureDeps[" + i + "]";
+            requireNonBlank(dep.maven(), depPath + ".maven");
+            requireNonBlank(dep.version(), depPath + ".version");
+            if (!MAVEN_COORDINATE.matcher(dep.maven()).matches()) {
+                throw semantic(depPath + ".maven", BearIrValidationException.Code.INVALID_VALUE, "expected groupId:artifactId");
+            }
+            if (dep.maven().contains("*")) {
+                throw semantic(depPath + ".maven", BearIrValidationException.Code.INVALID_VALUE, "wildcards are not allowed");
+            }
+            if (dep.version().contains("*") || dep.version().contains("[") || dep.version().contains("]")
+                || dep.version().contains("(") || dep.version().contains(")") || dep.version().contains(",")
+                || dep.version().contains("+")) {
+                throw semantic(depPath + ".version", BearIrValidationException.Code.INVALID_VALUE, "version must be pinned");
+            }
+            if (!seenGa.add(dep.maven())) {
+                throw semantic(depPath + ".maven", BearIrValidationException.Code.DUPLICATE, "duplicate pure dep: " + dep.maven());
             }
         }
     }

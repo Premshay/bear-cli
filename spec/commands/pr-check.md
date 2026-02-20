@@ -1,4 +1,4 @@
-# `bear pr-check` (v1.0)
+# `bear pr-check` (v1.1)
 
 ## Command
 `bear pr-check <ir-file> --project <path> --base <ref>`
@@ -92,7 +92,7 @@ Delta lines are emitted to stderr:
 
 Where:
 - `<CLASS>` in `BOUNDARY_EXPANDING`, `ORDINARY`
-- `<CATEGORY>` in `PORTS`, `OPS`, `IDEMPOTENCY`, `CONTRACT`, `INVARIANTS`
+- `<CATEGORY>` in `PORTS`, `PURE_DEPS`, `OPS`, `IDEMPOTENCY`, `CONTRACT`, `INVARIANTS`
 - `<CHANGE>` in `CHANGED`, `ADDED`, `REMOVED`
 
 Verdict lines:
@@ -108,6 +108,7 @@ Sort by:
    - `ORDINARY`
 2. category precedence:
    - `PORTS`
+   - `PURE_DEPS`
    - `OPS`
    - `IDEMPOTENCY`
    - `CONTRACT`
@@ -131,6 +132,16 @@ Comparison is set-based (order-insensitive).
 - `REMOVED` => `ORDINARY`
 
 Comparison is set-based (order-insensitive) within each common port.
+
+### `PURE_DEPS` (from `block.impl.pureDeps`)
+- added `ga@version` => `BOUNDARY_EXPANDING`
+- removed `ga@version` => `ORDINARY`
+- version change `ga@old->new` => `BOUNDARY_EXPANDING`
+
+Rules:
+- compare by `groupId:artifactId`
+- version is exact pinned string
+- ordering is deterministic by GA key
 
 ### `IDEMPOTENCY` (from `block.idempotency`)
 - block added:

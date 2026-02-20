@@ -5,13 +5,13 @@ If you are an AI coding assistant (or a human picking up the repo), start here:
 1. Read `doc/PROGRAM_BOARD.md` (source of truth for milestone feature status and ordered feature queue).
 2. Read `doc/STATE.md` (short session handoff).
 3. Read `doc/START_HERE.md`.
-4. Read `doc/IR_SPEC.md` for canonical v0 IR structure and constraints.
+4. Read `doc/IR_SPEC.md` for canonical v1 IR structure and constraints.
 5. If this is a fresh non-repo session (for example ChatGPT), use `doc/PROMPT_BOOTSTRAP.md` (paste the SHORT section first).
 6. If you need historical rationale, read `doc/PROJECT_LOG.md`.
 
-Guardrails (v0):
+Guardrails (v1 preview):
 - Keep `kernel/` deterministic and small (trusted seed). No LLM/agent logic in core.
-- Stay within v0 scope defined in `doc/ARCHITECTURE.md` + `doc/ROADMAP.md`.
+- Stay within v1-preview scope defined in `doc/ARCHITECTURE.md` + `doc/ROADMAP.md`.
 - Treat `doc/FUTURE.md` as explicitly out-of-scope unless the user asks.
 - Prefer the two-file approach (generated skeleton + separate impl), use `bear fix` for generated-artifact repair, and deterministic enforcement via `bear check`.
 

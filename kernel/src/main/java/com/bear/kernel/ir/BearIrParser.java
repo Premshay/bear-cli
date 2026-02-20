@@ -43,18 +43,19 @@ public final class BearIrParser {
             requireOnlyKeys(root, "root", Set.of("version", "block"));
 
             String version = requireString(root, "version", "version");
-            if (!"v0".equals(version)) {
-                throw schema("version", BearIrValidationException.Code.INVALID_ENUM, "expected 'v0'");
+            if (!"v1".equals(version)) {
+                throw schema("version", BearIrValidationException.Code.INVALID_ENUM, "expected 'v1'");
             }
 
             Map<?, ?> block = requireMap(root, "block", "block");
-            requireOnlyKeys(block, "block", Set.of("name", "kind", "contract", "effects", "idempotency", "invariants"));
+            requireOnlyKeys(block, "block", Set.of("name", "kind", "contract", "effects", "impl", "idempotency", "invariants"));
 
             String name = requireString(block, "name", "block.name");
             BearIr.BlockKind kind = parseBlockKind(requireString(block, "kind", "block.kind"), "block.kind");
 
             BearIr.Contract contract = parseContract(requireMap(block, "contract", "block.contract"), "block.contract");
             BearIr.Effects effects = parseEffects(requireMap(block, "effects", "block.effects"), "block.effects");
+            BearIr.Impl impl = parseImpl(block.containsKey("impl") ? requireMap(block, "impl", "block.impl") : Map.of(), "block.impl");
 
             BearIr.Idempotency idempotency = null;
             if (block.containsKey("idempotency")) {
@@ -66,7 +67,7 @@ public final class BearIrParser {
                 invariants = parseInvariants(requireList(block, "invariants", "block.invariants"), "block.invariants");
             }
 
-            return new BearIr(version, new BearIr.Block(name, kind, contract, effects, idempotency, invariants));
+            return new BearIr(version, new BearIr.Block(name, kind, contract, effects, impl, idempotency, invariants));
         }
     }
 
@@ -184,6 +185,26 @@ public final class BearIrParser {
             invariants.add(new BearIr.Invariant(parseInvariantKind(kindRaw, itemPath + ".kind"), field));
         }
         return invariants;
+    }
+
+    private BearIr.Impl parseImpl(Map<?, ?> impl, String path) {
+        requireOnlyKeys(impl, path, Set.of("pureDeps"));
+        List<BearIr.PureDep> pureDeps = new ArrayList<>();
+        if (impl.containsKey("pureDeps")) {
+            List<?> items = requireList(impl, "pureDeps", path + ".pureDeps");
+            for (int i = 0; i < items.size(); i++) {
+                String itemPath = path + ".pureDeps[" + i + "]";
+                Object item = items.get(i);
+                if (!(item instanceof Map<?, ?> dep)) {
+                    throw schema(itemPath, BearIrValidationException.Code.INVALID_TYPE, "expected mapping");
+                }
+                requireOnlyKeys(dep, itemPath, Set.of("maven", "version"));
+                String maven = requireString(dep, "maven", itemPath + ".maven");
+                String version = requireString(dep, "version", itemPath + ".version");
+                pureDeps.add(new BearIr.PureDep(maven, version));
+            }
+        }
+        return new BearIr.Impl(pureDeps);
     }
 
     private void requireOnlyKeys(Map<?, ?> map, String path, Set<String> allowed) {

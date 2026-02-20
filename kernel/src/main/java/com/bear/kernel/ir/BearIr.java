@@ -24,6 +24,7 @@ public record BearIr(String version, BearIr.Block block) {
         BlockKind kind,
         Contract contract,
         Effects effects,
+        Impl impl,
         Idempotency idempotency,
         List<Invariant> invariants
     ) {
@@ -48,5 +49,11 @@ public record BearIr(String version, BearIr.Block block) {
     }
 
     public record Invariant(InvariantKind kind, String field) {
+    }
+
+    public record Impl(List<PureDep> pureDeps) {
+    }
+
+    public record PureDep(String maven, String version) {
     }
 }
