@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JvmTargetTest {
@@ -52,6 +53,8 @@ class JvmTargetTest {
         assertTrue(manifest.contains("\"allowedDeps\":[]"));
         assertTrue(manifest.contains("\"invariants\":[{\"kind\":\"non_negative\",\"field\":\"balance\"}]"));
         assertTrue(manifest.contains("\"irHash\":\"e760299bd88662c50dd411c90612a0d1007a434920a7644144abc7611da2720f\""));
+        String containmentGradle = first.get("gradle/bear-containment.gradle");
+        assertFalse(containmentGradle.contains("exclude('blocks/**/impl/**')"));
     }
 
     @Test

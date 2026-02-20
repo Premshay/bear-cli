@@ -19,10 +19,6 @@ def markerDir = file("$buildDir/bear/containment")
 def markerHash = MessageDigest.getInstance('SHA-256').digest(indexFile.bytes).encodeHex().toString()
 
 def compileJavaTask = tasks.named('compileJava', JavaCompile)
-compileJavaTask.configure {
-    exclude('blocks/**/impl/**')
-}
-
 def mainSourceSet = project.extensions.getByType(SourceSetContainer).getByName('main')
 def markerTasks = []
 

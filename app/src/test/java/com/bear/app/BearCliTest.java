@@ -784,6 +784,60 @@ class BearCliTest {
     }
 
     @Test
+    void checkWithoutAllowedDepsKeepsImplOnNormalCompilePath(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+
+        Path usesImpl = tempDir.resolve("src/main/java/com/example/UsesWithdrawImpl.java");
+        Files.createDirectories(usesImpl.getParent());
+        Files.writeString(usesImpl, ""
+            + "package com.example;\n"
+            + "\n"
+            + "import com.bear.generated.withdraw.WithdrawImpl;\n"
+            + "\n"
+            + "public final class UsesWithdrawImpl {\n"
+            + "    private final WithdrawImpl impl = new WithdrawImpl();\n"
+            + "    public WithdrawImpl impl() { return impl; }\n"
+            + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\n"
+                + "setlocal\r\n"
+                + "findstr /C:\"exclude('blocks/**/impl/**')\" \"build\\generated\\bear\\gradle\\bear-containment.gradle\" >nul && (\r\n"
+                + "  echo GLOBAL_EXCLUDE_PRESENT\r\n"
+                + "  exit /b 1\r\n"
+                + ")\r\n"
+                + "if not exist src\\main\\java\\com\\example\\UsesWithdrawImpl.java exit /b 1\r\n"
+                + "if not exist src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java exit /b 1\r\n"
+                + "if not exist build\\project-test-classes mkdir build\\project-test-classes\r\n"
+                + "javac -d build\\project-test-classes build\\generated\\bear\\src\\main\\java\\com\\bear\\generated\\withdraw\\*.java src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java src\\main\\java\\com\\example\\UsesWithdrawImpl.java\r\n"
+                + "if errorlevel 1 exit /b 1\r\n"
+                + "echo TEST_OK\r\n"
+                + "exit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "set -e\n"
+                + "if grep -F \"exclude('blocks/**/impl/**')\" \"build/generated/bear/gradle/bear-containment.gradle\" >/dev/null; then\n"
+                + "  echo GLOBAL_EXCLUDE_PRESENT\n"
+                + "  exit 1\n"
+                + "fi\n"
+                + "test -f src/main/java/com/example/UsesWithdrawImpl.java\n"
+                + "test -f src/main/java/blocks/withdraw/impl/WithdrawImpl.java\n"
+                + "mkdir -p build/project-test-classes\n"
+                + "javac -d build/project-test-classes build/generated/bear/src/main/java/com/bear/generated/withdraw/*.java src/main/java/blocks/withdraw/impl/WithdrawImpl.java src/main/java/com/example/UsesWithdrawImpl.java\n"
+                + "echo TEST_OK\n"
+                + "exit 0\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+        assertTrue(check.stdout.startsWith("check: OK"));
+    }
+
+    @Test
     void checkRunsProjectTestsAndPasses(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
