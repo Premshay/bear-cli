@@ -14,6 +14,7 @@ P2 feature delivery:
 - `bear fix` remains implemented and green
 - active implementation is `Declared allowed deps containment` (`v1` IR, Gradle containment artifacts, check/pr-check wiring)
 - preview demo reset documentation alignment (`doc/demo/PREVIEW_DEMO.md`, navigation links, stale demo-reference cleanup)
+- compile lock hardening for preview demo reliability (Windows replace fallback + stricter agent lock policy)
 
 ## Next Concrete Task
 
@@ -21,6 +22,7 @@ Complete P2 declared allowed deps containment finish pass:
 1. clean temporary golden-refresh directories after Windows file-lock issue
 2. commit/review split for containment wiring + docs/spec updates
 3. complete isolated-session scenario generation in `bear-account-demo` (`01/02/03/04`) and collect branch evidence
+4. validate compile lock hardening against isolated demo runs and capture any residual lock signatures
 
 ## Session Notes
 
@@ -46,4 +48,7 @@ Complete P2 declared allowed deps containment finish pass:
 - Renamed terminology across implementation/contracts/docs from `pureDeps` to `allowedDeps` (including manifests and `pr-check` category `ALLOWED_DEPS`).
 - Added preview demo operator guide `doc/demo/PREVIEW_DEMO.md` and wired README/START_HERE navigation to it.
 - Updated stale demo references in `doc/ARCHITECTURE.md` and `doc/ROADMAP.md` to the new scenario naming/model.
+- Hardened `JvmTarget` generated-file sync: fallback to in-place rewrite when replace fails on writable existing targets under lock-like conditions.
+- Added kernel regression test `compileReplaceLockFallsBackToInPlaceRewrite` and retained deterministic lock-failure behavior for unrecoverable cases.
+- Tightened BEAR package lock policy (`doc/bear-package/BEAR_AGENT.md`) and user/demo docs to forbid IR/ACL workaround mutations after lock failures.
 

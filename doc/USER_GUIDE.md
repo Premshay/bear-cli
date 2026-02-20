@@ -205,12 +205,13 @@ For `check --all` and `pr-check --all`, final exit code is aggregated via explic
 
 ## Lock troubleshooting (Windows/Gradle)
 
-If `check`/`check --all` fails with lock signatures (for example `.zip.lck`, `Access is denied`, wrapper dist lock paths), treat this as tooling/IO, not domain-test failure.
+If `compile`/`check`/`check --all` fails with lock signatures (for example `.zip.lck`, `Access is denied`, wrapper dist lock paths), treat this as tooling/IO, not domain-test failure.
 
 Deterministic remediation order:
 1. Ensure no concurrent Gradle/BEAR gate process is running on the same repo.
 2. Rerun the command and let BEAR use isolated Gradle home (`<project>/.bear-gradle-user-home`) unless you intentionally set `GRADLE_USER_HOME`.
-3. If lock persists, clear local wrapper lock holders and rerun the same command.
+3. Retry once with the same command after lock cleanup.
+4. If lock persists, stop and report blocker details (path + command + output); do not apply IR renames, ACL edits, or manual generated-file surgery as workarounds.
 
 Expected classification:
 - lock/tooling faults -> `IO_ERROR` (`74`)

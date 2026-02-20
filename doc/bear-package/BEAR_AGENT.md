@@ -28,9 +28,11 @@ Purpose:
 12. Prefer the smallest design that satisfies requirements and BEAR constraints.
 13. If you add new production architecture (platform/adapters/executors/etc.), include a brief necessity rationale tied to requirements and boundary ownership.
 14. If BEAR tooling fails with IO/lock/environment defects, stop and report the tooling failure; do not mutate unrelated IR to fit stale generated outputs.
-15. Never add workaround type stubs/classes under `src/main/java/com/bear/generated/**` (for example fake `BigDecimal`); only generated files and user-owned `*Impl.java` are allowed there.
-16. If implementation needs a new library, declare it in `block.impl.allowedDeps` (IR-first); do not silently add impl classpath reach.
-17. For IR with `impl.allowedDeps` on Java+Gradle projects, ensure the project applies generated containment entrypoint and run Gradle once before relying on `bear check`.
+15. On `IO_ERROR`/`WINDOWS_FILE_LOCK`, do not rename blocks/IR files, do not alter filesystem ACL/permissions, and do not perform manual generated-file surgery as a workaround.
+16. Retry budget for tooling/lock defects: one deterministic retry after setting repo-local `GRADLE_USER_HOME`; if failure persists, stop and report blocker details.
+17. Never add workaround type stubs/classes under `src/main/java/com/bear/generated/**` (for example fake `BigDecimal`); only generated files and user-owned `*Impl.java` are allowed there.
+18. If implementation needs a new library, declare it in `block.impl.allowedDeps` (IR-first); do not silently add impl classpath reach.
+19. For IR with `impl.allowedDeps` on Java+Gradle projects, ensure the project applies generated containment entrypoint and run Gradle once before relying on `bear check`.
 
 ## Session Baseline Check
 

@@ -50,3 +50,7 @@ All scenario branches are derived from greenfield output.
 - Use isolated sessions for each scenario to preserve credibility of agent output.
 - Keep scenario branches open as PRs to `main` so diffs form a browseable demo museum.
 - Archive old scenario branches with tags before deletion when resetting tracks.
+- Windows lock hygiene for demo runs:
+  - set repo-local Gradle home before gate commands (`GRADLE_USER_HOME=<repo>/.gradle-user`)
+  - if compile/check reports `WINDOWS_FILE_LOCK`, do one retry, then stop and report the blocker
+  - do not rename blocks/IR files or alter ACLs as lock workarounds

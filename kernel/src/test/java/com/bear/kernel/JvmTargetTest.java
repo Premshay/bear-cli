@@ -196,6 +196,49 @@ class JvmTargetTest {
         assertTrue(Files.exists(stale));
     }
 
+    @Test
+    void compileReplaceLockFallsBackToInPlaceRewrite(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        BearIr normalized = normalizer.normalize(ir);
+        target.compile(normalized, tempDir);
+
+        String previousNeedle = System.getProperty("bear.compile.test.lockPathContains");
+        String previousAction = System.getProperty("bear.compile.test.lockAction");
+        try {
+            System.setProperty("bear.compile.test.lockPathContains", "BearInvariantViolationException.java");
+            System.setProperty("bear.compile.test.lockAction", "replace");
+
+            target.compile(normalized, tempDir);
+        } finally {
+            if (previousNeedle == null) {
+                System.clearProperty("bear.compile.test.lockPathContains");
+            } else {
+                System.setProperty("bear.compile.test.lockPathContains", previousNeedle);
+            }
+            if (previousAction == null) {
+                System.clearProperty("bear.compile.test.lockAction");
+            } else {
+                System.setProperty("bear.compile.test.lockAction", previousAction);
+            }
+        }
+
+        Path invariantException = tempDir.resolve(
+            "build/generated/bear/src/main/java/com/bear/generated/withdraw/BearInvariantViolationException.java"
+        );
+        assertTrue(Files.exists(invariantException));
+        String generated = Files.readString(invariantException);
+        assertTrue(generated.contains("class BearInvariantViolationException"));
+    }
+
     private static Map<String, String> readTree(Path root) throws IOException {
         Map<String, String> files = new LinkedHashMap<>();
         try (var stream = Files.walk(root)) {

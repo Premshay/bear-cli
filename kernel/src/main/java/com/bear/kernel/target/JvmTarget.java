@@ -11,6 +11,7 @@ import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -951,10 +952,25 @@ public final class JvmTarget implements Target {
     }
 
     private void copyFile(Path sourceFile, Path targetFile) throws IOException {
-        runWithFileLockRetry("replace", targetFile, () -> {
-            Files.createDirectories(targetFile.getParent());
-            Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
-        });
+        byte[] content = Files.readAllBytes(sourceFile);
+        try {
+            runWithFileLockRetry("replace", targetFile, () -> {
+                Files.createDirectories(targetFile.getParent());
+                Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+            });
+        } catch (IOException e) {
+            if (!canFallbackToInPlaceRewrite(targetFile, e)) {
+                throw e;
+            }
+            runWithFileLockRetry("rewrite", targetFile, () -> {
+                Files.write(
+                    targetFile,
+                    content,
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.TRUNCATE_EXISTING
+                );
+            });
+        }
     }
 
     private void deletePath(Path path) throws IOException {
@@ -987,7 +1003,7 @@ public final class JvmTarget implements Target {
         int attempt = 0;
         while (true) {
             try {
-                maybeInjectLockForTest(path);
+                maybeInjectLockForTest(action, path);
                 op.run();
                 return;
             } catch (IOException e) {
@@ -1000,9 +1016,14 @@ public final class JvmTarget implements Target {
         }
     }
 
-    private void maybeInjectLockForTest(Path path) throws IOException {
+    private void maybeInjectLockForTest(String action, Path path) throws IOException {
         String needle = System.getProperty("bear.compile.test.lockPathContains");
         if (needle == null || needle.isBlank()) {
+            return;
+        }
+        String configuredAction = System.getProperty("bear.compile.test.lockAction");
+        if (configuredAction != null && !configuredAction.isBlank()
+            && !configuredAction.equalsIgnoreCase(action)) {
             return;
         }
         String normalizedPath = path.toString().replace('\\', '/');
@@ -1044,6 +1065,18 @@ public final class JvmTarget implements Target {
             || lower.contains("being used by another process")
             || lower.contains("used by another process")
             || lower.contains("file is locked");
+    }
+
+    private boolean canFallbackToInPlaceRewrite(Path targetFile, IOException e) {
+        return isLockFailureForFallback(e) && Files.isRegularFile(targetFile) && Files.isWritable(targetFile);
+    }
+
+    private boolean isLockFailureForFallback(IOException e) {
+        if (isRetryableFileLockError(e)) {
+            return true;
+        }
+        String message = e.getMessage();
+        return message != null && message.contains("WINDOWS_FILE_LOCK:");
     }
 
     private void sleepBackoff(int attempt) throws IOException {
