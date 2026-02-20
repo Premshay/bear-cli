@@ -63,13 +63,12 @@ Greenfield hard stop:
 3. Single-block fallback loops are valid only when exactly one IR file exists and no index exists.
 4. Removing `bear.blocks.yaml` to continue via per-IR fallback is invalid.
 
-## Wrapper Preference
+## Wrapper Policy
 
-If wrappers are shipped in the project, use them as canonical gates:
-- `.\bin\bear-all.ps1` / `./bin/bear-all.sh`
-- `.\bin\pr-gate.ps1 <base-ref>` / `./bin/pr-gate.sh <base-ref>`
+Default to direct CLI commands.
 
-Wrappers should route to `--all` when `bear.blocks.yaml` exists.
+If wrappers are shipped and explicitly documented by the project, use them.
+Do not assume `bin/bear-all.*` or `bin/pr-gate.*` exists.
 
 ## Failure Triage (Deterministic)
 
@@ -91,6 +90,8 @@ Wrappers should route to `--all` when `bear.blocks.yaml` exists.
 
 5. `4` project tests failed:
 - fix implementation/tests
+- if compiler reports unreachable code in `*Impl.java`, replace the generated stub body entirely (do not append logic below placeholder return/throw)
+- verify `*Impl.java` stays in `src/main/java/blocks/<block-key>/impl/` unless BEAR compile regenerated a different path
 
 6. `5` boundary expansion (`pr-check`):
 - confirm expansion is intentional and reviewable

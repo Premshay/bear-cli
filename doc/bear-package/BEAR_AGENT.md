@@ -33,6 +33,8 @@ Purpose:
 17. Never add workaround type stubs/classes under `src/main/java/com/bear/generated/**` (for example fake `BigDecimal`); only generated files and user-owned `*Impl.java` are allowed there.
 18. If implementation needs a new library, declare it in `block.impl.allowedDeps` (IR-first); do not silently add impl classpath reach.
 19. For IR with `impl.allowedDeps` on Java+Gradle projects, ensure the project applies generated containment entrypoint and run Gradle once before relying on `bear check`.
+20. For generated `*Impl.java`, replace the generated stub method body; do not keep the placeholder return/throw and append logic below it.
+21. Canonical user-owned implementation path is `src/main/java/blocks/<block-key>/impl/<BlockName>Impl.java`; do not relocate `*Impl.java` to `src/main/java/com/bear/generated/**` unless BEAR compile explicitly regenerates there.
 
 ## Session Baseline Check
 
@@ -105,19 +107,21 @@ Edit:
 - `src/test/java/**`
 - repo-owned IR/docs/scripts
 
+Preferred user-owned impl location:
+- `src/main/java/blocks/<block-key>/impl/<BlockName>Impl.java`
+
 ## Canonical Gates
 
-Use wrappers when provided:
-- PowerShell: `.\bin\bear-all.ps1`
-- Bash: `./bin/bear-all.sh`
-- PR/base gate: `.\bin\pr-gate.ps1 <base-ref>` or `./bin/pr-gate.sh <base-ref>`
-
-Direct CLI equivalents:
+Use direct CLI commands as canonical defaults:
 - single-block: `bear check <ir-file> --project <repoRoot>`
 - multi-block: `bear check --all --project <repoRoot>`
 - PR/base: `bear pr-check ...`
 - repair generated artifacts: `bear fix <ir-file> --project <repoRoot>` / `bear fix --all --project <repoRoot>`
 - allowed-deps enforcement prereq (Java+Gradle): apply generated containment script and run Gradle once so `build/bear/containment/applied.marker` is fresh
+
+Wrappers are optional project policy:
+- if a repo explicitly ships wrappers and documents them as canonical, use them
+- do not assume `bin/bear-all.*` or `bin/pr-gate.*` exists
 
 ## Completion Report Template
 

@@ -342,7 +342,8 @@ public final class JvmTarget implements Target {
             s.append(", ").append(port.interfaceName).append(" ").append(port.variableName);
         }
         s.append(") {\n");
-        s.append("        // TODO: implement business logic.\n");
+        s.append("        // TODO: replace this entire method body with business logic.\n");
+        s.append("        // Do not append logic below this placeholder return.\n");
         s.append("        return new ").append(blockName).append("Result(");
         for (int i = 0; i < outputs.size(); i++) {
             if (i > 0) {
