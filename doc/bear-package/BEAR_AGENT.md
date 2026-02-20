@@ -56,9 +56,7 @@ Before planning or editing:
 4. Decide whether boundaries change (contract/effects/idempotency/invariants).
    - include allowed-deps allowlist changes (`block.impl.allowedDeps`) as boundary-surface changes
 5. Apply IR-first updates before implementation edits when boundaries change.
-6. Decide block strategy:
-- update an existing block when responsibility boundary is unchanged
-- create a new block when responsibility implies a distinct authority boundary
+6. Decide block strategy using the decomposition protocol in this file and capture decomposition evidence.
 7. If decomposition yields multiple governed blocks:
 - create/update `bear.blocks.yaml`
 - run `--all` command variants as canonical gates
@@ -76,13 +74,33 @@ Before planning or editing:
 
 ## Generic Decomposition Rules
 
-Split into multiple blocks when responsibilities imply distinct authority boundaries. Common split signals:
-- different external ports/effects
-- different lifecycle/trigger model (sync path vs async/scheduled/worker)
-- different contract ownership/evolution cadence
+Default:
+- start with exactly one block
 
-Keep a single block when work stays within one existing responsibility boundary.
-When a prompt says to keep existing behavior unchanged, prefer extending existing blocks unless a new lifecycle/effect boundary is explicitly required.
+You may split into additional blocks only when an explicit requirement in the spec supports at least one split reason:
+- different lifecycle/trigger model:
+  - for example sync request/response versus async worker/scheduled/queue-triggered behavior
+- different external effect boundary:
+  - capability sets differ materially (for example external service call/event sink versus local-only path)
+- different authority boundary:
+  - caller trust/permission classes differ (for example admin-only versus user/system paths)
+- different state/idempotency authority:
+  - invariants, idempotency domain/key policy, or state ownership differs by responsibility
+
+Evidence requirement:
+- every multi-block decomposition must include a `Decomposition Evidence` section in the completion report
+- list each block and the exact spec sentence(s) that triggered the split reason(s)
+- if you cannot cite spec text for a split reason, do not split
+
+Anti-pattern ban:
+- do not implement a multi-operation system as a single `action`/opcode router block that dispatches unrelated operations by enum/string
+- if an opcode-style API is explicitly required by spec, cite that requirement in `Decomposition Evidence`
+
+No operation-per-block by default:
+- do not create one block per operation unless spec text explicitly requires separate lifecycle/effect/authority/state boundaries
+
+Stability rule:
+- when behavior is unchanged and no new split reason is introduced, prefer extending existing blocks
 
 ## IR-First Rules
 
@@ -128,6 +146,7 @@ Wrappers are optional project policy:
 Report completion in this format:
 - `Request summary: <one line>`
 - `Block decision: updated=<...> added=<...>`
+- `Decomposition evidence: <single-block rationale OR per-block spec citations>`
 - `IR delta: <files + boundary notes>`
 - `Implementation delta: <files>`
 - `Tests delta: <files>`

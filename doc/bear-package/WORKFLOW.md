@@ -13,10 +13,30 @@ Purpose:
 
 ## Canonical Flows
 
+## Decomposition Protocol (Deterministic)
+
+Default:
+- start with exactly one block
+
+Split only when the spec explicitly supports at least one reason:
+- different lifecycle/trigger model
+- different external effect boundary
+- different authority boundary
+- different state/idempotency authority
+
+Evidence requirement:
+- if decomposition is multi-block, include `Decomposition Evidence` in completion output
+- cite exact spec sentence(s) for each split reason and block
+- no citation means no split
+
+Anti-patterns:
+- do not use a single `action`/opcode router block for unrelated operations unless spec explicitly requires opcode-style API
+- do not create one block per operation unless spec explicitly requires separated boundaries
+
 ### A) Greenfield Flow (no IR yet)
 
 1. Read request and identify responsibilities.
-2. Decide block decomposition (single or multi-block).
+2. Apply decomposition protocol and record evidence.
 3. Create initial `spec/*.bear.yaml`.
 4. If multiple governed blocks exist, create `bear.blocks.yaml`.
 5. For each touched IR file run:
@@ -40,7 +60,7 @@ Greenfield hard stop:
 ### B) Extension Flow (existing BEAR repo)
 
 1. Discover existing IR/index/impl state.
-2. Decide update-existing-block vs add-new-block.
+2. Apply decomposition protocol and decide update-existing-block vs add-new-block.
 3. Apply IR changes first when boundaries change.
 4. Compile touched IR files.
 5. If generated artifacts are stale or drifted, run `bear fix` for touched IR (or `fix --all` when indexed).
@@ -146,4 +166,7 @@ Lock and environment troubleshooting:
 
 If new production architecture was added, include:
 - `Architecture rationale: <why required, and which boundary/lifecycle requirement it satisfies>`
+
+If decomposition is multi-block, include:
+- `Decomposition Evidence: <block -> split reason -> exact spec citation>`
 
