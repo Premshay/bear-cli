@@ -647,7 +647,7 @@ public final class JvmTarget implements Target {
             + "        }\n"
             + "    }\n"
             + "    markerTasks.add(markTaskName)\n"
-            + "    mainSourceSet.output.dir(outputDir, [builtBy: compileTaskName])\n"
+            + "    mainSourceSet.output.dir([builtBy: compileTaskName], outputDir)\n"
             + "}\n\n"
             + "tasks.register('markBearContainment') {\n"
             + "    dependsOn(markerTasks)\n"

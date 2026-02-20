@@ -17,8 +17,8 @@ P2 feature delivery:
 ## Next Concrete Task
 
 Complete P2 declared pure deps containment finish pass:
-1. verify demo-project integration path with generated `bear-containment.gradle`
-2. update demo repo IR/integration wiring to `v1` + containment marker flow
+1. clean temporary golden-refresh directories after Windows file-lock issue
+2. commit/review split for containment wiring + docs/spec updates
 
 ## Session Notes
 
@@ -37,3 +37,5 @@ Complete P2 declared pure deps containment finish pass:
 - Added CLI containment acceptance tests (unsupported target, missing marker, stale marker, fresh marker pass).
 - Added `pr-check` pure-deps delta classification tests (add/version-change boundary-expanding, removal ordinary).
 - Synced core docs/spec text to v1 + pure-deps containment behavior (`AGENTS.md`, `doc/IR_SPEC.md`, `spec/commands/check.md`, `spec/commands/pr-check.md`, `README.md`).
+- Fixed generated Gradle containment wiring (`SourceSetOutput.dir` argument order) so demo Gradle integration executes successfully.
+- Verified demo end-to-end flow: `compile -> gradle test (containment tasks+marker) -> bear check` returns `check: OK`.
