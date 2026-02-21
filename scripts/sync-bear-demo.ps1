@@ -33,14 +33,33 @@ function Assert-Inside([string]$root, [string]$candidate) {
     return $fullCandidate
 }
 
+function Test-CliInstallRoot([string]$root) {
+    return (Test-Path (Join-Path $root "bin\bear.bat")) -and
+        (Test-Path (Join-Path $root "lib\app-0.1.0-SNAPSHOT.jar")) -and
+        (Test-Path (Join-Path $root "lib\kernel-0.1.0-SNAPSHOT.jar"))
+}
+
+function Find-PackagedCli([string]$repoRoot) {
+    $packaged = Join-Path $repoRoot "docs\bear-package\.bear\tools\bear-cli"
+    if (Test-CliInstallRoot $packaged) {
+        return (Resolve-Path $packaged).Path
+    }
+    return $null
+}
+
+function Resolve-PackagedAgentRoot([string]$repoRoot) {
+    $agentRoot = Join-Path $repoRoot "docs\bear-package\.bear\agent"
+    if (-not (Test-Path (Join-Path $agentRoot "BEAR_AGENT.md"))) {
+        throw "Missing packaged agent bundle at $agentRoot. Expected docs/bear-package/.bear/agent/*."
+    }
+    return (Resolve-Path $agentRoot).Path
+}
+
 function Find-InstalledCli([string]$repoRoot, [string]$explicitPath) {
     if ($explicitPath) {
         $resolved = Resolve-Absolute $explicitPath
-        if (-not (Test-Path (Join-Path $resolved "bin\bear.bat"))) {
-            throw "Invalid CliInstallPath (missing bin\\bear.bat): $resolved"
-        }
-        if (-not (Test-Path (Join-Path $resolved "lib\app-0.1.0-SNAPSHOT.jar"))) {
-            throw "Invalid CliInstallPath (missing app jar): $resolved"
+        if (-not (Test-CliInstallRoot $resolved)) {
+            throw "Invalid CliInstallPath (missing expected bear runtime files): $resolved"
         }
         return $resolved
     }
@@ -60,9 +79,7 @@ function Find-InstalledCli([string]$repoRoot, [string]$explicitPath) {
 
     foreach ($dir in $candidates) {
         $candidate = Join-Path $dir.FullName "app\install\bear"
-        if ((Test-Path (Join-Path $candidate "bin\bear.bat")) -and
-            (Test-Path (Join-Path $candidate "lib\app-0.1.0-SNAPSHOT.jar")) -and
-            (Test-Path (Join-Path $candidate "lib\kernel-0.1.0-SNAPSHOT.jar"))) {
+        if (Test-CliInstallRoot $candidate) {
             return $candidate
         }
     }
@@ -124,7 +141,11 @@ if (-not (Test-Path (Join-Path $demoRoot ".git"))) {
     throw "Demo repo root must contain .git: $demoRoot"
 }
 
-if (-not $SkipBuild) {
+$packagedAgentRoot = Resolve-PackagedAgentRoot $repoRoot
+$packagedCli = Find-PackagedCli $repoRoot
+$needsInstalledCli = -not $CliInstallPath -and -not $packagedCli
+
+if (-not $SkipBuild -and $needsInstalledCli) {
     $gradleWrapper = Join-Path $repoRoot "gradlew.bat"
     if (-not (Test-Path $gradleWrapper)) {
         throw "Missing gradle wrapper: $gradleWrapper"
@@ -143,9 +164,17 @@ if (-not $SkipBuild) {
     } else {
         Write-Output "WhatIf mode: build skipped."
     }
+} elseif ($packagedCli) {
+    Write-Output ("Using packaged CLI runtime: {0}" -f $packagedCli)
 }
 
-$installRoot = Find-InstalledCli $repoRoot $CliInstallPath
+$installRoot = if ($CliInstallPath) {
+    Find-InstalledCli $repoRoot $CliInstallPath
+} elseif ($packagedCli) {
+    $packagedCli
+} else {
+    Find-InstalledCli $repoRoot $null
+}
 $dstCliRoot = Join-Path $demoRoot ".bear\tools\bear-cli"
 $dstCliBin = Join-Path $dstCliRoot "bin"
 $dstCliLib = Join-Path $dstCliRoot "lib"
@@ -156,12 +185,12 @@ $runtimeOperations = @(
 )
 
 $docMappings = @(
-    @{ source = (Join-Path $repoRoot "doc\bear-package\BEAR_AGENT.md"); destination = (Join-Path $demoRoot ".bear\agent\BEAR_AGENT.md") },
-    @{ source = (Join-Path $repoRoot "doc\bear-package\WORKFLOW.md"); destination = (Join-Path $demoRoot ".bear\agent\WORKFLOW.md") },
-    @{ source = (Join-Path $repoRoot "doc\bear-package\BEAR_PRIMER.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BEAR_PRIMER.md") },
-    @{ source = (Join-Path $repoRoot "doc\bear-package\IR_EXAMPLES.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\IR_EXAMPLES.md") },
-    @{ source = (Join-Path $repoRoot "doc\bear-package\IR_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\IR_QUICKREF.md") },
-    @{ source = (Join-Path $repoRoot "doc\bear-package\BLOCK_INDEX_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BLOCK_INDEX_QUICKREF.md") }
+    @{ source = (Join-Path $packagedAgentRoot "BEAR_AGENT.md"); destination = (Join-Path $demoRoot ".bear\agent\BEAR_AGENT.md") },
+    @{ source = (Join-Path $packagedAgentRoot "WORKFLOW.md"); destination = (Join-Path $demoRoot ".bear\agent\WORKFLOW.md") },
+    @{ source = (Join-Path $packagedAgentRoot "doc\BEAR_PRIMER.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BEAR_PRIMER.md") },
+    @{ source = (Join-Path $packagedAgentRoot "doc\IR_EXAMPLES.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\IR_EXAMPLES.md") },
+    @{ source = (Join-Path $packagedAgentRoot "doc\IR_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\IR_QUICKREF.md") },
+    @{ source = (Join-Path $packagedAgentRoot "doc\BLOCK_INDEX_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BLOCK_INDEX_QUICKREF.md") }
 )
 
 Write-Output "Sync plan:"
@@ -244,5 +273,5 @@ if ($mismatch.Count -gt 0) {
 }
 
 Write-Output "Sync complete."
-Write-Output "CLI JAR hashes match source installDist output."
-Write-Output "Agent package file hashes match doc/bear-package source."
+Write-Output "CLI JAR hashes match source runtime output."
+Write-Output "Agent package file hashes match docs/bear-package/.bear source."

@@ -8,13 +8,17 @@
 - `check`: deterministic local gate for drift, boundary rules, and tests.
 - `pr-check`: deterministic base-vs-head governance classification.
 - `determinism`: same inputs produce the same output lines, files, and exit behavior.
+- `agent loop`: BEAR command sequence executed by the agent while implementing specs.
+- `developer visibility`: PR/CI signals BEAR emits for review and governance.
 
-## Mental model
+## Agent execution model
 
-1. Declare block boundaries and contract in IR.
-2. Compile to deterministic generated artifacts.
-3. Enforce sync and policy with `check`.
-4. Use `pr-check` to classify PR boundary changes.
+BEAR is primarily an agent execution model, not a manual developer checklist.
+
+1. Agent updates block boundaries and contract in IR from project specs.
+2. Agent runs `compile` (or `fix`) to materialize deterministic generated artifacts.
+3. Agent runs `check` to enforce sync and policy.
+4. Agent runs `pr-check` to classify boundary changes against base.
 
 Core flow:
 
@@ -24,10 +28,16 @@ Governance flow:
 
 `pr-check --base <ref>`
 
+## Developer visibility model
+
+- PR signal: `pr-check` marks boundary-expanding vs ordinary changes.
+- CI signal: deterministic exit codes and output shape support stable gates.
+- Local signal: deterministic ordering and paths make failures fast to triage.
+
 ## Related
 
 - [INDEX.md](INDEX.md)
 - [FOUNDATIONS.md](FOUNDATIONS.md)
-- [QUICKSTART.md](QUICKSTART.md)
 - [commands-compile.md](commands-compile.md)
 - [commands-check.md](commands-check.md)
+- [commands-pr-check.md](commands-pr-check.md)

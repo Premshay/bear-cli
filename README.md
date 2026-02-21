@@ -4,14 +4,15 @@
   <img src="assets/logo/bear.png" alt="BEAR logo" width="360" />
 </p>
 
-BEAR is a deterministic CLI for boundary governance in backend projects. It validates a small IR, compiles generated boundaries, and enforces consistency with deterministic checks.
+BEAR is a deterministic governance CLI for agentic backend development: agents implement within declared IR boundaries, and BEAR makes boundary changes explicit in PRs and enforceable in CI.
 
 ## Project philosophy
 
 BEAR is built for AI-assisted and agentic development where implementation speed is high and structural drift risk is also high.
 The project philosophy is to preserve speed inside declared boundaries, while making boundary power changes explicit and deterministic.
 
-- Agents and developers should move fast on implementation details.
+- BEAR is primarily an agent execution framework for boundary-governed implementation.
+- Agents should move fast on implementation details inside declared boundaries.
 - Boundary changes should be visible and reviewable in seconds.
 - Governance should rely on deterministic CLI contracts, not prompt discipline.
 - CI should be able to gate on stable machine-readable output and exit codes.
@@ -25,7 +26,7 @@ The project philosophy is to preserve speed inside declared boundaries, while ma
 
 ## Quickstart
 
-Prerequisite: `bear` is available on `PATH`, and the demo repo is checked out at `../bear-account-demo`.
+Prerequisite: demo repo is checked out at `../bear-account-demo` and contains vendored BEAR CLI at `.bear/tools/bear-cli`.
 
 1. Open the demo repo.
 
@@ -33,19 +34,40 @@ Prerequisite: `bear` is available on `PATH`, and the demo repo is checked out at
 Set-Location ..\bear-account-demo
 ```
 
-2. Let your agent implement the repo specs.
+2. Run BEAR from the vendored CLI runtime (not from PATH).
+
+Windows (PowerShell):
+
+```powershell
+.\.bear\tools\bear-cli\bin\bear.bat --help
+```
+
+macOS/Linux (bash/zsh):
+
+```sh
+./.bear/tools/bear-cli/bin/bear --help
+```
+
+3. Let your agent implement the repo specs.
 
 ```text
 Implement the specs.
 ```
 
-3. Verify the full repo gate.
+4. Verify the full repo gate.
+
+Windows (PowerShell):
 
 ```powershell
-bear check --all --project .
+.\.bear\tools\bear-cli\bin\bear.bat check --all --project .
 ```
 
-Success signal: `bear check --all --project .` exits `0` and reports no failing blocks.
+macOS/Linux (bash/zsh):
+
+```sh
+./.bear/tools/bear-cli/bin/bear check --all --project .
+```
+Success signal: vendored `bear check --all --project .` exits `0` and reports no failing blocks.
 
 ## Mental model
 
@@ -56,11 +78,26 @@ Success signal: `bear check --all --project .` exits `0` and reports no failing 
 
 Pipeline: `IR -> compile -> check`, and `pr-check` for PR boundary governance.
 
+Agent execution loop:
+
+1. agent updates IR and implementation from project specs
+2. agent runs `bear validate`
+3. agent runs `bear compile` or `bear fix`
+4. agent runs `bear check`
+5. agent runs `bear pr-check --base <ref>`
+
+Developer visibility:
+
+- PR review: `pr-check` highlights boundary-expanding deltas.
+- CI policy: deterministic exit codes and output envelopes support stable gates.
+
 ## Links
 
 - [docs/public/INDEX.md](docs/public/INDEX.md)
 - [docs/public/QUICKSTART.md](docs/public/QUICKSTART.md)
+- [docs/public/INSTALL.md](docs/public/INSTALL.md)
 - [docs/public/FOUNDATIONS.md](docs/public/FOUNDATIONS.md)
+- [docs/public/MODEL.md](docs/public/MODEL.md)
 - [docs/public/exit-codes.md](docs/public/exit-codes.md)
 - [docs/public/output-format.md](docs/public/output-format.md)
 - [docs/public/troubleshooting.md](docs/public/troubleshooting.md)

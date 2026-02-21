@@ -13,10 +13,11 @@ Use it as a guided path, not just a file list.
 
 ### I am integrating BEAR into CI or team workflow
 
-1. [CONTRACTS.md](CONTRACTS.md) for Preview frozen contracts.
-2. [commands-check.md](commands-check.md) and [commands-pr-check.md](commands-pr-check.md) for enforcement and PR governance.
-3. [exit-codes.md](exit-codes.md) and [output-format.md](output-format.md) for machine-parsed behavior.
-4. [VERSIONING.md](VERSIONING.md) for contract-change expectations.
+1. [INSTALL.md](INSTALL.md) to copy the BEAR package bundle into your project.
+2. [CONTRACTS.md](CONTRACTS.md) for Preview frozen contracts.
+3. [commands-check.md](commands-check.md) and [commands-pr-check.md](commands-pr-check.md) for enforcement and PR governance.
+4. [exit-codes.md](exit-codes.md) and [output-format.md](output-format.md) for machine-parsed behavior.
+5. [VERSIONING.md](VERSIONING.md) for contract-change expectations.
 
 ### I am debugging failures
 
@@ -27,6 +28,7 @@ Use it as a guided path, not just a file list.
 ## Full map
 
 - [QUICKSTART.md](QUICKSTART.md) - First successful end-to-end run.
+- [INSTALL.md](INSTALL.md) - Install the BEAR `.bear` bundle in another project.
 - [FOUNDATIONS.md](FOUNDATIONS.md) - Why BEAR exists and how it is structured.
 - [MODEL.md](MODEL.md) - Vocabulary and operating model.
 - [CONTRACTS.md](CONTRACTS.md) - Frozen Preview contract boundaries.
@@ -43,6 +45,7 @@ Use it as a guided path, not just a file list.
 ## Related
 
 - [QUICKSTART.md](QUICKSTART.md)
+- [INSTALL.md](INSTALL.md)
 - [FOUNDATIONS.md](FOUNDATIONS.md)
 - [MODEL.md](MODEL.md)
 - [CONTRACTS.md](CONTRACTS.md)

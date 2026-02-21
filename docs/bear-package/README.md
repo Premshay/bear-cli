@@ -1,6 +1,6 @@
 # BEAR Agent Package (Portable v0.2)
 
-This directory is the source of truth for BEAR-distributed agent package files copied into adopter repos.
+This directory is the source of truth for BEAR-distributed package files copied into adopter repos.
 
 This package is generic and domain-neutral. It provides BEAR operating rules, IR guidance, and deterministic gate usage. It must not include app-specific solution hints.
 
@@ -16,6 +16,7 @@ Minimum agent context carried by the package:
 - index rules (`.bear/agent/doc/BLOCK_INDEX_QUICKREF.md`)
 - conceptual framing (`.bear/agent/doc/BEAR_PRIMER.md`)
 - required project-local inspection targets (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**` when present)
+- vendored CLI runtime (`.bear/tools/bear-cli/**`)
 
 Canonical command surface expected by the package:
 - `bear validate`
@@ -23,6 +24,11 @@ Canonical command surface expected by the package:
 - `bear fix`
 - `bear check`
 - `bear pr-check`
+
+Runtime distribution note:
+- package includes a vendored CLI runtime under `.bear/tools/bear-cli/`
+- adopters copy the full `.bear/` bundle from this directory into `<repoRoot>/.bear/`
+- commands are invoked via vendored path (for example `.bear/tools/bear-cli/bin/bear(.bat) ...`)
 
 Containment note (v1 preview):
 - if IR declares `block.impl.allowedDeps`, Java+Gradle projects must apply generated containment entrypoint:
@@ -60,10 +66,16 @@ Canonical layout in adopter repos:
   doc/IR_QUICKREF.md
   doc/IR_EXAMPLES.md
   doc/BLOCK_INDEX_QUICKREF.md
+<repoRoot>/.bear/tools/bear-cli/
+  bin/bear(.bat)
+  lib/*.jar
 ```
 
 Bootstrap entrypoint at repo root:
 - `AGENTS.md` (project-owned or template) points to `.bear/agent/BEAR_AGENT.md`
+
+Bundle source path in this repository:
+- [`docs/bear-package/.bear/`](.bear/)
 
 ## Distributed File Set
 
@@ -74,6 +86,8 @@ Required package files:
 - `.bear/agent/doc/IR_QUICKREF.md`
 - `.bear/agent/doc/IR_EXAMPLES.md`
 - `.bear/agent/doc/BLOCK_INDEX_QUICKREF.md`
+- `.bear/tools/bear-cli/bin/bear` / `.bear/tools/bear-cli/bin/bear.bat`
+- `.bear/tools/bear-cli/lib/*.jar`
 - `AGENTS_SHIM.md`
 
 Optional package file:

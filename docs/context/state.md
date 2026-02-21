@@ -26,6 +26,27 @@ Post-Lock++ follow-through:
 
 ## Session Notes
 
+- Refined README opening definition of BEAR to emphasize agent-first execution and PR/CI governance visibility in one concrete sentence.
+- Normalized package installation to single-bundle copy semantics:
+  - `docs/public/INSTALL.md` now installs by copying `docs/bear-package/.bear/*` into target `.bear/` (no separate doc/runtime copy flow).
+  - `scripts/sync-bear-demo.ps1` now sources agent files from `docs/bear-package/.bear/agent/*` and prefers packaged CLI from `docs/bear-package/.bear/tools/bear-cli`.
+  - `docs/bear-package/README.md` now documents `.bear/` as the canonical copy bundle source.
+  - removed legacy duplicate `docs/bear-package/tools/` path; `.bear/` is now the only package bundle source.
+- Aligned public messaging to agent-first framing:
+  - updated `README.md` philosophy/mental model sections to make agent execution primary and developer value centered on PR/CI visibility.
+  - updated `docs/public/MODEL.md` to split agent execution model from developer visibility model.
+- Updated public onboarding docs to package-first runtime usage:
+  - README and `docs/public/QUICKSTART.md` now use vendored CLI invocation (`.bear/tools/bear-cli/bin/bear(.bat)`) for demo flows instead of assuming global `bear` on PATH.
+  - Added `docs/public/INSTALL.md` for non-demo projects (copy package bundle into `.bear/`, point root `AGENTS.md` to `.bear/agent/BEAR_AGENT.md`).
+  - Improved `docs/public/INDEX.md` integration path to include install guidance.
+- Packaged CLI runtime is now checked in under `docs/bear-package/.bear/tools/bear-cli/` (`bin/` + `lib/` from installDist output).
+- Updated `scripts/sync-bear-demo.ps1`:
+  - prefers packaged runtime from `docs/bear-package/.bear/tools/bear-cli`
+  - falls back to installDist lookup when packaged runtime is absent or explicit path is requested
+  - source package doc paths now use `docs/bear-package/.bear/agent/*`
+  - updated post-sync messaging to package-path naming
+- Updated `docs/bear-package/README.md` to document vendored CLI runtime as part of package layout/distribution.
+
 - Restructured repository docs into a public/internal split:
   - new public contract set under `docs/public/*` (index, quickstart, model, contracts, command pages, exit/output/troubleshooting/versioning)
   - active internal docs moved to `docs/context/*`
