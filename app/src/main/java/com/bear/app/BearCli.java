@@ -251,125 +251,7 @@ public final class BearCli {
     }
 
     private static int runFixAll(String[] args, PrintStream out, PrintStream err) {
-        AllFixOptions options = parseAllFixOptions(args, err);
-        if (options == null) {
-            return ExitCode.USAGE;
-        }
-
-        BlockIndex index;
-        try {
-            index = new BlockIndexParser().parse(options.repoRoot(), options.blocksPath());
-        } catch (BlockIndexValidationException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.VALIDATION,
-                "index: VALIDATION_ERROR: " + e.getMessage(),
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix `bear.blocks.yaml` and rerun `bear fix --all`."
-            );
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "io: IO_ERROR: " + squash(e.getMessage()),
-                FailureCode.IO_ERROR,
-                "bear.blocks.yaml",
-                "Ensure `bear.blocks.yaml` is readable and rerun `bear fix --all`."
-            );
-        }
-
-        List<BlockIndexEntry> selected = selectBlocks(index, options.onlyNames());
-        if (selected == null) {
-            return failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: unknown block in --only",
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Use only block names declared in `bear.blocks.yaml`."
-            );
-        }
-
-        try {
-            List<String> legacyMarkers = options.strictOrphans()
-                ? computeLegacyMarkersRepoWide(options.repoRoot())
-                : computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
-            if (!legacyMarkers.isEmpty()) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.IO,
-                    "fix: IO_ERROR: LEGACY_SURFACE_MARKER: " + legacyMarkers.get(0),
-                    FailureCode.IO_ERROR,
-                    legacyMarkers.get(0),
-                    "Delete legacy marker paths and recompile managed blocks, then rerun `bear fix --all`."
-                );
-            }
-
-            List<String> orphanMarkers = options.strictOrphans()
-                ? computeOrphanMarkersRepoWide(options.repoRoot(), index)
-                : computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
-            if (!orphanMarkers.isEmpty()) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.IO,
-                    "fix: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
-                    FailureCode.IO_ERROR,
-                    orphanMarkers.get(0),
-                    "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
-                );
-            }
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "fix: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
-                FailureCode.IO_ERROR,
-                "bear.blocks.yaml",
-                "Ensure repo paths are readable and rerun `bear fix --all`."
-            );
-        }
-
-        List<BlockExecutionResult> blockResults = new ArrayList<>();
-        boolean failed = false;
-        boolean failFastTriggered = false;
-        for (BlockIndexEntry block : selected) {
-            if (!block.enabled()) {
-                blockResults.add(skipBlock(block, "DISABLED"));
-                continue;
-            }
-            if (options.failFast() && failed) {
-                failFastTriggered = true;
-                blockResults.add(skipBlock(block, "FAIL_FAST_ABORT"));
-                continue;
-            }
-
-            FixResult fixResult = executeFix(
-                options.repoRoot().resolve(block.ir()).normalize(),
-                options.repoRoot().resolve(block.projectRoot()).normalize(),
-                block.name()
-            );
-            BlockExecutionResult blockResult = toFixBlockResult(block, fixResult);
-            blockResults.add(blockResult);
-            if (blockResult.status() == BlockStatus.FAIL) {
-                failed = true;
-            }
-        }
-
-        RepoAggregationResult summary = aggregateFixResults(blockResults, failFastTriggered);
-        List<String> lines = renderFixAllOutput(blockResults, summary);
-        if (summary.exitCode() == ExitCode.OK) {
-            printLines(out, lines);
-            return ExitCode.OK;
-        }
-        printLines(err, lines);
-        return fail(
-            err,
-            summary.exitCode(),
-            FailureCode.REPO_MULTI_BLOCK_FAILED,
-            "bear.blocks.yaml",
-            "Review per-block results above and fix failing blocks, then rerun the command."
-        );
+        return FixAllCommandService.runFixAll(args, out, err);
     }
 
     private static int runCheck(String[] args, PrintStream out, PrintStream err) {
@@ -505,488 +387,11 @@ public final class BearCli {
     }
 
     private static int runCheckAll(String[] args, PrintStream out, PrintStream err) {
-        AllCheckOptions options = parseAllCheckOptions(args, err);
-        if (options == null) {
-            return ExitCode.USAGE;
-        }
-
-        BlockIndex index;
-        try {
-            index = new BlockIndexParser().parse(options.repoRoot(), options.blocksPath());
-        } catch (BlockIndexValidationException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.VALIDATION,
-                "index: VALIDATION_ERROR: " + e.getMessage(),
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix `bear.blocks.yaml` and rerun `bear check --all`."
-            );
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "io: IO_ERROR: " + squash(e.getMessage()),
-                FailureCode.IO_ERROR,
-                "bear.blocks.yaml",
-                "Ensure `bear.blocks.yaml` is readable and rerun `bear check --all`."
-            );
-        }
-
-        List<BlockIndexEntry> selected = selectBlocks(index, options.onlyNames());
-        if (selected == null) {
-            return failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: unknown block in --only",
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Use only block names declared in `bear.blocks.yaml`."
-            );
-        }
-
-        TreeSet<String> managedRoots = new TreeSet<>();
-        for (BlockIndexEntry entry : selected) {
-            if (!entry.enabled()) {
-                continue;
-            }
-            managedRoots.add(entry.projectRoot());
-        }
-        for (String managedRoot : managedRoots) {
-            Path root = options.repoRoot().resolve(managedRoot).normalize();
-            CheckBlockedState blockedState = readCheckBlockedState(root);
-            if (!blockedState.blocked()) {
-                continue;
-            }
-            String markerPath = options.repoRoot()
-                .relativize(root.resolve(CHECK_BLOCKED_MARKER_RELATIVE))
-                .toString()
-                .replace('\\', '/');
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "check: IO_ERROR: CHECK_BLOCKED: " + managedRoot + ": " + blockedState.summary(),
-                FailureCode.IO_ERROR,
-                markerPath,
-                "Run `bear unblock --project <path>` after fixing lock/bootstrap IO and rerun `bear check --all`."
-            );
-        }
-
-        try {
-            List<String> legacyMarkers = options.strictOrphans()
-                ? computeLegacyMarkersRepoWide(options.repoRoot())
-                : computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
-            if (!legacyMarkers.isEmpty()) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.IO,
-                    "check: IO_ERROR: LEGACY_SURFACE_MARKER: " + legacyMarkers.get(0),
-                    FailureCode.IO_ERROR,
-                    legacyMarkers.get(0),
-                    "Delete legacy marker paths and recompile managed blocks, then rerun `bear check --all`."
-                );
-            }
-
-            List<String> orphanMarkers = options.strictOrphans()
-                ? computeOrphanMarkersRepoWide(options.repoRoot(), index)
-                : computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
-            if (!orphanMarkers.isEmpty()) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.IO,
-                    "check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
-                    FailureCode.IO_ERROR,
-                    orphanMarkers.get(0),
-                    "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
-                );
-            }
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
-                FailureCode.IO_ERROR,
-                "bear.blocks.yaml",
-                "Ensure repo paths are readable and rerun `bear check --all`."
-            );
-        }
-
-        List<BlockExecutionResult> blockResults = new ArrayList<>();
-        boolean failed = false;
-        boolean failFastTriggered = false;
-        for (BlockIndexEntry block : selected) {
-            if (!block.enabled()) {
-                blockResults.add(skipBlock(block, "DISABLED"));
-                continue;
-            }
-            if (options.failFast() && failed) {
-                failFastTriggered = true;
-                blockResults.add(skipBlock(block, "FAIL_FAST_ABORT"));
-                continue;
-            }
-
-            CheckResult checkResult = executeCheck(
-                options.repoRoot().resolve(block.ir()).normalize(),
-                options.repoRoot().resolve(block.projectRoot()).normalize(),
-                false,
-                block.name()
-            );
-            BlockExecutionResult blockResult = toCheckBlockResult(block, checkResult);
-            blockResults.add(blockResult);
-            if (blockResult.status() == BlockStatus.FAIL) {
-                failed = true;
-            }
-        }
-
-        Map<String, List<Integer>> rootPassIndexes = new TreeMap<>();
-        for (int i = 0; i < blockResults.size(); i++) {
-            BlockExecutionResult blockResult = blockResults.get(i);
-            if (blockResult.status() != BlockStatus.PASS) {
-                continue;
-            }
-            rootPassIndexes.computeIfAbsent(blockResult.project(), ignored -> new ArrayList<>()).add(i);
-        }
-
-        int rootReachFailed = 0;
-        int rootTestFailed = 0;
-        int rootTestSkippedDueToReach = 0;
-        for (Map.Entry<String, List<Integer>> entry : rootPassIndexes.entrySet()) {
-            Path root = options.repoRoot().resolve(entry.getKey()).normalize();
-            try {
-                List<UndeclaredReachFinding> undeclaredReach = scanUndeclaredReach(root);
-                if (!undeclaredReach.isEmpty()) {
-                    rootReachFailed++;
-                    rootTestSkippedDueToReach++;
-                    String locator = undeclaredReach.get(0).path();
-                    String detail = "root-level undeclared reach in projectRoot " + entry.getKey();
-                    for (int idx : entry.getValue()) {
-                        blockResults.set(idx, rootFailure(
-                            blockResults.get(idx),
-                            ExitCode.UNDECLARED_REACH,
-                            "UNDECLARED_REACH",
-                            FailureCode.UNDECLARED_REACH,
-                            locator,
-                            detail,
-                            "Declare a port/op in IR, run bear compile, and route call through generated port interface."
-                        ));
-                    }
-                    continue;
-                }
-
-                List<WiringManifest> wiringManifests = new ArrayList<>();
-                for (int idx : entry.getValue()) {
-                    String blockKey = blockResults.get(idx).name();
-                    Path wiringPath = root.resolve("build/generated/bear/wiring/" + blockKey + ".wiring.json");
-                    wiringManifests.add(parseWiringManifest(wiringPath));
-                }
-                List<BoundaryBypassFinding> bypassFindings = scanBoundaryBypass(root, wiringManifests);
-                if (!bypassFindings.isEmpty()) {
-                    BoundaryBypassFinding first = bypassFindings.get(0);
-                    String firstLine = "check: BOUNDARY_BYPASS: RULE=" + first.rule() + ": " + first.path() + ": " + first.detail();
-                    for (int idx : entry.getValue()) {
-                        blockResults.set(idx, rootFailure(
-                            blockResults.get(idx),
-                            ExitCode.BOUNDARY_BYPASS,
-                            "BOUNDARY_BYPASS",
-                            FailureCode.BOUNDARY_BYPASS,
-                            first.path(),
-                            firstLine,
-                            "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses."
-                        ));
-                    }
-                    continue;
-                }
-
-                ProjectTestResult testResult = runProjectTests(root);
-                if (testResult.status() == ProjectTestStatus.LOCKED) {
-                    String lockLine = testResult.firstLockLine() != null
-                        ? testResult.firstLockLine()
-                        : firstGradleLockLine(testResult.output());
-                    String markerWriteSuffix = "";
-                    try {
-                        writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_LOCK, lockLine);
-                    } catch (IOException markerWriteError) {
-                        markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
-                    }
-                    String detail = projectTestDetail(
-                        "root-level project test runner lock in projectRoot " + entry.getKey(),
-                        lockLine,
-                        null
-                    );
-                    String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
-                    if (!attemptsSuffix.isBlank()) {
-                        detail += attemptsSuffix;
-                    }
-                    if (!markerWriteSuffix.isBlank()) {
-                        detail += markerWriteSuffix;
-                    }
-                    for (int idx : entry.getValue()) {
-                        blockResults.set(idx, rootFailure(
-                            blockResults.get(idx),
-                            ExitCode.IO,
-                            "IO_ERROR",
-                            FailureCode.IO_ERROR,
-                            "project.tests",
-                            detail,
-                            "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check --all`."
-                        ));
-                    }
-                } else if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
-                    String bootstrapLine = testResult.firstBootstrapLine() != null
-                        ? testResult.firstBootstrapLine()
-                        : firstGradleBootstrapIoLine(testResult.output());
-                    String markerWriteSuffix = "";
-                    try {
-                        writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
-                    } catch (IOException markerWriteError) {
-                        markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
-                    }
-                    String detail = projectTestDetail(
-                        "root-level project test bootstrap IO failure in projectRoot " + entry.getKey(),
-                        bootstrapLine,
-                        shortTailSummary(testResult.output(), 3)
-                    );
-                    String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
-                    if (!attemptsSuffix.isBlank()) {
-                        detail += attemptsSuffix;
-                    }
-                    if (!markerWriteSuffix.isBlank()) {
-                        detail += markerWriteSuffix;
-                    }
-                    for (int idx : entry.getValue()) {
-                        blockResults.set(idx, rootFailure(
-                            blockResults.get(idx),
-                            ExitCode.IO,
-                            "IO_ERROR",
-                            FailureCode.IO_ERROR,
-                            "project.tests",
-                            detail,
-                            "Fix Gradle wrapper bootstrap/cache (distribution zip/unzip) and rerun `bear check --all`."
-                        ));
-                    }
-                } else if (testResult.status() == ProjectTestStatus.FAILED) {
-                    rootTestFailed++;
-                    String detail = projectTestDetail(
-                        "root-level project tests failed for projectRoot " + entry.getKey(),
-                        firstRelevantProjectTestFailureLine(testResult.output()),
-                        shortTailSummary(testResult.output(), 3)
-                    );
-                    for (int idx : entry.getValue()) {
-                        blockResults.set(idx, rootFailure(
-                            blockResults.get(idx),
-                            ExitCode.TEST_FAILURE,
-                            "TEST_FAILURE",
-                            FailureCode.TEST_FAILURE,
-                            "project.tests",
-                            detail,
-                            "Fix project tests and rerun `bear check --all`."
-                        ));
-                    }
-                } else if (testResult.status() == ProjectTestStatus.TIMEOUT) {
-                    rootTestFailed++;
-                    String detail = projectTestDetail(
-                        "root-level project tests timed out for projectRoot " + entry.getKey(),
-                        firstRelevantProjectTestFailureLine(testResult.output()),
-                        shortTailSummary(testResult.output(), 3)
-                    );
-                    for (int idx : entry.getValue()) {
-                        blockResults.set(idx, rootFailure(
-                            blockResults.get(idx),
-                            ExitCode.TEST_FAILURE,
-                            "TEST_FAILURE",
-                            FailureCode.TEST_TIMEOUT,
-                            "project.tests",
-                            detail,
-                            "Reduce test runtime or increase timeout, then rerun `bear check --all`."
-                        ));
-                    }
-                } else if (testResult.status() == ProjectTestStatus.PASSED) {
-                    clearCheckBlockedMarker(root);
-                }
-            } catch (IOException e) {
-                for (int idx : entry.getValue()) {
-                    blockResults.set(idx, rootFailure(
-                        blockResults.get(idx),
-                        ExitCode.IO,
-                        "IO_ERROR",
-                        FailureCode.IO_ERROR,
-                        "project.root",
-                        "io: IO_ERROR: " + squash(e.getMessage()),
-                        "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check --all`."
-                    ));
-                }
-            } catch (ManifestParseException e) {
-                for (int idx : entry.getValue()) {
-                    blockResults.set(idx, rootFailure(
-                        blockResults.get(idx),
-                        ExitCode.DRIFT,
-                        "DRIFT",
-                        FailureCode.DRIFT_MISSING_BASELINE,
-                        "build/generated/bear/wiring/" + blockResults.get(idx).name() + ".wiring.json",
-                        "drift: BASELINE_WIRING_MANIFEST_INVALID: " + e.reasonCode(),
-                        "Run `bear compile <ir-file> --project <path>`, then rerun `bear check --all`."
-                    ));
-                }
-            } catch (InterruptedException e) {
-                for (int idx : entry.getValue()) {
-                    blockResults.set(idx, rootFailure(
-                        blockResults.get(idx),
-                        ExitCode.INTERNAL,
-                        "INTERNAL_ERROR",
-                        FailureCode.INTERNAL_ERROR,
-                        "internal",
-                        "internal: INTERNAL_ERROR:",
-                        "Capture stderr and file an issue against bear-cli."
-                    ));
-                }
-            }
-        }
-
-        RepoAggregationResult summary = aggregateCheckResults(
-            blockResults,
-            failFastTriggered,
-            rootReachFailed,
-            rootTestFailed,
-            rootTestSkippedDueToReach
-        );
-        List<String> lines = renderCheckAllOutput(blockResults, summary);
-        if (summary.exitCode() == ExitCode.OK) {
-            printLines(out, lines);
-            return ExitCode.OK;
-        }
-        printLines(err, lines);
-        return fail(
-            err,
-            summary.exitCode(),
-            FailureCode.REPO_MULTI_BLOCK_FAILED,
-            "bear.blocks.yaml",
-            "Review per-block results above and fix failing blocks, then rerun the command."
-        );
+        return CheckAllCommandService.runCheckAll(args, out, err);
     }
 
     private static int runPrCheckAll(String[] args, PrintStream out, PrintStream err) {
-        AllPrCheckOptions options = parseAllPrCheckOptions(args, err);
-        if (options == null) {
-            return ExitCode.USAGE;
-        }
-
-        BlockIndex index;
-        try {
-            index = new BlockIndexParser().parse(options.repoRoot(), options.blocksPath());
-        } catch (BlockIndexValidationException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.VALIDATION,
-                "index: VALIDATION_ERROR: " + e.getMessage(),
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix `bear.blocks.yaml` and rerun `bear pr-check --all`."
-            );
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "io: IO_ERROR: " + squash(e.getMessage()),
-                FailureCode.IO_ERROR,
-                "bear.blocks.yaml",
-                "Ensure `bear.blocks.yaml` is readable and rerun `bear pr-check --all`."
-            );
-        }
-
-        List<BlockIndexEntry> selected = selectBlocks(index, options.onlyNames());
-        if (selected == null) {
-            return failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: unknown block in --only",
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Use only block names declared in `bear.blocks.yaml`."
-            );
-        }
-
-        try {
-            List<String> legacyMarkers = options.strictOrphans()
-                ? computeLegacyMarkersRepoWide(options.repoRoot())
-                : computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
-            if (!legacyMarkers.isEmpty()) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.IO,
-                    "pr-check: IO_ERROR: LEGACY_SURFACE_MARKER: " + legacyMarkers.get(0),
-                    FailureCode.IO_ERROR,
-                    legacyMarkers.get(0),
-                    "Delete legacy marker paths and recompile managed blocks, then rerun `bear pr-check --all`."
-                );
-            }
-
-            List<String> orphanMarkers = options.strictOrphans()
-                ? computeOrphanMarkersRepoWide(options.repoRoot(), index)
-                : computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
-            if (!orphanMarkers.isEmpty()) {
-                return failWithLegacy(
-                    err,
-                    ExitCode.IO,
-                    "pr-check: IO_ERROR: ORPHAN_MARKER: " + orphanMarkers.get(0),
-                    FailureCode.IO_ERROR,
-                    orphanMarkers.get(0),
-                    "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
-                );
-            }
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "pr-check: IO_ERROR: ORPHAN_SCAN_FAILED: " + squash(e.getMessage()),
-                FailureCode.IO_ERROR,
-                "bear.blocks.yaml",
-                "Ensure repo paths are readable and rerun `bear pr-check --all`."
-            );
-        }
-
-        List<BlockExecutionResult> blockResults = new ArrayList<>();
-        for (BlockIndexEntry block : selected) {
-            if (!block.enabled()) {
-                blockResults.add(skipBlock(block, "DISABLED"));
-                continue;
-            }
-            String mappingError = validateIndexIrNameMatch(options.repoRoot().resolve(block.ir()).normalize(), block.name());
-            if (mappingError != null) {
-                blockResults.add(new BlockExecutionResult(
-                    block.name(),
-                    block.ir(),
-                    block.projectRoot(),
-                    BlockStatus.FAIL,
-                    ExitCode.VALIDATION,
-                    "VALIDATION",
-                    FailureCode.IR_VALIDATION,
-                    "block.name",
-                    mappingError,
-                    "Set `block.name` to match index `name` and rerun `bear pr-check --all`.",
-                    null,
-                    null,
-                    List.of()
-                ));
-                continue;
-            }
-            PrCheckResult prResult = executePrCheck(options.repoRoot(), block.ir(), options.baseRef());
-            blockResults.add(toPrBlockResult(block, prResult));
-        }
-
-        RepoAggregationResult summary = aggregatePrResults(blockResults);
-        List<String> lines = renderPrAllOutput(blockResults, summary);
-        if (summary.exitCode() == ExitCode.OK) {
-            printLines(out, lines);
-            return ExitCode.OK;
-        }
-        printLines(err, lines);
-        return fail(
-            err,
-            summary.exitCode(),
-            FailureCode.REPO_MULTI_BLOCK_FAILED,
-            "bear.blocks.yaml",
-            "Review per-block results above and fix failing blocks, then rerun the command."
-        );
+        return PrCheckAllCommandService.runPrCheckAll(args, out, err);
     }
 
     private static int emitCheckResult(CheckResult result, PrintStream out, PrintStream err) {
@@ -1034,7 +439,7 @@ public final class BearCli {
         );
     }
 
-    private static FixResult executeFix(Path irFile, Path projectRoot, String expectedBlockKey) {
+    static FixResult executeFix(Path irFile, Path projectRoot, String expectedBlockKey) {
         try {
             maybeFailInternalForTest("fix");
             BearIrParser parser = new BearIrParser();
@@ -1100,629 +505,11 @@ public final class BearCli {
         boolean runReachAndTests,
         String expectedBlockKey
     ) {
-        Path baselineRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
-        Path tempRoot = null;
-        try {
-            maybeFailInternalForTest("check");
-            BearIrParser parser = new BearIrParser();
-            BearIrValidator validator = new BearIrValidator();
-            BearIrNormalizer normalizer = new BearIrNormalizer();
-            JvmTarget target = new JvmTarget();
-
-            BearIr ir = parser.parse(irFile);
-            validator.validate(ir);
-            BearIr normalized = normalizer.normalize(ir);
-            String blockKey = toBlockKey(normalized.block().name());
-            if (expectedBlockKey != null && !expectedBlockKey.equals(blockKey)) {
-                String line = "schema at block.name: INVALID_VALUE: block name must match index name: " + expectedBlockKey;
-                return checkFailure(
-                    ExitCode.VALIDATION,
-                    List.of(line),
-                    "VALIDATION",
-                    FailureCode.IR_VALIDATION,
-                    "block.name",
-                    "Set `block.name` to match index `name` and rerun `bear check --all`.",
-                    line
-                );
-            }
-            String packageSegment = toGeneratedPackageSegment(normalized.block().name());
-            Set<String> ownedPrefixes = Set.of(
-                "src/main/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
-                "src/test/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/"
-            );
-            String markerRelPath = "surfaces/" + blockKey + ".surface.json";
-            String wiringRelPath = "wiring/" + blockKey + ".wiring.json";
-            Path legacyMarkerPath = baselineRoot.resolve("bear.surface.json");
-            if (Files.isRegularFile(legacyMarkerPath)) {
-                return checkFailure(
-                    ExitCode.IO,
-                    List.of("check: IO_ERROR: LEGACY_SURFACE_MARKER: build/generated/bear/bear.surface.json"),
-                    "IO_ERROR",
-                    FailureCode.IO_ERROR,
-                    "build/generated/bear/bear.surface.json",
-                    "Delete legacy marker and rerun compile for managed blocks, then rerun `bear check`.",
-                    "check: IO_ERROR: LEGACY_SURFACE_MARKER: build/generated/bear/bear.surface.json"
-                );
-            }
-
-            if (!hasOwnedBaselineFiles(baselineRoot, ownedPrefixes, markerRelPath)) {
-                String line = "drift: MISSING_BASELINE: build/generated/bear (run: bear compile "
-                    + irFile + " --project " + projectRoot + ")";
-                return checkFailure(
-                    ExitCode.DRIFT,
-                    List.of(line),
-                    "DRIFT",
-                    FailureCode.DRIFT_MISSING_BASELINE,
-                    "build/generated/bear",
-                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    "drift: MISSING_BASELINE: build/generated/bear"
-                );
-            }
-
-            tempRoot = Files.createTempDirectory("bear-check-");
-            target.compile(normalized, tempRoot);
-            Path candidateRoot = tempRoot.resolve("build").resolve("generated").resolve("bear");
-            Path baselineManifestPath = baselineRoot.resolve(markerRelPath);
-            Path candidateManifestPath = candidateRoot.resolve(markerRelPath);
-            Path baselineWiringPath = baselineRoot.resolve(wiringRelPath);
-            Path candidateWiringPath = candidateRoot.resolve(wiringRelPath);
-
-            applyCandidateManifestTestMode(candidateManifestPath);
-
-            List<String> diagnostics = new ArrayList<>();
-            BoundaryManifest baselineManifest = null;
-            if (!Files.isRegularFile(baselineManifestPath)) {
-                diagnostics.add("check: BASELINE_MANIFEST_MISSING: " + baselineManifestPath);
-            } else {
-                try {
-                    baselineManifest = parseManifest(baselineManifestPath);
-                } catch (ManifestParseException e) {
-                    diagnostics.add("check: BASELINE_MANIFEST_INVALID: " + e.reasonCode());
-                }
-            }
-            if (!Files.isRegularFile(candidateManifestPath)) {
-                return checkFailure(
-                    ExitCode.INTERNAL,
-                    List.of("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING"),
-                    "INTERNAL_ERROR",
-                    FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/" + markerRelPath,
-                    "Capture stderr and file an issue against bear-cli.",
-                    "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_MISSING"
-                );
-            }
-            BoundaryManifest candidateManifest;
-            try {
-                candidateManifest = parseManifest(candidateManifestPath);
-            } catch (ManifestParseException e) {
-                return checkFailure(
-                    ExitCode.INTERNAL,
-                    List.of("internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:" + e.reasonCode()),
-                    "INTERNAL_ERROR",
-                    FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/" + markerRelPath,
-                    "Capture stderr and file an issue against bear-cli.",
-                    "internal: INTERNAL_ERROR: CANDIDATE_MANIFEST_INVALID:" + e.reasonCode()
-                );
-            }
-
-            if (!Files.isRegularFile(baselineWiringPath)) {
-                String line = "drift: MISSING_BASELINE: build/generated/bear/" + wiringRelPath
-                    + " (run: bear compile "
-                    + irFile + " --project " + projectRoot + ")";
-                return checkFailure(
-                    ExitCode.DRIFT,
-                    List.of(line),
-                    "DRIFT",
-                    FailureCode.DRIFT_MISSING_BASELINE,
-                    "build/generated/bear/" + wiringRelPath,
-                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    "drift: MISSING_BASELINE: build/generated/bear/" + wiringRelPath
-                );
-            }
-            if (!Files.isRegularFile(candidateWiringPath)) {
-                return checkFailure(
-                    ExitCode.INTERNAL,
-                    List.of("internal: INTERNAL_ERROR: CANDIDATE_WIRING_MANIFEST_MISSING"),
-                    "INTERNAL_ERROR",
-                    FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/" + wiringRelPath,
-                    "Capture stderr and file an issue against bear-cli.",
-                    "internal: INTERNAL_ERROR: CANDIDATE_WIRING_MANIFEST_MISSING"
-                );
-            }
-            WiringManifest baselineWiringManifest;
-            WiringManifest candidateWiringManifest;
-            try {
-                baselineWiringManifest = parseWiringManifest(baselineWiringPath);
-            } catch (ManifestParseException e) {
-                return checkFailure(
-                    ExitCode.DRIFT,
-                    List.of("drift: BASELINE_WIRING_MANIFEST_INVALID: " + e.reasonCode()),
-                    "DRIFT",
-                    FailureCode.DRIFT_MISSING_BASELINE,
-                    "build/generated/bear/" + wiringRelPath,
-                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    "drift: BASELINE_WIRING_MANIFEST_INVALID: " + e.reasonCode()
-                );
-            }
-            try {
-                candidateWiringManifest = parseWiringManifest(candidateWiringPath);
-            } catch (ManifestParseException e) {
-                return checkFailure(
-                    ExitCode.INTERNAL,
-                    List.of("internal: INTERNAL_ERROR: CANDIDATE_WIRING_MANIFEST_INVALID:" + e.reasonCode()),
-                    "INTERNAL_ERROR",
-                    FailureCode.INTERNAL_ERROR,
-                    "build/generated/bear/" + wiringRelPath,
-                    "Capture stderr and file an issue against bear-cli.",
-                    "internal: INTERNAL_ERROR: CANDIDATE_WIRING_MANIFEST_INVALID:" + e.reasonCode()
-                );
-            }
-
-            List<BoundarySignal> boundarySignals = List.of();
-            if (baselineManifest != null) {
-                if (!baselineManifest.irHash().equals(candidateManifest.irHash())
-                    || !baselineManifest.generatorVersion().equals(candidateManifest.generatorVersion())) {
-                    diagnostics.add("check: BASELINE_STAMP_MISMATCH: irHash/generatorVersion differ; classification may be stale");
-                }
-                boundarySignals = computeBoundarySignals(baselineManifest, candidateManifest);
-            }
-            for (BoundarySignal signal : boundarySignals) {
-                diagnostics.add("boundary: EXPANSION: " + signal.type().label + ": " + signal.key());
-            }
-
-            List<DriftItem> drift = computeDrift(
-                baselineRoot,
-                candidateRoot,
-                path -> path.equals(markerRelPath) || path.equals(wiringRelPath) || startsWithAny(path, ownedPrefixes)
-            );
-            if (!drift.isEmpty()) {
-                for (DriftItem item : drift) {
-                    diagnostics.add("drift: " + item.type().label + ": " + item.path());
-                }
-                return checkFailure(
-                    ExitCode.DRIFT,
-                    diagnostics,
-                    "DRIFT",
-                    FailureCode.DRIFT_DETECTED,
-                    "build/generated/bear",
-                    "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    diagnostics.get(diagnostics.size() - 1)
-                );
-            }
-
-            CheckResult containmentFailure = verifyContainmentIfRequired(normalized, projectRoot, diagnostics);
-            if (containmentFailure != null) {
-                return containmentFailure;
-            }
-
-            if (!runReachAndTests) {
-                return new CheckResult(ExitCode.OK, List.of(), List.of(), null, null, null, null, null);
-            }
-
-            List<UndeclaredReachFinding> undeclaredReach = scanUndeclaredReach(projectRoot);
-            if (!undeclaredReach.isEmpty()) {
-                for (UndeclaredReachFinding finding : undeclaredReach) {
-                    diagnostics.add("check: UNDECLARED_REACH: " + finding.path() + ": " + finding.surface());
-                }
-                return checkFailure(
-                    ExitCode.UNDECLARED_REACH,
-                    diagnostics,
-                    "UNDECLARED_REACH",
-                    FailureCode.UNDECLARED_REACH,
-                    undeclaredReach.get(0).path(),
-                    "Declare a port/op in IR, run bear compile, and route call through generated port interface.",
-                    diagnostics.get(diagnostics.size() - 1)
-                );
-            }
-
-            List<BoundaryBypassFinding> bypassFindings = scanBoundaryBypass(projectRoot, List.of(baselineWiringManifest));
-            if (!bypassFindings.isEmpty()) {
-                for (BoundaryBypassFinding finding : bypassFindings) {
-                    diagnostics.add(
-                        "check: BOUNDARY_BYPASS: RULE="
-                            + finding.rule()
-                            + ": "
-                            + finding.path()
-                            + ": "
-                            + finding.detail()
-                    );
-                }
-                return checkFailure(
-                    ExitCode.BOUNDARY_BYPASS,
-                    diagnostics,
-                    "BOUNDARY_BYPASS",
-                    FailureCode.BOUNDARY_BYPASS,
-                    bypassFindings.get(0).path(),
-                    "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses.",
-                    diagnostics.get(diagnostics.size() - 1)
-                );
-            }
-
-            ProjectTestResult testResult = runProjectTests(projectRoot);
-            if (testResult.status() == ProjectTestStatus.LOCKED) {
-                String lockLine = testResult.firstLockLine() != null
-                    ? testResult.firstLockLine()
-                    : firstGradleLockLine(testResult.output());
-                String markerWriteSuffix = "";
-                try {
-                    writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_LOCK, lockLine);
-                } catch (IOException markerWriteError) {
-                    markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
-                }
-                String ioLine = lockLine == null
-                    ? "io: IO_ERROR: PROJECT_TEST_LOCK: Gradle wrapper lock detected"
-                    : "io: IO_ERROR: PROJECT_TEST_LOCK: " + lockLine;
-                String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
-                if (!attemptsSuffix.isBlank()) {
-                    ioLine += attemptsSuffix;
-                }
-                if (!markerWriteSuffix.isBlank()) {
-                    ioLine += markerWriteSuffix;
-                }
-                diagnostics.add(ioLine);
-                diagnostics.addAll(tailLines(testResult.output()));
-                return checkFailure(
-                    ExitCode.IO,
-                    diagnostics,
-                    "IO_ERROR",
-                    FailureCode.IO_ERROR,
-                    "project.tests",
-                    "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check <ir-file> --project <path>`.",
-                    ioLine
-                );
-            }
-            if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
-                String bootstrapLine = testResult.firstBootstrapLine() != null
-                    ? testResult.firstBootstrapLine()
-                    : firstGradleBootstrapIoLine(testResult.output());
-                String markerWriteSuffix = "";
-                try {
-                    writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
-                } catch (IOException markerWriteError) {
-                    markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
-                }
-                String ioLine = bootstrapLine == null
-                    ? "io: IO_ERROR: PROJECT_TEST_BOOTSTRAP: Gradle wrapper bootstrap/unzip failed"
-                    : "io: IO_ERROR: PROJECT_TEST_BOOTSTRAP: " + bootstrapLine;
-                String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
-                if (!attemptsSuffix.isBlank()) {
-                    ioLine += attemptsSuffix;
-                }
-                if (!markerWriteSuffix.isBlank()) {
-                    ioLine += markerWriteSuffix;
-                }
-                diagnostics.add(ioLine);
-                diagnostics.addAll(tailLines(testResult.output()));
-                return checkFailure(
-                    ExitCode.IO,
-                    diagnostics,
-                    "IO_ERROR",
-                    FailureCode.IO_ERROR,
-                    "project.tests",
-                    "Fix Gradle wrapper bootstrap/cache (distribution zip/unzip) and rerun `bear check <ir-file> --project <path>`.",
-                    ioLine
-                );
-            }
-            if (testResult.status() == ProjectTestStatus.FAILED) {
-                diagnostics.add("check: TEST_FAILED: project tests failed");
-                diagnostics.addAll(tailLines(testResult.output()));
-                return checkFailure(
-                    ExitCode.TEST_FAILURE,
-                    diagnostics,
-                    "TEST_FAILURE",
-                    FailureCode.TEST_FAILURE,
-                    "project.tests",
-                    "Fix project tests and rerun `bear check <ir-file> --project <path>`.",
-                    "check: TEST_FAILED: project tests failed"
-                );
-            }
-            if (testResult.status() == ProjectTestStatus.TIMEOUT) {
-                String timeoutLine = "check: TEST_TIMEOUT: project tests exceeded " + testTimeoutSeconds() + "s";
-                diagnostics.add(timeoutLine);
-                diagnostics.addAll(tailLines(testResult.output()));
-                return checkFailure(
-                    ExitCode.TEST_FAILURE,
-                    diagnostics,
-                    "TEST_FAILURE",
-                    FailureCode.TEST_TIMEOUT,
-                    "project.tests",
-                    "Reduce test runtime or increase timeout, then rerun `bear check <ir-file> --project <path>`.",
-                    timeoutLine
-                );
-            }
-
-            clearCheckBlockedMarker(projectRoot);
-            return new CheckResult(ExitCode.OK, List.of("check: OK"), List.of(), null, null, null, null, null);
-        } catch (BearIrValidationException e) {
-            return checkFailure(
-                ExitCode.VALIDATION,
-                List.of(e.formatLine()),
-                "VALIDATION",
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix the IR issue at the reported path and rerun `bear check <ir-file> --project <path>`.",
-                e.formatLine()
-            );
-        } catch (IOException e) {
-            return checkFailure(
-                ExitCode.IO,
-                List.of("io: IO_ERROR: " + e.getMessage()),
-                "IO_ERROR",
-                FailureCode.IO_ERROR,
-                "project.root",
-                "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check`.",
-                "io: IO_ERROR: " + e.getMessage()
-            );
-        } catch (Exception e) {
-            return checkFailure(
-                ExitCode.INTERNAL,
-                List.of("internal: INTERNAL_ERROR:"),
-                "INTERNAL_ERROR",
-                FailureCode.INTERNAL_ERROR,
-                "internal",
-                "Capture stderr and file an issue against bear-cli.",
-                "internal: INTERNAL_ERROR:"
-            );
-        } finally {
-            if (tempRoot != null) {
-                deleteRecursivelyBestEffort(tempRoot);
-            }
-        }
+        return CheckCommandService.executeCheck(irFile, projectRoot, runReachAndTests, expectedBlockKey);
     }
 
     private static PrCheckResult executePrCheck(Path projectRoot, String repoRelativePath, String baseRef) {
-        Path tempRoot = null;
-        try {
-            maybeFailInternalForTest("pr-check");
-            BearIrParser parser = new BearIrParser();
-            BearIrValidator validator = new BearIrValidator();
-            BearIrNormalizer normalizer = new BearIrNormalizer();
-
-            Path headIrPath = projectRoot.resolve(repoRelativePath).normalize();
-            if (!headIrPath.startsWith(projectRoot) || !Files.isRegularFile(headIrPath)) {
-                return prFailure(
-                    ExitCode.IO,
-                    List.of("pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath),
-                    "IO_ERROR",
-                    FailureCode.IO_ERROR,
-                    repoRelativePath,
-                    "Ensure the IR file exists at HEAD and rerun `bear pr-check`.",
-                    "pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath,
-                    List.of(),
-                    false,
-                    false
-                );
-            }
-
-            BearIr head = normalizer.normalize(parseAndValidateIr(parser, validator, headIrPath));
-
-            GitResult isRepoResult = runGitForPrCheck(projectRoot, List.of("rev-parse", "--is-inside-work-tree"), "git.repo");
-            if (isRepoResult.exitCode() != 0 || !"true".equals(isRepoResult.stdout().trim())) {
-                return prFailure(
-                    ExitCode.IO,
-                    List.of("pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot),
-                    "IO_ERROR",
-                    FailureCode.IO_GIT,
-                    "git.repo",
-                    "Run `bear pr-check` from a git working tree with a valid project path.",
-                    "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
-                    List.of(),
-                    false,
-                    false
-                );
-            }
-
-            GitResult mergeBaseResult = runGitForPrCheck(projectRoot, List.of("merge-base", "HEAD", baseRef), "git.baseRef");
-            if (mergeBaseResult.exitCode() != 0) {
-                return prFailure(
-                    ExitCode.IO,
-                    List.of("pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef),
-                    "IO_ERROR",
-                    FailureCode.IO_GIT,
-                    "git.baseRef",
-                    "Ensure base ref exists and is fetchable, then rerun `bear pr-check`.",
-                    "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
-                    List.of(),
-                    false,
-                    false
-                );
-            }
-            String mergeBase = mergeBaseResult.stdout().trim();
-            if (mergeBase.isBlank()) {
-                return prFailure(
-                    ExitCode.IO,
-                    List.of("pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base"),
-                    "IO_ERROR",
-                    FailureCode.IO_GIT,
-                    "git.baseRef",
-                    "Ensure base ref resolves to a merge base with HEAD, then rerun `bear pr-check`.",
-                    "pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base",
-                    List.of(),
-                    false,
-                    false
-                );
-            }
-
-            List<String> stderrLines = new ArrayList<>();
-            BearIr base = null;
-            GitResult catFileResult = runGitForPrCheck(
-                projectRoot,
-                List.of("cat-file", "-e", mergeBase + ":" + repoRelativePath),
-                repoRelativePath
-            );
-            if (catFileResult.exitCode() != 0) {
-                GitResult existsResult = runGitForPrCheck(
-                    projectRoot,
-                    List.of("ls-tree", "--name-only", mergeBase, "--", repoRelativePath),
-                    repoRelativePath
-                );
-                if (existsResult.exitCode() != 0) {
-                    return prFailure(
-                        ExitCode.IO,
-                        List.of("pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath),
-                        "IO_ERROR",
-                        FailureCode.IO_GIT,
-                        repoRelativePath,
-                        "Ensure base ref and IR path are readable in git history, then rerun `bear pr-check`.",
-                        "pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath,
-                        List.of(),
-                        false,
-                        false
-                    );
-                }
-                if (existsResult.stdout().trim().isEmpty()) {
-                    stderrLines.add("pr-check: INFO: BASE_IR_MISSING_AT_MERGE_BASE: " + repoRelativePath + ": treated_as_empty_base");
-                } else {
-                    return prFailure(
-                        ExitCode.IO,
-                        List.of("pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath),
-                        "IO_ERROR",
-                        FailureCode.IO_GIT,
-                        repoRelativePath,
-                        "Ensure base ref and IR path are readable in git history, then rerun `bear pr-check`.",
-                        "pr-check: IO_ERROR: BASE_IR_LOOKUP_FAILED: " + repoRelativePath,
-                        List.of(),
-                        false,
-                        false
-                    );
-                }
-            } else {
-                GitResult showResult = runGitForPrCheck(
-                    projectRoot,
-                    List.of("show", mergeBase + ":" + repoRelativePath),
-                    repoRelativePath
-                );
-                if (showResult.exitCode() != 0) {
-                    return prFailure(
-                        ExitCode.IO,
-                        List.of("pr-check: IO_ERROR: BASE_IR_READ_FAILED: " + repoRelativePath),
-                        "IO_ERROR",
-                        FailureCode.IO_GIT,
-                        repoRelativePath,
-                        "Ensure base IR snapshot is readable from git history, then rerun `bear pr-check`.",
-                        "pr-check: IO_ERROR: BASE_IR_READ_FAILED: " + repoRelativePath,
-                        List.of(),
-                        false,
-                        false
-                    );
-                }
-                tempRoot = Files.createTempDirectory("bear-pr-check-");
-                Path baseTempIr = tempRoot.resolve("base.bear.yaml");
-                Files.writeString(baseTempIr, showResult.stdout(), StandardCharsets.UTF_8);
-                base = normalizer.normalize(parseAndValidateIr(parser, validator, baseTempIr));
-            }
-
-            List<PrDelta> deltas = computePrDeltas(base, head);
-            List<String> deltaLines = new ArrayList<>();
-            for (PrDelta delta : deltas) {
-                String line = "pr-delta: " + delta.clazz().label + ": " + delta.category().label + ": " + delta.change().label + ": " + delta.key();
-                deltaLines.add(line);
-                stderrLines.add(line);
-            }
-
-            boolean hasBoundary = deltas.stream().anyMatch(delta -> delta.clazz() == PrClass.BOUNDARY_EXPANDING);
-            if (hasBoundary) {
-                stderrLines.add("pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED");
-                return prFailure(
-                    ExitCode.BOUNDARY_EXPANSION,
-                    stderrLines,
-                    "BOUNDARY_EXPANSION",
-                    FailureCode.BOUNDARY_EXPANSION,
-                    repoRelativePath,
-                    "Review boundary-expanding deltas and route through explicit boundary review.",
-                    "pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED",
-                    deltaLines,
-                    true,
-                    !deltaLines.isEmpty()
-                );
-            }
-
-            return new PrCheckResult(
-                ExitCode.OK,
-                List.of("pr-check: OK: NO_BOUNDARY_EXPANSION"),
-                stderrLines,
-                null,
-                null,
-                null,
-                null,
-                null,
-                deltaLines,
-                false,
-                !deltaLines.isEmpty()
-            );
-        } catch (PrCheckGitException e) {
-            return prFailure(
-                ExitCode.IO,
-                List.of(e.legacyLine()),
-                "IO_ERROR",
-                FailureCode.IO_GIT,
-                e.pathLocator(),
-                "Resolve git invocation/base-reference issues and rerun `bear pr-check`.",
-                e.legacyLine(),
-                List.of(),
-                false,
-                false
-            );
-        } catch (BearIrValidationException e) {
-            return prFailure(
-                ExitCode.VALIDATION,
-                List.of(e.formatLine()),
-                "VALIDATION",
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix the IR issue at the reported path and rerun `bear pr-check`.",
-                e.formatLine(),
-                List.of(),
-                false,
-                false
-            );
-        } catch (IOException e) {
-            return prFailure(
-                ExitCode.IO,
-                List.of("pr-check: IO_ERROR: INTERNAL_IO: " + squash(e.getMessage())),
-                "IO_ERROR",
-                FailureCode.IO_ERROR,
-                "internal",
-                "Ensure local filesystem paths are accessible, then rerun `bear pr-check`.",
-                "pr-check: IO_ERROR: INTERNAL_IO: " + squash(e.getMessage()),
-                List.of(),
-                false,
-                false
-            );
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return prFailure(
-                ExitCode.IO,
-                List.of("pr-check: IO_ERROR: INTERRUPTED"),
-                "IO_ERROR",
-                FailureCode.IO_GIT,
-                "git.repo",
-                "Retry `bear pr-check`; if interruption persists, rerun in a stable shell/CI environment.",
-                "pr-check: IO_ERROR: INTERRUPTED",
-                List.of(),
-                false,
-                false
-            );
-        } catch (Exception e) {
-            return prFailure(
-                ExitCode.INTERNAL,
-                List.of("internal: INTERNAL_ERROR:"),
-                "INTERNAL_ERROR",
-                FailureCode.INTERNAL_ERROR,
-                "internal",
-                "Capture stderr and file an issue against bear-cli.",
-                "internal: INTERNAL_ERROR:",
-                List.of(),
-                false,
-                false
-            );
-        } finally {
-            if (tempRoot != null) {
-                deleteRecursivelyBestEffort(tempRoot);
-            }
-        }
+        return PrCheckCommandService.executePrCheck(projectRoot, repoRelativePath, baseRef);
     }
 
     private static CheckResult checkFailure(
@@ -1743,33 +530,6 @@ public final class BearCli {
             failurePath,
             failureRemediation,
             detail
-        );
-    }
-
-    private static PrCheckResult prFailure(
-        int exitCode,
-        List<String> stderrLines,
-        String category,
-        String failureCode,
-        String failurePath,
-        String failureRemediation,
-        String detail,
-        List<String> deltaLines,
-        boolean hasBoundary,
-        boolean hasDeltas
-    ) {
-        return new PrCheckResult(
-            exitCode,
-            List.of(),
-            List.copyOf(stderrLines),
-            category,
-            failureCode,
-            failurePath,
-            failureRemediation,
-            detail,
-            List.copyOf(deltaLines),
-            hasBoundary,
-            hasDeltas
         );
     }
 
@@ -1822,7 +582,7 @@ public final class BearCli {
         return AllModeOptionParser.parseOnlyNames(onlyArg);
     }
 
-    private static List<BlockIndexEntry> selectBlocks(BlockIndex index, Set<String> onlyNames) {
+    static List<BlockIndexEntry> selectBlocks(BlockIndex index, Set<String> onlyNames) {
         List<BlockIndexEntry> sorted = new ArrayList<>(index.blocks());
         sorted.sort(Comparator.comparing(BlockIndexEntry::name));
         if (onlyNames == null || onlyNames.isEmpty()) {
@@ -1846,7 +606,7 @@ public final class BearCli {
         return selected;
     }
 
-    private static List<String> computeOrphanMarkersRepoWide(Path repoRoot, BlockIndex index) throws IOException {
+    static List<String> computeOrphanMarkersRepoWide(Path repoRoot, BlockIndex index) throws IOException {
         Set<String> expected = new HashSet<>();
         for (BlockIndexEntry entry : index.blocks()) {
             if (!entry.enabled()) {
@@ -1882,7 +642,7 @@ public final class BearCli {
         return orphan;
     }
 
-    private static List<String> computeOrphanMarkersInManagedRoots(Path repoRoot, List<BlockIndexEntry> selected) throws IOException {
+    static List<String> computeOrphanMarkersInManagedRoots(Path repoRoot, List<BlockIndexEntry> selected) throws IOException {
         Map<String, Set<String>> expectedByRoot = new TreeMap<>();
         for (BlockIndexEntry entry : selected) {
             if (!entry.enabled()) {
@@ -1919,7 +679,7 @@ public final class BearCli {
         return orphan;
     }
 
-    private static List<String> computeLegacyMarkersRepoWide(Path repoRoot) throws IOException {
+    static List<String> computeLegacyMarkersRepoWide(Path repoRoot) throws IOException {
         List<String> legacy = new ArrayList<>();
         try (var stream = Files.walk(repoRoot)) {
             stream.filter(Files::isRegularFile).forEach(path -> {
@@ -1933,7 +693,7 @@ public final class BearCli {
         return legacy;
     }
 
-    private static List<String> computeLegacyMarkersInManagedRoots(Path repoRoot, List<BlockIndexEntry> selected) {
+    static List<String> computeLegacyMarkersInManagedRoots(Path repoRoot, List<BlockIndexEntry> selected) {
         Set<String> managedRoots = new HashSet<>();
         for (BlockIndexEntry entry : selected) {
             if (entry.enabled()) {
@@ -1955,7 +715,7 @@ public final class BearCli {
         return legacy;
     }
 
-    private static BlockExecutionResult skipBlock(BlockIndexEntry block, String reason) {
+    static BlockExecutionResult skipBlock(BlockIndexEntry block, String reason) {
         return new BlockExecutionResult(
             block.name(),
             block.ir(),
@@ -1973,7 +733,7 @@ public final class BearCli {
         );
     }
 
-    private static BlockExecutionResult toCheckBlockResult(BlockIndexEntry block, CheckResult result) {
+    static BlockExecutionResult toCheckBlockResult(BlockIndexEntry block, CheckResult result) {
         if (result.exitCode() == ExitCode.OK) {
             return new BlockExecutionResult(
                 block.name(),
@@ -2008,7 +768,7 @@ public final class BearCli {
         );
     }
 
-    private static BlockExecutionResult toFixBlockResult(BlockIndexEntry block, FixResult result) {
+    static BlockExecutionResult toFixBlockResult(BlockIndexEntry block, FixResult result) {
         if (result.exitCode() == ExitCode.OK) {
             return new BlockExecutionResult(
                 block.name(),
@@ -2043,7 +803,7 @@ public final class BearCli {
         );
     }
 
-    private static BlockExecutionResult rootFailure(
+    static BlockExecutionResult rootFailure(
         BlockExecutionResult base,
         int exitCode,
         String category,
@@ -2069,7 +829,7 @@ public final class BearCli {
         );
     }
 
-    private static String validateIndexIrNameMatch(Path irFile, String expectedBlockKey) {
+    static String validateIndexIrNameMatch(Path irFile, String expectedBlockKey) {
         try {
             BearIrParser parser = new BearIrParser();
             BearIrValidator validator = new BearIrValidator();
@@ -2085,7 +845,7 @@ public final class BearCli {
         }
     }
 
-    private static BlockExecutionResult toPrBlockResult(BlockIndexEntry block, PrCheckResult result) {
+    static BlockExecutionResult toPrBlockResult(BlockIndexEntry block, PrCheckResult result) {
         if (result.exitCode() == ExitCode.OK) {
             String classification = result.hasDeltas() ? "ORDINARY" : "NO_CHANGES";
             return new BlockExecutionResult(
@@ -2217,40 +977,6 @@ public final class BearCli {
 
     private static PrSurface emptyPrSurface() {
         return PrDeltaClassifier.emptyPrSurface();
-    }
-
-    private static GitResult runGit(Path projectRoot, List<String> gitArgs) throws IOException, InterruptedException {
-        List<String> command = new ArrayList<>();
-        command.add("git");
-        command.add("-C");
-        command.add(projectRoot.toString());
-        command.addAll(gitArgs);
-
-        ProcessBuilder pb = new ProcessBuilder(command);
-        Process process = pb.start();
-        boolean finished = process.waitFor(30, TimeUnit.SECONDS);
-        if (!finished) {
-            process.destroyForcibly();
-            process.waitFor(5, TimeUnit.SECONDS);
-            throw new IOException("GIT_TIMEOUT: " + String.join(" ", gitArgs));
-        }
-
-        String stdout;
-        String stderr;
-        try (InputStream out = process.getInputStream(); InputStream err = process.getErrorStream()) {
-            stdout = new String(out.readAllBytes(), StandardCharsets.UTF_8);
-            stderr = new String(err.readAllBytes(), StandardCharsets.UTF_8);
-        }
-        return new GitResult(process.exitValue(), normalizeLf(stdout), normalizeLf(stderr));
-    }
-
-    private static GitResult runGitForPrCheck(Path projectRoot, List<String> gitArgs, String pathLocator)
-        throws PrCheckGitException, InterruptedException {
-        try {
-            return runGit(projectRoot, gitArgs);
-        } catch (IOException e) {
-            throw new PrCheckGitException("pr-check: IO_ERROR: INTERNAL_IO: " + squash(e.getMessage()), pathLocator);
-        }
     }
 
     private static String squash(String text) {
@@ -2481,7 +1207,7 @@ public final class BearCli {
         return BoundaryBypassScanner.stripJavaCommentsStringsAndChars(source);
     }
 
-    private static CheckBlockedState readCheckBlockedState(Path projectRoot) {
+    static CheckBlockedState readCheckBlockedState(Path projectRoot) {
         Path marker = projectRoot.resolve(CHECK_BLOCKED_MARKER_RELATIVE);
         if (!Files.isRegularFile(marker)) {
             return CheckBlockedState.notBlocked();
@@ -2510,7 +1236,7 @@ public final class BearCli {
         }
     }
 
-    private static void writeCheckBlockedMarker(Path projectRoot, String reason, String detail) throws IOException {
+    static void writeCheckBlockedMarker(Path projectRoot, String reason, String detail) throws IOException {
         Path marker = projectRoot.resolve(CHECK_BLOCKED_MARKER_RELATIVE);
         Files.createDirectories(marker.getParent());
         String safeReason = (reason == null || reason.isBlank()) ? "UNKNOWN" : reason;
@@ -2519,7 +1245,7 @@ public final class BearCli {
         Files.writeString(marker, content, StandardCharsets.UTF_8);
     }
 
-    private static void clearCheckBlockedMarker(Path projectRoot) throws IOException {
+    static void clearCheckBlockedMarker(Path projectRoot) throws IOException {
         Path marker = projectRoot.resolve(CHECK_BLOCKED_MARKER_RELATIVE);
         Files.deleteIfExists(marker);
     }
@@ -2712,7 +1438,7 @@ public final class BearCli {
         return fail(err, exitCode, code, pathLocator, remediation);
     }
 
-    private static int fail(PrintStream err, int exitCode, String code, String pathLocator, String remediation) {
+    static int fail(PrintStream err, int exitCode, String code, String pathLocator, String remediation) {
         String locator = normalizeLocator(pathLocator);
         err.println("CODE=" + code);
         err.println("PATH=" + locator);
@@ -2775,28 +1501,6 @@ public final class BearCli {
         private static final String CONTAINMENT_UNSUPPORTED_TARGET = "CONTAINMENT_UNSUPPORTED_TARGET";
         private static final String REPO_MULTI_BLOCK_FAILED = "REPO_MULTI_BLOCK_FAILED";
         private static final String INTERNAL_ERROR = "INTERNAL_ERROR";
-    }
-
-    private record GitResult(int exitCode, String stdout, String stderr) {
-    }
-
-    private static final class PrCheckGitException extends Exception {
-        private final String legacyLine;
-        private final String pathLocator;
-
-        private PrCheckGitException(String legacyLine, String pathLocator) {
-            super(legacyLine);
-            this.legacyLine = legacyLine;
-            this.pathLocator = pathLocator;
-        }
-
-        private String legacyLine() {
-            return legacyLine;
-        }
-
-        private String pathLocator() {
-            return pathLocator;
-        }
     }
 
 }

@@ -17,11 +17,11 @@ P2 feature delivery:
 
 ## Next Concrete Task
 
-Finish CLI modularization follow-through:
-1. continue extracting orchestration-heavy command flows (`runCheckAll` / `executeCheck` / `executePrCheck`) into dedicated command services
-2. remove remaining legacy wrapper/dead methods from `BearCli.java` to approach orchestration-facade target
-3. keep full `:app:test` + root `test` green after each extraction slice
-4. prepare commit/review split for modularization + new test classes
+Continue CLI modularization follow-through:
+1. reduce `BearCli` helper wrapper surface by removing dead delegates now superseded by extracted services
+2. collapse duplicated `ExitCode`/`FailureCode` usage to `CliCodes` where safe, preserving error text and exit semantics
+3. continue extracting remaining command orchestration (`runCheck`, `runFix`, `runPrCheck`) into focused services
+4. keep full `:app:test` + root `test` green after each extraction slice
 
 ## Session Notes
 
@@ -68,6 +68,21 @@ Finish CLI modularization follow-through:
   - expanded shared package models in `AllModeModels.java` and delegated large method clusters from `BearCli`
   - added targeted unit tests: `AllModeOptionParserTest`, `AllModeAggregationTest`, `AllModeRendererTest`, `DriftAnalyzerTest`, `ManifestParsersTest`, `PrDeltaClassifierTest`, `BoundaryBypassScannerTest`, `ProjectTestRunnerTest` plus `CliTestAsserts`
   - verified regression gates: `:app:test` and root `test` pass after extraction
+- Continued modularization with first command-service extraction:
+  - extracted `executeCheck` into `app/src/main/java/com/bear/app/CheckCommandService.java`
+  - `BearCli.executeCheck(...)` now delegates to `CheckCommandService.executeCheck(...)`
+  - regression gates re-verified: `:app:test` and root `test` pass after this extraction
+- Continued modularization with next command-service extractions:
+  - extracted `runCheckAll` into `app/src/main/java/com/bear/app/CheckAllCommandService.java`
+  - extracted `executePrCheck` into `app/src/main/java/com/bear/app/PrCheckCommandService.java`
+  - `BearCli` now delegates both methods to the new services
+  - regression gates re-verified: `:app:compileJava`, `:app:test`, and root `test` pass after this extraction
+- Continued modularization with additional all-mode command extractions:
+  - extracted `runFixAll` into `app/src/main/java/com/bear/app/FixAllCommandService.java`
+  - extracted `runPrCheckAll` into `app/src/main/java/com/bear/app/PrCheckAllCommandService.java`
+  - `BearCli` now delegates both all-mode commands to the new services
+  - promoted minimal helpers (`executeFix`, `toFixBlockResult`, `validateIndexIrNameMatch`, `toPrBlockResult`) to package-private for service reuse
+  - regression gates re-verified: `:app:compileJava`, `:app:test`, and root `test` pass after this extraction
 - Added explicit demo-cleanup contract to `doc/SAFETY_RULES.md`:
   - remove generated run artifacts (`build/`, `bin/main`, `bin/test`, `bear.blocks.yaml`, `spec/`, `src/main/java/blocks`)
   - retain `.bear-gradle-user-home/` by default
