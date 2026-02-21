@@ -98,6 +98,7 @@ Developer visibility:
 - [docs/public/INSTALL.md](docs/public/INSTALL.md)
 - [docs/public/FOUNDATIONS.md](docs/public/FOUNDATIONS.md)
 - [docs/public/MODEL.md](docs/public/MODEL.md)
+- [docs/public/ENFORCEMENT.md](docs/public/ENFORCEMENT.md)
 - [docs/public/exit-codes.md](docs/public/exit-codes.md)
 - [docs/public/output-format.md](docs/public/output-format.md)
 - [docs/public/troubleshooting.md](docs/public/troubleshooting.md)

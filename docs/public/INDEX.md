@@ -10,6 +10,7 @@ Use it as a guided path, not just a file list.
 1. [QUICKSTART.md](QUICKSTART.md) to run BEAR on the demo repo and get one clear success signal.
 2. [FOUNDATIONS.md](FOUNDATIONS.md) to understand BEAR philosophy, architecture, and IR model.
 3. [MODEL.md](MODEL.md) for command vocabulary and mental model.
+4. [ENFORCEMENT.md](ENFORCEMENT.md) for what BEAR enforces and what it alerts on.
 
 ### I am integrating BEAR into CI or team workflow
 
@@ -31,6 +32,7 @@ Use it as a guided path, not just a file list.
 - [INSTALL.md](INSTALL.md) - Install the BEAR `.bear` bundle in another project.
 - [FOUNDATIONS.md](FOUNDATIONS.md) - Why BEAR exists and how it is structured.
 - [MODEL.md](MODEL.md) - Vocabulary and operating model.
+- [ENFORCEMENT.md](ENFORCEMENT.md) - What BEAR enforces in checks and alerts on in PR governance.
 - [CONTRACTS.md](CONTRACTS.md) - Frozen Preview contract boundaries.
 - [commands-validate.md](commands-validate.md) - Validate IR.
 - [commands-compile.md](commands-compile.md) - Generate deterministic artifacts.
@@ -48,5 +50,6 @@ Use it as a guided path, not just a file list.
 - [INSTALL.md](INSTALL.md)
 - [FOUNDATIONS.md](FOUNDATIONS.md)
 - [MODEL.md](MODEL.md)
+- [ENFORCEMENT.md](ENFORCEMENT.md)
 - [CONTRACTS.md](CONTRACTS.md)
 - [troubleshooting.md](troubleshooting.md)

@@ -26,6 +26,13 @@ Post-Lock++ follow-through:
 
 ## Session Notes
 
+- Clarified invariant-doc split:
+  - keep `docs/context/invariant-charter.md` as internal normative catalog.
+  - expose a distilled public Preview invariant view in `docs/public/ENFORCEMENT.md` (explicit `ENFORCED` vs `PARTIAL` statuses and coverage caveat).
+  - linked `docs/public/ENFORCEMENT.md` from `docs/public/CONTRACTS.md`.
+- Added explicit public enforcement/alerting explanation:
+  - new `docs/public/ENFORCEMENT.md` summarizing what `check` enforces and what `pr-check` alerts on.
+  - linked the new page from `README.md`, `docs/public/INDEX.md`, `docs/public/FOUNDATIONS.md`, and `docs/public/MODEL.md`.
 - Clarified BEAR package structure and removed legacy duplication:
   - deleted root-level duplicate package docs from `docs/bear-package/` (`BEAR_AGENT.md`, `WORKFLOW.md`, `BEAR_PRIMER.md`, `IR_*`, `BLOCK_INDEX_QUICKREF.md`).
   - `.bear/agent/*` is now the only canonical location for distributed agent docs.

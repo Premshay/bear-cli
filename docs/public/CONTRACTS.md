@@ -18,6 +18,7 @@ Public contract pages:
 - [commands-check.md](commands-check.md)
 - [commands-pr-check.md](commands-pr-check.md)
 - [commands-fix.md](commands-fix.md)
+- [ENFORCEMENT.md](ENFORCEMENT.md)
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
 - [VERSIONING.md](VERSIONING.md)

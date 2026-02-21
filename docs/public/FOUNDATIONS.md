@@ -81,6 +81,8 @@ Developer-facing visibility:
 - CI signal: deterministic exit codes and failure footer let teams enforce stable merge gates.
 - Local triage signal: consistent output ordering and path normalization make failures actionable quickly.
 
+See [ENFORCEMENT.md](ENFORCEMENT.md) for a focused summary of what BEAR enforces and alerts on.
+
 ## Preview scope mindset
 
 Preview focuses on structural contract enforcement, deterministic diagnostics, and boundary governance.
@@ -106,6 +108,7 @@ Design intent:
 - [INDEX.md](INDEX.md)
 - [INSTALL.md](INSTALL.md)
 - [MODEL.md](MODEL.md)
+- [ENFORCEMENT.md](ENFORCEMENT.md)
 - [CONTRACTS.md](CONTRACTS.md)
 - [commands-check.md](commands-check.md)
 - [commands-pr-check.md](commands-pr-check.md)

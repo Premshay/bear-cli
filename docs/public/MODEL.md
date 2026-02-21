@@ -38,6 +38,7 @@ Governance flow:
 
 - [INDEX.md](INDEX.md)
 - [FOUNDATIONS.md](FOUNDATIONS.md)
+- [ENFORCEMENT.md](ENFORCEMENT.md)
 - [commands-compile.md](commands-compile.md)
 - [commands-check.md](commands-check.md)
 - [commands-pr-check.md](commands-pr-check.md)
