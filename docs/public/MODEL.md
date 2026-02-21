@@ -1,4 +1,4 @@
-﻿# Model
+# Model
 
 ## Vocabulary
 
@@ -26,9 +26,8 @@ Governance flow:
 
 ## Related
 
+- [INDEX.md](INDEX.md)
+- [FOUNDATIONS.md](FOUNDATIONS.md)
 - [QUICKSTART.md](QUICKSTART.md)
-- [CONTRACTS.md](CONTRACTS.md)
 - [commands-compile.md](commands-compile.md)
 - [commands-check.md](commands-check.md)
-- [commands-pr-check.md](commands-pr-check.md)
-

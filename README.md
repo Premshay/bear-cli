@@ -6,6 +6,16 @@
 
 BEAR is a deterministic CLI for boundary governance in backend projects. It validates a small IR, compiles generated boundaries, and enforces consistency with deterministic checks.
 
+## Project philosophy
+
+BEAR is built for AI-assisted and agentic development where implementation speed is high and structural drift risk is also high.
+The project philosophy is to preserve speed inside declared boundaries, while making boundary power changes explicit and deterministic.
+
+- Agents and developers should move fast on implementation details.
+- Boundary changes should be visible and reviewable in seconds.
+- Governance should rely on deterministic CLI contracts, not prompt discipline.
+- CI should be able to gate on stable machine-readable output and exit codes.
+
 ## What BEAR is not (Preview non-goals)
 
 - Not a business-rules engine.
@@ -50,6 +60,7 @@ Pipeline: `IR -> compile -> check`, and `pr-check` for PR boundary governance.
 
 - [docs/public/INDEX.md](docs/public/INDEX.md)
 - [docs/public/QUICKSTART.md](docs/public/QUICKSTART.md)
+- [docs/public/FOUNDATIONS.md](docs/public/FOUNDATIONS.md)
 - [docs/public/exit-codes.md](docs/public/exit-codes.md)
 - [docs/public/output-format.md](docs/public/output-format.md)
 - [docs/public/troubleshooting.md](docs/public/troubleshooting.md)
