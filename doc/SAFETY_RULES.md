@@ -54,6 +54,29 @@ Non-interactive mode (for automation/agents):
 powershell -ExecutionPolicy Bypass -File .\scripts\safe-clean-bear-generated.ps1 -Yes
 ```
 
+Optional full cache wipe (only when explicitly requested):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\safe-clean-bear-generated.ps1 -IncludeGradleCache
+```
+
+## Demo Cleanup Contract (Mandatory)
+
+When asked to "clean the demo", use this exact contract:
+
+1. Remove generated/demo-run artifacts:
+   - `build/`
+   - `bin/main`
+   - `bin/test`
+   - `bear.blocks.yaml`
+   - `spec/`
+   - `src/main/java/blocks/`
+2. Keep `.bear-gradle-user-home/` by default.
+3. Only remove `.bear-gradle-user-home/` if explicitly requested.
+4. After cleanup, always report:
+   - `git status --short`
+   - explicit exists/missing checks for the cleanup target paths.
+
 ## Safe Demo Sync
 
 Build latest CLI + sync vendored demo CLI and `.bear/agent` package files:

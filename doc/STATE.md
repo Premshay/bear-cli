@@ -68,4 +68,9 @@ Finish CLI modularization follow-through:
   - expanded shared package models in `AllModeModels.java` and delegated large method clusters from `BearCli`
   - added targeted unit tests: `AllModeOptionParserTest`, `AllModeAggregationTest`, `AllModeRendererTest`, `DriftAnalyzerTest`, `ManifestParsersTest`, `PrDeltaClassifierTest`, `BoundaryBypassScannerTest`, `ProjectTestRunnerTest` plus `CliTestAsserts`
   - verified regression gates: `:app:test` and root `test` pass after extraction
+- Added explicit demo-cleanup contract to `doc/SAFETY_RULES.md`:
+  - remove generated run artifacts (`build/`, `bin/main`, `bin/test`, `bear.blocks.yaml`, `spec/`, `src/main/java/blocks`)
+  - retain `.bear-gradle-user-home/` by default
+  - remove cache only on explicit request (`-IncludeGradleCache`)
+  - always report both git status and path exists/missing checklist after cleanup
 
