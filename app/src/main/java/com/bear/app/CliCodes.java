@@ -1,0 +1,34 @@
+package com.bear.app;
+
+final class CliCodes {
+    private CliCodes() {
+    }
+
+    static final int EXIT_OK = 0;
+    static final int EXIT_VALIDATION = 2;
+    static final int EXIT_DRIFT = 3;
+    static final int EXIT_TEST_FAILURE = 4;
+    static final int EXIT_BOUNDARY_EXPANSION = 5;
+    static final int EXIT_UNDECLARED_REACH = 6;
+    static final int EXIT_BOUNDARY_BYPASS = 6;
+    static final int EXIT_USAGE = 64;
+    static final int EXIT_IO = 74;
+    static final int EXIT_INTERNAL = 70;
+
+    static final String USAGE_INVALID_ARGS = "USAGE_INVALID_ARGS";
+    static final String USAGE_UNKNOWN_COMMAND = "USAGE_UNKNOWN_COMMAND";
+    static final String IR_VALIDATION = "IR_VALIDATION";
+    static final String IO_ERROR = "IO_ERROR";
+    static final String IO_GIT = "IO_GIT";
+    static final String DRIFT_MISSING_BASELINE = "DRIFT_MISSING_BASELINE";
+    static final String DRIFT_DETECTED = "DRIFT_DETECTED";
+    static final String TEST_FAILURE = "TEST_FAILURE";
+    static final String TEST_TIMEOUT = "TEST_TIMEOUT";
+    static final String BOUNDARY_EXPANSION = "BOUNDARY_EXPANSION";
+    static final String UNDECLARED_REACH = "UNDECLARED_REACH";
+    static final String BOUNDARY_BYPASS = "BOUNDARY_BYPASS";
+    static final String CONTAINMENT_NOT_VERIFIED = "CONTAINMENT_NOT_VERIFIED";
+    static final String CONTAINMENT_UNSUPPORTED_TARGET = "CONTAINMENT_UNSUPPORTED_TARGET";
+    static final String REPO_MULTI_BLOCK_FAILED = "REPO_MULTI_BLOCK_FAILED";
+    static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+}

@@ -698,8 +698,8 @@ public final class BearCli {
                 }
 
                 ProjectTestResult testResult = runProjectTests(root);
-                if (testResult.status == ProjectTestStatus.LOCKED) {
-                    String lockLine = firstGradleLockLine(testResult.output);
+                if (testResult.status() == ProjectTestStatus.LOCKED) {
+                    String lockLine = firstGradleLockLine(testResult.output());
                     writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_LOCK, lockLine);
                     String detail = projectTestDetail(
                         "root-level project test runner lock in projectRoot " + entry.getKey(),
@@ -717,13 +717,13 @@ public final class BearCli {
                             "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check --all`."
                         ));
                     }
-                } else if (testResult.status == ProjectTestStatus.BOOTSTRAP_IO) {
-                    String bootstrapLine = firstGradleBootstrapIoLine(testResult.output);
+                } else if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
+                    String bootstrapLine = firstGradleBootstrapIoLine(testResult.output());
                     writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
                     String detail = projectTestDetail(
                         "root-level project test bootstrap IO failure in projectRoot " + entry.getKey(),
                         bootstrapLine,
-                        shortTailSummary(testResult.output, 3)
+                        shortTailSummary(testResult.output(), 3)
                     );
                     for (int idx : entry.getValue()) {
                         blockResults.set(idx, rootFailure(
@@ -736,12 +736,12 @@ public final class BearCli {
                             "Fix Gradle wrapper bootstrap/cache (distribution zip/unzip) and rerun `bear check --all`."
                         ));
                     }
-                } else if (testResult.status == ProjectTestStatus.FAILED) {
+                } else if (testResult.status() == ProjectTestStatus.FAILED) {
                     rootTestFailed++;
                     String detail = projectTestDetail(
                         "root-level project tests failed for projectRoot " + entry.getKey(),
-                        firstRelevantProjectTestFailureLine(testResult.output),
-                        shortTailSummary(testResult.output, 3)
+                        firstRelevantProjectTestFailureLine(testResult.output()),
+                        shortTailSummary(testResult.output(), 3)
                     );
                     for (int idx : entry.getValue()) {
                         blockResults.set(idx, rootFailure(
@@ -754,12 +754,12 @@ public final class BearCli {
                             "Fix project tests and rerun `bear check --all`."
                         ));
                     }
-                } else if (testResult.status == ProjectTestStatus.TIMEOUT) {
+                } else if (testResult.status() == ProjectTestStatus.TIMEOUT) {
                     rootTestFailed++;
                     String detail = projectTestDetail(
                         "root-level project tests timed out for projectRoot " + entry.getKey(),
-                        firstRelevantProjectTestFailureLine(testResult.output),
-                        shortTailSummary(testResult.output, 3)
+                        firstRelevantProjectTestFailureLine(testResult.output()),
+                        shortTailSummary(testResult.output(), 3)
                     );
                     for (int idx : entry.getValue()) {
                         blockResults.set(idx, rootFailure(
@@ -772,7 +772,7 @@ public final class BearCli {
                             "Reduce test runtime or increase timeout, then rerun `bear check --all`."
                         ));
                     }
-                } else if (testResult.status == ProjectTestStatus.PASSED) {
+                } else if (testResult.status() == ProjectTestStatus.PASSED) {
                     clearCheckBlockedMarker(root);
                 }
             } catch (IOException e) {
@@ -1313,14 +1313,14 @@ public final class BearCli {
             }
 
             ProjectTestResult testResult = runProjectTests(projectRoot);
-            if (testResult.status == ProjectTestStatus.LOCKED) {
-                String lockLine = firstGradleLockLine(testResult.output);
+            if (testResult.status() == ProjectTestStatus.LOCKED) {
+                String lockLine = firstGradleLockLine(testResult.output());
                 writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_LOCK, lockLine);
                 String ioLine = lockLine == null
                     ? "io: IO_ERROR: PROJECT_TEST_LOCK: Gradle wrapper lock detected"
                     : "io: IO_ERROR: PROJECT_TEST_LOCK: " + lockLine;
                 diagnostics.add(ioLine);
-                diagnostics.addAll(tailLines(testResult.output));
+                diagnostics.addAll(tailLines(testResult.output()));
                 return checkFailure(
                     ExitCode.IO,
                     diagnostics,
@@ -1331,14 +1331,14 @@ public final class BearCli {
                     ioLine
                 );
             }
-            if (testResult.status == ProjectTestStatus.BOOTSTRAP_IO) {
-                String bootstrapLine = firstGradleBootstrapIoLine(testResult.output);
+            if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
+                String bootstrapLine = firstGradleBootstrapIoLine(testResult.output());
                 writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
                 String ioLine = bootstrapLine == null
                     ? "io: IO_ERROR: PROJECT_TEST_BOOTSTRAP: Gradle wrapper bootstrap/unzip failed"
                     : "io: IO_ERROR: PROJECT_TEST_BOOTSTRAP: " + bootstrapLine;
                 diagnostics.add(ioLine);
-                diagnostics.addAll(tailLines(testResult.output));
+                diagnostics.addAll(tailLines(testResult.output()));
                 return checkFailure(
                     ExitCode.IO,
                     diagnostics,
@@ -1349,9 +1349,9 @@ public final class BearCli {
                     ioLine
                 );
             }
-            if (testResult.status == ProjectTestStatus.FAILED) {
+            if (testResult.status() == ProjectTestStatus.FAILED) {
                 diagnostics.add("check: TEST_FAILED: project tests failed");
-                diagnostics.addAll(tailLines(testResult.output));
+                diagnostics.addAll(tailLines(testResult.output()));
                 return checkFailure(
                     ExitCode.TEST_FAILURE,
                     diagnostics,
@@ -1362,10 +1362,10 @@ public final class BearCli {
                     "check: TEST_FAILED: project tests failed"
                 );
             }
-            if (testResult.status == ProjectTestStatus.TIMEOUT) {
+            if (testResult.status() == ProjectTestStatus.TIMEOUT) {
                 String timeoutLine = "check: TEST_TIMEOUT: project tests exceeded " + testTimeoutSeconds() + "s";
                 diagnostics.add(timeoutLine);
-                diagnostics.addAll(tailLines(testResult.output));
+                diagnostics.addAll(tailLines(testResult.output()));
                 return checkFailure(
                     ExitCode.TEST_FAILURE,
                     diagnostics,
@@ -1739,384 +1739,31 @@ public final class BearCli {
     }
 
     private static List<String> tailLines(String output) {
-        List<String> lines = normalizeLf(output).lines().toList();
-        int start = Math.max(0, lines.size() - 40);
-        return new ArrayList<>(lines.subList(start, lines.size()));
+        return CliText.tailLines(output);
     }
 
     private static void printLines(PrintStream stream, List<String> lines) {
-        for (String line : lines) {
-            stream.println(line);
-        }
+        CliText.printLines(stream, lines);
     }
 
     private static AllCheckOptions parseAllCheckOptions(String[] args, PrintStream err) {
-        Path repoRoot = null;
-        String blocksArg = null;
-        String onlyArg = null;
-        boolean failFast = false;
-        boolean strictOrphans = false;
-        for (int i = 2; i < args.length; i++) {
-            String token = args[i];
-            switch (token) {
-                case "--project" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --project",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Run `bear check --all --project <repoRoot>` with required arguments."
-                        );
-                        return null;
-                    }
-                    repoRoot = Path.of(args[++i]).toAbsolutePath().normalize();
-                }
-                case "--blocks" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --blocks",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Pass a repo-relative path after `--blocks`."
-                        );
-                        return null;
-                    }
-                    blocksArg = args[++i];
-                }
-                case "--only" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --only",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Pass comma-separated block names after `--only`."
-                        );
-                        return null;
-                    }
-                    onlyArg = args[++i];
-                }
-                case "--fail-fast" -> failFast = true;
-                case "--strict-orphans" -> strictOrphans = true;
-                default -> {
-                    failWithLegacy(
-                        err,
-                        ExitCode.USAGE,
-                        "usage: INVALID_ARGS: unexpected argument: " + token,
-                        FailureCode.USAGE_INVALID_ARGS,
-                        "cli.args",
-                        "Run `bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`."
-                    );
-                    return null;
-                }
-            }
-        }
-        if (repoRoot == null) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: expected: bear check --all --project <repoRoot>",
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Run `bear check --all --project <repoRoot>` with required arguments."
-            );
-            return null;
-        }
-        Path blocksPath;
-        try {
-            blocksPath = resolveBlocksPath(repoRoot, blocksArg);
-        } catch (IllegalArgumentException e) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: " + e.getMessage(),
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Pass a repo-relative path for `--blocks`."
-            );
-            return null;
-        }
-        Set<String> onlyNames;
-        try {
-            onlyNames = parseOnlyNames(onlyArg);
-        } catch (IllegalArgumentException e) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: " + e.getMessage(),
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Pass comma-separated block names for `--only`."
-            );
-            return null;
-        }
-        return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans);
+        return AllModeOptionParser.parseAllCheckOptions(args, err);
     }
 
     private static AllFixOptions parseAllFixOptions(String[] args, PrintStream err) {
-        Path repoRoot = null;
-        String blocksArg = null;
-        String onlyArg = null;
-        boolean failFast = false;
-        boolean strictOrphans = false;
-        for (int i = 2; i < args.length; i++) {
-            String token = args[i];
-            switch (token) {
-                case "--project" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --project",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Run `bear fix --all --project <repoRoot>` with required arguments."
-                        );
-                        return null;
-                    }
-                    repoRoot = Path.of(args[++i]).toAbsolutePath().normalize();
-                }
-                case "--blocks" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --blocks",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Pass a repo-relative path after `--blocks`."
-                        );
-                        return null;
-                    }
-                    blocksArg = args[++i];
-                }
-                case "--only" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --only",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Pass comma-separated block names after `--only`."
-                        );
-                        return null;
-                    }
-                    onlyArg = args[++i];
-                }
-                case "--fail-fast" -> failFast = true;
-                case "--strict-orphans" -> strictOrphans = true;
-                default -> {
-                    failWithLegacy(
-                        err,
-                        ExitCode.USAGE,
-                        "usage: INVALID_ARGS: unexpected argument: " + token,
-                        FailureCode.USAGE_INVALID_ARGS,
-                        "cli.args",
-                        "Run `bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`."
-                    );
-                    return null;
-                }
-            }
-        }
-        if (repoRoot == null) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: expected: bear fix --all --project <repoRoot>",
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Run `bear fix --all --project <repoRoot>` with required arguments."
-            );
-            return null;
-        }
-        Path blocksPath;
-        try {
-            blocksPath = resolveBlocksPath(repoRoot, blocksArg);
-        } catch (IllegalArgumentException e) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: " + e.getMessage(),
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Pass a repo-relative path for `--blocks`."
-            );
-            return null;
-        }
-        Set<String> onlyNames;
-        try {
-            onlyNames = parseOnlyNames(onlyArg);
-        } catch (IllegalArgumentException e) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: " + e.getMessage(),
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Pass comma-separated block names for `--only`."
-            );
-            return null;
-        }
-        return new AllFixOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans);
+        return AllModeOptionParser.parseAllFixOptions(args, err);
     }
 
     private static AllPrCheckOptions parseAllPrCheckOptions(String[] args, PrintStream err) {
-        Path repoRoot = null;
-        String blocksArg = null;
-        String onlyArg = null;
-        String baseRef = null;
-        boolean strictOrphans = false;
-        for (int i = 2; i < args.length; i++) {
-            String token = args[i];
-            switch (token) {
-                case "--project" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --project",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Run `bear pr-check --all --project <repoRoot> --base <ref>` with required arguments."
-                        );
-                        return null;
-                    }
-                    repoRoot = Path.of(args[++i]).toAbsolutePath().normalize();
-                }
-                case "--blocks" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --blocks",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Pass a repo-relative path after `--blocks`."
-                        );
-                        return null;
-                    }
-                    blocksArg = args[++i];
-                }
-                case "--only" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --only",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Pass comma-separated block names after `--only`."
-                        );
-                        return null;
-                    }
-                    onlyArg = args[++i];
-                }
-                case "--base" -> {
-                    if (i + 1 >= args.length) {
-                        failWithLegacy(
-                            err,
-                            ExitCode.USAGE,
-                            "usage: INVALID_ARGS: expected value after --base",
-                            FailureCode.USAGE_INVALID_ARGS,
-                            "cli.args",
-                            "Pass a base ref after `--base`."
-                        );
-                        return null;
-                    }
-                    baseRef = args[++i];
-                }
-                case "--strict-orphans" -> strictOrphans = true;
-                default -> {
-                    failWithLegacy(
-                        err,
-                        ExitCode.USAGE,
-                        "usage: INVALID_ARGS: unexpected argument: " + token,
-                        FailureCode.USAGE_INVALID_ARGS,
-                        "cli.args",
-                        "Run `bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]`."
-                    );
-                    return null;
-                }
-            }
-        }
-        if (repoRoot == null || baseRef == null || baseRef.isBlank()) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: expected: bear pr-check --all --project <repoRoot> --base <ref>",
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Run `bear pr-check --all --project <repoRoot> --base <ref>` with required arguments."
-            );
-            return null;
-        }
-        Path blocksPath;
-        try {
-            blocksPath = resolveBlocksPath(repoRoot, blocksArg);
-        } catch (IllegalArgumentException e) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: " + e.getMessage(),
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Pass a repo-relative path for `--blocks`."
-            );
-            return null;
-        }
-        Set<String> onlyNames;
-        try {
-            onlyNames = parseOnlyNames(onlyArg);
-        } catch (IllegalArgumentException e) {
-            failWithLegacy(
-                err,
-                ExitCode.USAGE,
-                "usage: INVALID_ARGS: " + e.getMessage(),
-                FailureCode.USAGE_INVALID_ARGS,
-                "cli.args",
-                "Pass comma-separated block names for `--only`."
-            );
-            return null;
-        }
-        return new AllPrCheckOptions(repoRoot, blocksPath, onlyNames, strictOrphans, baseRef);
+        return AllModeOptionParser.parseAllPrCheckOptions(args, err);
     }
 
     private static Path resolveBlocksPath(Path repoRoot, String blocksArg) {
-        if (blocksArg == null) {
-            return repoRoot.resolve("bear.blocks.yaml").normalize();
-        }
-        Path relative = Path.of(blocksArg).normalize();
-        if (relative.isAbsolute() || relative.toString().isBlank() || relative.startsWith("..")) {
-            throw new IllegalArgumentException("blocks path must be repo-relative");
-        }
-        Path resolved = repoRoot.resolve(relative).normalize();
-        if (!resolved.startsWith(repoRoot)) {
-            throw new IllegalArgumentException("blocks path must be repo-relative");
-        }
-        return resolved;
+        return AllModeOptionParser.resolveBlocksPath(repoRoot, blocksArg);
     }
 
     private static Set<String> parseOnlyNames(String onlyArg) {
-        if (onlyArg == null) {
-            return Set.of();
-        }
-        LinkedHashSet<String> names = new LinkedHashSet<>();
-        for (String raw : onlyArg.split(",")) {
-            String name = raw.trim();
-            if (!name.isEmpty()) {
-                names.add(name);
-            }
-        }
-        if (names.isEmpty()) {
-            throw new IllegalArgumentException("--only requires at least one block name");
-        }
-        return names;
+        return AllModeOptionParser.parseOnlyNames(onlyArg);
     }
 
     private static List<BlockIndexEntry> selectBlocks(BlockIndex index, Set<String> onlyNames) {
@@ -2426,250 +2073,39 @@ public final class BearCli {
         int rootTestFailed,
         int rootTestSkippedDueToReach
     ) {
-        int passed = 0;
-        int failed = 0;
-        int skipped = 0;
-        int exitCode = ExitCode.OK;
-        int rank = severityRankCheck(exitCode);
-        for (BlockExecutionResult result : results) {
-            if (result.status() == BlockStatus.PASS) {
-                passed++;
-            } else if (result.status() == BlockStatus.FAIL) {
-                failed++;
-                int candidateRank = severityRankCheck(result.exitCode());
-                if (candidateRank < rank) {
-                    rank = candidateRank;
-                    exitCode = result.exitCode();
-                }
-            } else {
-                skipped++;
-            }
-        }
-        return new RepoAggregationResult(
-            exitCode,
-            results.size(),
-            passed + failed,
-            passed,
-            failed,
-            skipped,
-            failFastTriggered,
-            rootReachFailed,
-            rootTestFailed,
-            rootTestSkippedDueToReach
-        );
+        return AllModeAggregation.aggregateCheckResults(results, failFastTriggered, rootReachFailed, rootTestFailed, rootTestSkippedDueToReach);
     }
 
     private static RepoAggregationResult aggregatePrResults(List<BlockExecutionResult> results) {
-        int passed = 0;
-        int failed = 0;
-        int skipped = 0;
-        int exitCode = ExitCode.OK;
-        int rank = severityRankPr(exitCode);
-        for (BlockExecutionResult result : results) {
-            if (result.status() == BlockStatus.PASS) {
-                passed++;
-            } else if (result.status() == BlockStatus.FAIL) {
-                failed++;
-                int candidateRank = severityRankPr(result.exitCode());
-                if (candidateRank < rank) {
-                    rank = candidateRank;
-                    exitCode = result.exitCode();
-                }
-            } else {
-                skipped++;
-            }
-        }
-        return new RepoAggregationResult(
-            exitCode,
-            results.size(),
-            passed + failed,
-            passed,
-            failed,
-            skipped,
-            false,
-            0,
-            0,
-            0
-        );
+        return AllModeAggregation.aggregatePrResults(results);
     }
 
     private static RepoAggregationResult aggregateFixResults(List<BlockExecutionResult> results, boolean failFastTriggered) {
-        int passed = 0;
-        int failed = 0;
-        int skipped = 0;
-        int exitCode = ExitCode.OK;
-        int rank = severityRankFix(exitCode);
-        for (BlockExecutionResult result : results) {
-            if (result.status() == BlockStatus.PASS) {
-                passed++;
-            } else if (result.status() == BlockStatus.FAIL) {
-                failed++;
-                int candidateRank = severityRankFix(result.exitCode());
-                if (candidateRank < rank) {
-                    rank = candidateRank;
-                    exitCode = result.exitCode();
-                }
-            } else {
-                skipped++;
-            }
-        }
-        return new RepoAggregationResult(
-            exitCode,
-            results.size(),
-            passed + failed,
-            passed,
-            failed,
-            skipped,
-            failFastTriggered,
-            0,
-            0,
-            0
-        );
+        return AllModeAggregation.aggregateFixResults(results, failFastTriggered);
     }
 
     private static int severityRankCheck(int code) {
-        return switch (code) {
-            case 70 -> 1;
-            case 74 -> 2;
-            case 64 -> 3;
-            case 2 -> 4;
-            case 3 -> 5;
-            case 6 -> 6;
-            case 4 -> 7;
-            case 0 -> 8;
-            default -> 1;
-        };
+        return AllModeAggregation.severityRankCheck(code);
     }
 
     private static int severityRankPr(int code) {
-        return switch (code) {
-            case 70 -> 1;
-            case 74 -> 2;
-            case 64 -> 3;
-            case 2 -> 4;
-            case 5 -> 5;
-            case 0 -> 6;
-            default -> 1;
-        };
+        return AllModeAggregation.severityRankPr(code);
     }
 
     private static int severityRankFix(int code) {
-        return switch (code) {
-            case 70 -> 1;
-            case 74 -> 2;
-            case 64 -> 3;
-            case 2 -> 4;
-            case 0 -> 5;
-            default -> 1;
-        };
+        return AllModeAggregation.severityRankFix(code);
     }
 
     private static List<String> renderCheckAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
-        List<String> lines = new ArrayList<>();
-        for (BlockExecutionResult result : results) {
-            lines.add("BLOCK: " + result.name());
-            lines.add("IR: " + result.ir());
-            lines.add("PROJECT: " + result.project());
-            lines.add("STATUS: " + result.status());
-            lines.add("EXIT_CODE: " + result.exitCode());
-            if (result.status() == BlockStatus.FAIL) {
-                lines.add("CATEGORY: " + result.category());
-                lines.add("BLOCK_CODE: " + result.blockCode());
-                lines.add("BLOCK_PATH: " + result.blockPath());
-                lines.add("DETAIL: " + result.detail());
-                lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
-            } else if (result.status() == BlockStatus.SKIP) {
-                lines.add("REASON: " + result.reason());
-            }
-            lines.add("");
-        }
-        lines.add("SUMMARY:");
-        lines.add(summary.total() + " blocks total");
-        lines.add(summary.checked() + " checked");
-        lines.add(summary.passed() + " passed");
-        lines.add(summary.failed() + " failed");
-        lines.add(summary.skipped() + " skipped");
-        lines.add("ROOT_REACH_FAILED: " + summary.rootReachFailed());
-        lines.add("ROOT_TEST_FAILED: " + summary.rootTestFailed());
-        lines.add("ROOT_TEST_SKIPPED_DUE_TO_REACH: " + summary.rootTestSkippedDueToReach());
-        lines.add("FAIL_FAST_TRIGGERED: " + summary.failFastTriggered());
-        lines.add("EXIT_CODE: " + summary.exitCode());
-        return lines;
+        return AllModeRenderer.renderCheckAllOutput(results, summary);
     }
 
     private static List<String> renderPrAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
-        List<String> lines = new ArrayList<>();
-        int boundaryCount = 0;
-        for (BlockExecutionResult result : results) {
-            lines.add("BLOCK: " + result.name());
-            lines.add("IR: " + result.ir());
-            lines.add("PROJECT: " + result.project());
-            lines.add("STATUS: " + result.status());
-            lines.add("EXIT_CODE: " + result.exitCode());
-            if (result.classification() != null) {
-                lines.add("CLASSIFICATION: " + result.classification());
-                if ("BOUNDARY_EXPANDING".equals(result.classification())) {
-                    boundaryCount++;
-                }
-            }
-            if (!result.deltaLines().isEmpty()) {
-                lines.add("DELTA:");
-                for (String deltaLine : result.deltaLines()) {
-                    lines.add("  " + deltaLine);
-                }
-            } else {
-                lines.add("DELTA: (no changes)");
-            }
-            if (result.status() == BlockStatus.FAIL && result.blockCode() != null) {
-                lines.add("CATEGORY: " + result.category());
-                lines.add("BLOCK_CODE: " + result.blockCode());
-                lines.add("BLOCK_PATH: " + result.blockPath());
-                lines.add("DETAIL: " + result.detail());
-                lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
-            } else if (result.status() == BlockStatus.SKIP) {
-                lines.add("REASON: " + result.reason());
-            }
-            lines.add("");
-        }
-        lines.add("SUMMARY:");
-        lines.add(summary.total() + " blocks total");
-        lines.add(summary.checked() + " checked");
-        lines.add(summary.passed() + " passed");
-        lines.add(summary.failed() + " failed");
-        lines.add(summary.skipped() + " skipped");
-        lines.add("BOUNDARY_EXPANDING: " + boundaryCount);
-        lines.add("EXIT_CODE: " + summary.exitCode());
-        return lines;
+        return AllModeRenderer.renderPrAllOutput(results, summary);
     }
 
     private static List<String> renderFixAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
-        List<String> lines = new ArrayList<>();
-        for (BlockExecutionResult result : results) {
-            lines.add("BLOCK: " + result.name());
-            lines.add("IR: " + result.ir());
-            lines.add("PROJECT: " + result.project());
-            lines.add("STATUS: " + result.status());
-            lines.add("EXIT_CODE: " + result.exitCode());
-            if (result.status() == BlockStatus.FAIL) {
-                lines.add("CATEGORY: " + result.category());
-                lines.add("BLOCK_CODE: " + result.blockCode());
-                lines.add("BLOCK_PATH: " + result.blockPath());
-                lines.add("DETAIL: " + result.detail());
-                lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
-            } else if (result.status() == BlockStatus.SKIP) {
-                lines.add("REASON: " + result.reason());
-            }
-            lines.add("");
-        }
-        lines.add("SUMMARY:");
-        lines.add(summary.total() + " blocks total");
-        lines.add(summary.checked() + " checked");
-        lines.add(summary.passed() + " passed");
-        lines.add(summary.failed() + " failed");
-        lines.add(summary.skipped() + " skipped");
-        lines.add("FAIL_FAST_TRIGGERED: " + summary.failFastTriggered());
-        lines.add("EXIT_CODE: " + summary.exitCode());
-        return lines;
+        return AllModeRenderer.renderFixAllOutput(results, summary);
     }
 
     private static List<DriftItem> computeDrift(
@@ -2677,78 +2113,11 @@ public final class BearCli {
         Path candidateRoot,
         java.util.function.Predicate<String> includePath
     ) throws IOException {
-        Map<String, byte[]> baseline = readRegularFiles(baselineRoot);
-        Map<String, byte[]> candidate = readRegularFiles(candidateRoot);
-
-        TreeSet<String> allPaths = new TreeSet<>();
-        allPaths.addAll(baseline.keySet());
-        allPaths.addAll(candidate.keySet());
-
-        List<DriftItem> drift = new ArrayList<>();
-        for (String path : allPaths) {
-            if (!includePath.test(path)) {
-                continue;
-            }
-            boolean inBaseline = baseline.containsKey(path);
-            boolean inCandidate = candidate.containsKey(path);
-            if (inBaseline && !inCandidate) {
-                drift.add(new DriftItem(path, DriftType.ADDED));
-                continue;
-            }
-            if (!inBaseline && inCandidate) {
-                drift.add(new DriftItem(path, DriftType.REMOVED));
-                continue;
-            }
-            if (!Arrays.equals(baseline.get(path), candidate.get(path))) {
-                drift.add(new DriftItem(path, DriftType.CHANGED));
-            }
-        }
-
-        drift.sort(Comparator
-            .comparing(DriftItem::path)
-            .thenComparing(item -> item.type().order));
-        return drift;
+        return DriftAnalyzer.computeDrift(baselineRoot, candidateRoot, includePath);
     }
 
     private static List<BoundarySignal> computeBoundarySignals(BoundaryManifest baseline, BoundaryManifest candidate) {
-        List<BoundarySignal> signals = new ArrayList<>();
-        for (String capability : candidate.capabilities().keySet()) {
-            if (!baseline.capabilities().containsKey(capability)) {
-                signals.add(new BoundarySignal(BoundaryType.CAPABILITY_ADDED, capability));
-            }
-        }
-        for (Map.Entry<String, String> dep : candidate.allowedDeps().entrySet()) {
-            String ga = dep.getKey();
-            if (!baseline.allowedDeps().containsKey(ga)) {
-                signals.add(new BoundarySignal(BoundaryType.PURE_DEP_ADDED, ga + "@" + dep.getValue()));
-                continue;
-            }
-            String oldVersion = baseline.allowedDeps().get(ga);
-            if (!oldVersion.equals(dep.getValue())) {
-                signals.add(new BoundarySignal(BoundaryType.PURE_DEP_VERSION_CHANGED, ga + "@" + oldVersion + "->" + dep.getValue()));
-            }
-        }
-        for (Map.Entry<String, TreeSet<String>> entry : candidate.capabilities().entrySet()) {
-            String capability = entry.getKey();
-            if (!baseline.capabilities().containsKey(capability)) {
-                continue;
-            }
-            TreeSet<String> baselineOps = baseline.capabilities().get(capability);
-            for (String op : entry.getValue()) {
-                if (!baselineOps.contains(op)) {
-                    signals.add(new BoundarySignal(BoundaryType.CAPABILITY_OP_ADDED, capability + "." + op));
-                }
-            }
-        }
-        for (String invariant : baseline.invariants()) {
-            if (!candidate.invariants().contains(invariant)) {
-                signals.add(new BoundarySignal(BoundaryType.INVARIANT_RELAXED, invariant));
-            }
-        }
-        signals.sort(Comparator
-            .comparing((BoundarySignal signal) -> signal.type().order)
-            .thenComparing(BoundarySignal::key));
-        return signals;
+        return PrDeltaClassifier.computeBoundarySignals(baseline, candidate);
     }
 
     private static BearIr parseAndValidateIr(BearIrParser parser, BearIrValidator validator, Path path) throws IOException {
@@ -2758,87 +2127,11 @@ public final class BearCli {
     }
 
     private static List<PrDelta> computePrDeltas(BearIr baseIr, BearIr headIr) {
-        PrSurface base = baseIr == null ? emptyPrSurface() : toPrSurface(baseIr);
-        PrSurface head = toPrSurface(headIr);
-
-        List<PrDelta> deltas = new ArrayList<>();
-
-        for (String port : head.ports()) {
-            if (!base.ports().contains(port)) {
-                deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.PORTS, PrChange.ADDED, port));
-            }
-        }
-        for (String port : base.ports()) {
-            if (!head.ports().contains(port)) {
-                deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.PORTS, PrChange.REMOVED, port));
-            }
-        }
-
-        TreeSet<String> commonPorts = new TreeSet<>(head.ports());
-        commonPorts.retainAll(base.ports());
-        for (String port : commonPorts) {
-            TreeSet<String> headOps = head.opsByPort().getOrDefault(port, new TreeSet<>());
-            TreeSet<String> baseOps = base.opsByPort().getOrDefault(port, new TreeSet<>());
-            for (String op : headOps) {
-                if (!baseOps.contains(op)) {
-                    deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.OPS, PrChange.ADDED, port + "." + op));
-                }
-            }
-            for (String op : baseOps) {
-                if (!headOps.contains(op)) {
-                    deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.OPS, PrChange.REMOVED, port + "." + op));
-                }
-            }
-        }
-
-        addIdempotencyDeltas(deltas, base.idempotency(), head.idempotency());
-        addAllowedDepDeltas(deltas, base.allowedDeps(), head.allowedDeps());
-        addContractDeltas(deltas, base.inputs(), head.inputs(), true);
-        addContractDeltas(deltas, base.outputs(), head.outputs(), false);
-
-        for (String invariant : head.invariants()) {
-            if (!base.invariants().contains(invariant)) {
-                deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.INVARIANTS, PrChange.ADDED, invariant));
-            }
-        }
-        for (String invariant : base.invariants()) {
-            if (!head.invariants().contains(invariant)) {
-                deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.INVARIANTS, PrChange.REMOVED, invariant));
-            }
-        }
-
-        deltas.sort(Comparator
-            .comparing((PrDelta delta) -> delta.clazz().order)
-            .thenComparing(delta -> delta.category().order)
-            .thenComparing(delta -> delta.change().order)
-            .thenComparing(PrDelta::key));
-        return deltas;
+        return PrDeltaClassifier.computePrDeltas(baseIr, headIr);
     }
 
     private static void addAllowedDepDeltas(List<PrDelta> deltas, Map<String, String> base, Map<String, String> head) {
-        TreeSet<String> names = new TreeSet<>();
-        names.addAll(base.keySet());
-        names.addAll(head.keySet());
-        for (String ga : names) {
-            boolean inBase = base.containsKey(ga);
-            boolean inHead = head.containsKey(ga);
-            if (!inBase) {
-                deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.ALLOWED_DEPS, PrChange.ADDED, ga + "@" + head.get(ga)));
-                continue;
-            }
-            if (!inHead) {
-                deltas.add(new PrDelta(PrClass.ORDINARY, PrCategory.ALLOWED_DEPS, PrChange.REMOVED, ga + "@" + base.get(ga)));
-                continue;
-            }
-            if (!base.get(ga).equals(head.get(ga))) {
-                deltas.add(new PrDelta(
-                    PrClass.BOUNDARY_EXPANDING,
-                    PrCategory.ALLOWED_DEPS,
-                    PrChange.CHANGED,
-                    ga + "@" + base.get(ga) + "->" + head.get(ga)
-                ));
-            }
-        }
+        PrDeltaClassifier.addAllowedDepDeltas(deltas, base, head);
     }
 
     private static void addIdempotencyDeltas(
@@ -2846,30 +2139,7 @@ public final class BearCli {
         BearIr.Idempotency base,
         BearIr.Idempotency head
     ) {
-        if (base == null && head == null) {
-            return;
-        }
-        if (base == null) {
-            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.ADDED, "idempotency"));
-            return;
-        }
-        if (head == null) {
-            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.REMOVED, "idempotency"));
-            return;
-        }
-
-        if (!base.key().equals(head.key())) {
-            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.key"));
-        }
-        if (!base.store().port().equals(head.store().port())) {
-            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.store.port"));
-        }
-        if (!base.store().getOp().equals(head.store().getOp())) {
-            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.store.getOp"));
-        }
-        if (!base.store().putOp().equals(head.store().putOp())) {
-            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.store.putOp"));
-        }
+        PrDeltaClassifier.addIdempotencyDeltas(deltas, base, head);
     }
 
     private static void addContractDeltas(
@@ -2878,90 +2148,19 @@ public final class BearCli {
         Map<String, BearIr.FieldType> head,
         boolean input
     ) {
-        TreeSet<String> names = new TreeSet<>();
-        names.addAll(base.keySet());
-        names.addAll(head.keySet());
-        for (String name : names) {
-            boolean inBase = base.containsKey(name);
-            boolean inHead = head.containsKey(name);
-            String prefix = input ? "input." : "output.";
-
-            if (!inBase) {
-                PrClass clazz = input ? PrClass.ORDINARY : PrClass.BOUNDARY_EXPANDING;
-                deltas.add(new PrDelta(
-                    clazz,
-                    PrCategory.CONTRACT,
-                    PrChange.ADDED,
-                    prefix + name + ":" + typeToken(head.get(name))
-                ));
-                continue;
-            }
-            if (!inHead) {
-                deltas.add(new PrDelta(
-                    PrClass.BOUNDARY_EXPANDING,
-                    PrCategory.CONTRACT,
-                    PrChange.REMOVED,
-                    prefix + name + ":" + typeToken(base.get(name))
-                ));
-                continue;
-            }
-            if (base.get(name) != head.get(name)) {
-                deltas.add(new PrDelta(
-                    PrClass.BOUNDARY_EXPANDING,
-                    PrCategory.CONTRACT,
-                    PrChange.CHANGED,
-                    prefix + name + ":" + typeToken(base.get(name)) + "->" + typeToken(head.get(name))
-                ));
-            }
-        }
+        PrDeltaClassifier.addContractDeltas(deltas, base, head, input);
     }
 
     private static String typeToken(BearIr.FieldType type) {
-        return type.name().toLowerCase();
+        return PrDeltaClassifier.typeToken(type);
     }
 
     private static PrSurface toPrSurface(BearIr ir) {
-        TreeSet<String> ports = new TreeSet<>();
-        Map<String, TreeSet<String>> opsByPort = new TreeMap<>();
-        for (BearIr.EffectPort port : ir.block().effects().allow()) {
-            ports.add(port.port());
-            opsByPort.put(port.port(), new TreeSet<>(port.ops()));
-        }
-        Map<String, String> allowedDeps = new TreeMap<>();
-        if (ir.block().impl() != null && ir.block().impl().allowedDeps() != null) {
-            for (BearIr.AllowedDep dep : ir.block().impl().allowedDeps()) {
-                allowedDeps.put(dep.maven(), dep.version());
-            }
-        }
-
-        Map<String, BearIr.FieldType> inputs = new TreeMap<>();
-        for (BearIr.Field input : ir.block().contract().inputs()) {
-            inputs.put(input.name(), input.type());
-        }
-        Map<String, BearIr.FieldType> outputs = new TreeMap<>();
-        for (BearIr.Field output : ir.block().contract().outputs()) {
-            outputs.put(output.name(), output.type());
-        }
-
-        TreeSet<String> invariants = new TreeSet<>();
-        if (ir.block().invariants() != null) {
-            for (BearIr.Invariant invariant : ir.block().invariants()) {
-                invariants.add(invariant.kind().name().toLowerCase() + ":" + invariant.field());
-            }
-        }
-        return new PrSurface(ports, opsByPort, allowedDeps, inputs, outputs, ir.block().idempotency(), invariants);
+        return PrDeltaClassifier.toPrSurface(ir);
     }
 
     private static PrSurface emptyPrSurface() {
-        return new PrSurface(
-            new TreeSet<>(),
-            new TreeMap<>(),
-            new TreeMap<>(),
-            new TreeMap<>(),
-            new TreeMap<>(),
-            null,
-            new TreeSet<>()
-        );
+        return PrDeltaClassifier.emptyPrSurface();
     }
 
     private static GitResult runGit(Path projectRoot, List<String> gitArgs) throws IOException, InterruptedException {
@@ -2999,222 +2198,47 @@ public final class BearCli {
     }
 
     private static String squash(String text) {
-        if (text == null) {
-            return "no details";
-        }
-        String squashed = normalizeLf(text).replace('\n', ' ').trim();
-        return squashed.isEmpty() ? "no details" : squashed;
+        return CliText.squash(text);
     }
 
     private static BoundaryManifest parseManifest(Path path) throws IOException, ManifestParseException {
-        String json = Files.readString(path, StandardCharsets.UTF_8).trim();
-        if (!json.startsWith("{") || !json.endsWith("}")) {
-            throw new ManifestParseException("MALFORMED_JSON");
-        }
-        String schemaVersion = extractRequiredString(json, "schemaVersion");
-        String target = extractRequiredString(json, "target");
-        String block = extractRequiredString(json, "block");
-        String irHash = extractRequiredString(json, "irHash");
-        String generatorVersion = extractRequiredString(json, "generatorVersion");
-
-        String capabilitiesPayload = extractRequiredArrayPayload(json, "capabilities");
-        String allowedDepsPayload = extractOptionalArrayPayload(json, "allowedDeps");
-        String invariantsPayload = extractRequiredArrayPayload(json, "invariants");
-        Map<String, TreeSet<String>> capabilities = parseCapabilities(capabilitiesPayload);
-        Map<String, String> allowedDeps = parseAllowedDeps(allowedDepsPayload);
-        TreeSet<String> invariants = parseInvariants(invariantsPayload);
-        return new BoundaryManifest(schemaVersion, target, block, irHash, generatorVersion, capabilities, allowedDeps, invariants);
+        return ManifestParsers.parseManifest(path);
     }
 
     private static WiringManifest parseWiringManifest(Path path) throws IOException, ManifestParseException {
-        String json = Files.readString(path, StandardCharsets.UTF_8).trim();
-        if (!json.startsWith("{") || !json.endsWith("}")) {
-            throw new ManifestParseException("MALFORMED_JSON");
-        }
-        String schemaVersion = extractRequiredString(json, "schemaVersion");
-        String blockKey = extractRequiredString(json, "blockKey");
-        String entrypointFqcn = extractRequiredString(json, "entrypointFqcn");
-        String logicInterfaceFqcn = extractRequiredString(json, "logicInterfaceFqcn");
-        String implFqcn = extractRequiredString(json, "implFqcn");
-        String implSourcePath = extractRequiredString(json, "implSourcePath");
-        String requiredEffectPortsPayload = extractRequiredArrayPayload(json, "requiredEffectPorts");
-        String constructorPortParamsPayload = extractRequiredArrayPayload(json, "constructorPortParams");
-        List<String> requiredEffectPorts = parseStringArray(requiredEffectPortsPayload);
-        List<String> constructorPortParams = parseStringArray(constructorPortParamsPayload);
-        return new WiringManifest(
-            schemaVersion,
-            blockKey,
-            entrypointFqcn,
-            logicInterfaceFqcn,
-            implFqcn,
-            implSourcePath,
-            requiredEffectPorts,
-            constructorPortParams
-        );
+        return ManifestParsers.parseWiringManifest(path);
     }
 
     private static String extractRequiredString(String json, String key) throws ManifestParseException {
-        Matcher m = Pattern.compile("\"" + Pattern.quote(key) + "\":\"((?:\\\\.|[^\\\\\"])*)\"").matcher(json);
-        if (!m.find()) {
-            throw new ManifestParseException("MISSING_KEY_" + key);
-        }
-        return jsonUnescape(m.group(1));
+        return ManifestParsers.extractRequiredString(json, key);
     }
 
     private static String extractRequiredArrayPayload(String json, String key) throws ManifestParseException {
-        int keyIdx = json.indexOf("\"" + key + "\":[");
-        if (keyIdx < 0) {
-            throw new ManifestParseException("MISSING_KEY_" + key);
-        }
-        int start = json.indexOf('[', keyIdx);
-        if (start < 0) {
-            throw new ManifestParseException("MALFORMED_ARRAY_" + key);
-        }
-        int depth = 0;
-        for (int i = start; i < json.length(); i++) {
-            char c = json.charAt(i);
-            if (c == '[') {
-                depth++;
-            } else if (c == ']') {
-                depth--;
-                if (depth == 0) {
-                    return json.substring(start + 1, i);
-                }
-            }
-        }
-        throw new ManifestParseException("MALFORMED_ARRAY_" + key);
+        return ManifestParsers.extractRequiredArrayPayload(json, key);
     }
 
     private static String extractOptionalArrayPayload(String json, String key) throws ManifestParseException {
-        int keyIdx = json.indexOf("\"" + key + "\":[");
-        if (keyIdx < 0) {
-            return null;
-        }
-        int start = json.indexOf('[', keyIdx);
-        if (start < 0) {
-            throw new ManifestParseException("MALFORMED_ARRAY_" + key);
-        }
-        int depth = 0;
-        for (int i = start; i < json.length(); i++) {
-            char c = json.charAt(i);
-            if (c == '[') {
-                depth++;
-            } else if (c == ']') {
-                depth--;
-                if (depth == 0) {
-                    return json.substring(start + 1, i);
-                }
-            }
-        }
-        throw new ManifestParseException("MALFORMED_ARRAY_" + key);
+        return ManifestParsers.extractOptionalArrayPayload(json, key);
     }
 
     private static Map<String, TreeSet<String>> parseCapabilities(String payload) throws ManifestParseException {
-        Map<String, TreeSet<String>> capabilities = new TreeMap<>();
-        if (payload.isBlank()) {
-            return capabilities;
-        }
-
-        Matcher m = Pattern.compile("\\{\"name\":\"((?:\\\\.|[^\\\\\"])*)\",\"ops\":\\[([^\\]]*)\\]\\}").matcher(payload);
-        int count = 0;
-        while (m.find()) {
-            count++;
-            String name = jsonUnescape(m.group(1));
-            TreeSet<String> ops = new TreeSet<>();
-            String opsPayload = m.group(2);
-            if (!opsPayload.isBlank()) {
-                Matcher opMatcher = Pattern.compile("\"((?:\\\\.|[^\\\\\"])*)\"").matcher(opsPayload);
-                while (opMatcher.find()) {
-                    ops.add(jsonUnescape(opMatcher.group(1)));
-                }
-            }
-            capabilities.put(name, ops);
-        }
-
-        if (count == 0) {
-            throw new ManifestParseException("INVALID_CAPABILITIES");
-        }
-        return capabilities;
+        return ManifestParsers.parseCapabilities(payload);
     }
 
     private static TreeSet<String> parseInvariants(String payload) throws ManifestParseException {
-        TreeSet<String> invariants = new TreeSet<>();
-        if (payload.isBlank()) {
-            return invariants;
-        }
-
-        Matcher m = Pattern.compile("\\{\"kind\":\"((?:\\\\.|[^\\\\\"])*)\",\"field\":\"((?:\\\\.|[^\\\\\"])*)\"\\}")
-            .matcher(payload);
-        int count = 0;
-        while (m.find()) {
-            count++;
-            String kind = jsonUnescape(m.group(1));
-            String field = jsonUnescape(m.group(2));
-            if ("non_negative".equals(kind)) {
-                invariants.add("non_negative:" + field);
-            }
-        }
-
-        if (count == 0) {
-            throw new ManifestParseException("INVALID_INVARIANTS");
-        }
-        return invariants;
+        return ManifestParsers.parseInvariants(payload);
     }
 
     private static Map<String, String> parseAllowedDeps(String payload) throws ManifestParseException {
-        Map<String, String> allowedDeps = new TreeMap<>();
-        if (payload == null || payload.isBlank()) {
-            return allowedDeps;
-        }
-
-        Matcher m = Pattern.compile("\\{\\\"ga\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"version\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\"\\}")
-            .matcher(payload);
-        int count = 0;
-        while (m.find()) {
-            count++;
-            allowedDeps.put(jsonUnescape(m.group(1)), jsonUnescape(m.group(2)));
-        }
-        if (count == 0) {
-            throw new ManifestParseException("INVALID_ALLOWED_DEPS");
-        }
-        return allowedDeps;
+        return ManifestParsers.parseAllowedDeps(payload);
     }
 
     private static List<String> parseStringArray(String payload) throws ManifestParseException {
-        if (payload.isBlank()) {
-            return List.of();
-        }
-        ArrayList<String> values = new ArrayList<>();
-        Matcher matcher = Pattern.compile("\"((?:\\\\.|[^\\\\\"])*)\"").matcher(payload);
-        while (matcher.find()) {
-            values.add(jsonUnescape(matcher.group(1)));
-        }
-        if (values.isEmpty()) {
-            throw new ManifestParseException("INVALID_STRING_ARRAY");
-        }
-        return List.copyOf(values);
+        return ManifestParsers.parseStringArray(payload);
     }
 
     private static String jsonUnescape(String value) {
-        StringBuilder out = new StringBuilder(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            if (c == '\\' && i + 1 < value.length()) {
-                char next = value.charAt(++i);
-                if (next == 'n') {
-                    out.append('\n');
-                } else if (next == 'r') {
-                    out.append('\r');
-                } else if (next == 't') {
-                    out.append('\t');
-                } else {
-                    out.append(next);
-                }
-            } else {
-                out.append(c);
-            }
-        }
-        return out.toString();
+        return ManifestParsers.jsonUnescape(value);
     }
 
     private static void applyCandidateManifestTestMode(Path candidateManifestPath) throws IOException {
@@ -3334,189 +2358,27 @@ public final class BearCli {
     }
 
     private static Map<String, byte[]> readRegularFiles(Path root) throws IOException {
-        Map<String, byte[]> files = new TreeMap<>();
-        if (!Files.isDirectory(root)) {
-            return files;
-        }
-
-        try (var stream = Files.walk(root)) {
-            stream.filter(Files::isRegularFile).forEach(path -> {
-                try {
-                    String rel = root.relativize(path).toString().replace('\\', '/');
-                    files.put(rel, Files.readAllBytes(path));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof IOException io) {
-                throw io;
-            }
-            throw e;
-        }
-        return files;
+        return DriftAnalyzer.readRegularFiles(root);
     }
 
     private static List<UndeclaredReachFinding> scanUndeclaredReach(Path projectRoot) throws IOException {
-        List<UndeclaredReachFinding> findings = new ArrayList<>();
-        if (!Files.isDirectory(projectRoot)) {
-            return findings;
-        }
-        Files.walkFileTree(projectRoot, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (!attrs.isRegularFile()) {
-                    return FileVisitResult.CONTINUE;
-                }
-                String rel = projectRoot.relativize(file).toString().replace('\\', '/');
-                if (!rel.endsWith(".java") || isUndeclaredReachExcluded(rel)) {
-                    return FileVisitResult.CONTINUE;
-                }
-                String content = Files.readString(file, StandardCharsets.UTF_8);
-                for (UndeclaredReachSurface surface : UNDECLARED_REACH_SURFACES) {
-                    if (surface.matches(content)) {
-                        findings.add(new UndeclaredReachFinding(rel, surface.label()));
-                    }
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        findings.sort(
-            Comparator.comparing(UndeclaredReachFinding::path)
-                .thenComparing(UndeclaredReachFinding::surface)
-        );
-        return findings;
+        return UndeclaredReachScanner.scanUndeclaredReach(projectRoot);
     }
 
     private static boolean isUndeclaredReachExcluded(String relPath) {
-        return relPath.startsWith("build/")
-            || relPath.startsWith(".gradle/")
-            || relPath.startsWith("src/test/")
-            || relPath.startsWith("build/generated/bear/");
+        return UndeclaredReachScanner.isUndeclaredReachExcluded(relPath);
     }
 
     private static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests) throws IOException {
-        if (manifests.isEmpty()) {
-            return List.of();
-        }
-
-        TreeMap<String, WiringManifest> manifestsByImplPath = new TreeMap<>();
-        HashSet<String> governedEntrypointFqcns = new HashSet<>();
-        HashMap<String, Integer> governedSimpleNameCounts = new HashMap<>();
-        for (WiringManifest manifest : manifests) {
-            manifestsByImplPath.put(manifest.implSourcePath(), manifest);
-            governedEntrypointFqcns.add(manifest.entrypointFqcn());
-            String simple = simpleName(manifest.entrypointFqcn());
-            governedSimpleNameCounts.put(simple, governedSimpleNameCounts.getOrDefault(simple, 0) + 1);
-        }
-
-        List<BoundaryBypassFinding> findings = new ArrayList<>();
-        if (Files.isDirectory(projectRoot)) {
-            Files.walkFileTree(projectRoot, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    if (!attrs.isRegularFile()) {
-                        return FileVisitResult.CONTINUE;
-                    }
-                    String rel = projectRoot.relativize(file).toString().replace('\\', '/');
-                    if (!rel.endsWith(".java") || isBoundaryScanExcluded(rel)) {
-                        return FileVisitResult.CONTINUE;
-                    }
-                    String source = Files.readString(file, StandardCharsets.UTF_8);
-                    String sanitized = stripJavaCommentsStringsAndChars(source);
-
-                    String directImplToken = firstDirectImplUsageToken(sanitized);
-                    if (directImplToken != null) {
-                        findings.add(new BoundaryBypassFinding("DIRECT_IMPL_USAGE", rel, directImplToken));
-                    }
-
-                    String nullWiringToken = firstTopLevelNullPortWiringToken(sanitized, governedEntrypointFqcns, governedSimpleNameCounts);
-                    if (nullWiringToken != null) {
-                        findings.add(new BoundaryBypassFinding("NULL_PORT_WIRING", rel, nullWiringToken));
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        }
-
-        for (Map.Entry<String, WiringManifest> entry : manifestsByImplPath.entrySet()) {
-            WiringManifest manifest = entry.getValue();
-            Path implPath = projectRoot.resolve(entry.getKey()).normalize();
-            String rel = projectRoot.relativize(implPath).toString().replace('\\', '/');
-            if (!Files.isRegularFile(implPath)) {
-                findings.add(new BoundaryBypassFinding(
-                    "EFFECTS_BYPASS",
-                    rel,
-                    "missing governed impl source"
-                ));
-                continue;
-            }
-            String source = Files.readString(implPath, StandardCharsets.UTF_8);
-            String sanitized = stripJavaCommentsStringsAndChars(source);
-            Set<String> suppressions = parsePortSuppressions(source);
-
-            List<String> requiredPorts = new ArrayList<>(manifest.requiredEffectPorts());
-            requiredPorts.sort(String::compareTo);
-            for (String portParam : requiredPorts) {
-                if (suppressions.contains(portParam)) {
-                    continue;
-                }
-                if (referencesPortAsReceiver(sanitized, portParam)) {
-                    continue;
-                }
-                if (passesPortAsInvocationArgument(sanitized, portParam)) {
-                    continue;
-                }
-                findings.add(new BoundaryBypassFinding(
-                    "EFFECTS_BYPASS",
-                    rel,
-                    "missing required effect port usage: " + portParam
-                ));
-            }
-        }
-
-        findings.sort(
-            Comparator.comparing(BoundaryBypassFinding::path)
-                .thenComparing(BoundaryBypassFinding::rule)
-                .thenComparing(BoundaryBypassFinding::detail)
-        );
-        return findings;
+        return BoundaryBypassScanner.scanBoundaryBypass(projectRoot, manifests);
     }
 
     private static boolean isBoundaryScanExcluded(String relPath) {
-        return !relPath.startsWith("src/main/")
-            || relPath.startsWith("src/test/")
-            || relPath.startsWith("build/")
-            || relPath.startsWith(".gradle/")
-            || relPath.startsWith("build/generated/bear/");
+        return BoundaryBypassScanner.isBoundaryScanExcluded(relPath);
     }
 
     private static String firstDirectImplUsageToken(String source) {
-        Matcher importMatcher = DIRECT_IMPL_IMPORT_PATTERN.matcher(source);
-        if (importMatcher.find()) {
-            return normalizeToken(importMatcher.group());
-        }
-        Matcher newMatcher = DIRECT_IMPL_NEW_PATTERN.matcher(source);
-        if (newMatcher.find()) {
-            return normalizeToken(newMatcher.group());
-        }
-        Matcher castMatcher = DIRECT_IMPL_TYPE_CAST_PATTERN.matcher(source);
-        if (castMatcher.find()) {
-            return normalizeToken(castMatcher.group());
-        }
-        Matcher varMatcher = DIRECT_IMPL_VAR_DECL_PATTERN.matcher(source);
-        if (varMatcher.find()) {
-            return normalizeToken(varMatcher.group());
-        }
-        Matcher extendsMatcher = DIRECT_IMPL_EXTENDS_IMPL_PATTERN.matcher(source);
-        if (extendsMatcher.find()) {
-            return normalizeToken(extendsMatcher.group());
-        }
-        Matcher implementsMatcher = DIRECT_IMPL_IMPLEMENTS_IMPL_PATTERN.matcher(source);
-        if (implementsMatcher.find()) {
-            return normalizeToken(implementsMatcher.group());
-        }
-        return null;
+        return BoundaryBypassScanner.firstDirectImplUsageToken(source);
     }
 
     private static String firstTopLevelNullPortWiringToken(
@@ -3524,23 +2386,7 @@ public final class BearCli {
         Set<String> governedEntrypointFqcns,
         Map<String, Integer> governedSimpleNameCounts
     ) {
-        Matcher constructorMatcher = Pattern.compile("\\bnew\\s+([A-Za-z_][A-Za-z0-9_\\.]*)\\s*\\(").matcher(source);
-        while (constructorMatcher.find()) {
-            String typeName = constructorMatcher.group(1);
-            if (!isGovernedEntrypointType(typeName, governedEntrypointFqcns, governedSimpleNameCounts)) {
-                continue;
-            }
-            List<String> args = parseTopLevelArguments(source, constructorMatcher.end() - 1);
-            if (args == null) {
-                continue;
-            }
-            for (String arg : args) {
-                if ("null".equals(arg.trim())) {
-                    return "new " + typeName + "(..., null, ...)";
-                }
-            }
-        }
-        return null;
+        return BoundaryBypassScanner.firstTopLevelNullPortWiringToken(source, governedEntrypointFqcns, governedSimpleNameCounts);
     }
 
     private static boolean isGovernedEntrypointType(
@@ -3548,189 +2394,35 @@ public final class BearCli {
         Set<String> governedEntrypointFqcns,
         Map<String, Integer> governedSimpleNameCounts
     ) {
-        if (governedEntrypointFqcns.contains(typeName)) {
-            return true;
-        }
-        String simple = simpleName(typeName);
-        return governedSimpleNameCounts.getOrDefault(simple, 0) == 1;
+        return BoundaryBypassScanner.isGovernedEntrypointType(typeName, governedEntrypointFqcns, governedSimpleNameCounts);
     }
 
     private static String simpleName(String fqcn) {
-        int idx = fqcn.lastIndexOf('.');
-        if (idx < 0) {
-            return fqcn;
-        }
-        return fqcn.substring(idx + 1);
+        return BoundaryBypassScanner.simpleName(fqcn);
     }
 
     private static List<String> parseTopLevelArguments(String source, int openParenIndex) {
-        if (openParenIndex < 0 || openParenIndex >= source.length() || source.charAt(openParenIndex) != '(') {
-            return null;
-        }
-        List<String> args = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        int parenDepth = 1;
-        int braceDepth = 0;
-        int bracketDepth = 0;
-        for (int i = openParenIndex + 1; i < source.length(); i++) {
-            char c = source.charAt(i);
-            if (c == '(') {
-                parenDepth++;
-                current.append(c);
-                continue;
-            }
-            if (c == ')') {
-                if (parenDepth == 1 && braceDepth == 0 && bracketDepth == 0) {
-                    args.add(current.toString());
-                    return args;
-                }
-                parenDepth--;
-                current.append(c);
-                continue;
-            }
-            if (c == '{') {
-                braceDepth++;
-                current.append(c);
-                continue;
-            }
-            if (c == '}') {
-                if (braceDepth > 0) {
-                    braceDepth--;
-                }
-                current.append(c);
-                continue;
-            }
-            if (c == '[') {
-                bracketDepth++;
-                current.append(c);
-                continue;
-            }
-            if (c == ']') {
-                if (bracketDepth > 0) {
-                    bracketDepth--;
-                }
-                current.append(c);
-                continue;
-            }
-            if (c == ',' && parenDepth == 1 && braceDepth == 0 && bracketDepth == 0) {
-                args.add(current.toString());
-                current.setLength(0);
-                continue;
-            }
-            current.append(c);
-        }
-        return null;
+        return BoundaryBypassScanner.parseTopLevelArguments(source, openParenIndex);
     }
 
     private static Set<String> parsePortSuppressions(String source) {
-        TreeSet<String> suppressions = new TreeSet<>();
-        Matcher matcher = SUPPRESSION_PATTERN.matcher(source);
-        while (matcher.find()) {
-            suppressions.add(matcher.group(1));
-        }
-        return suppressions;
+        return BoundaryBypassScanner.parsePortSuppressions(source);
     }
 
     private static boolean referencesPortAsReceiver(String source, String portParam) {
-        return Pattern.compile("\\b" + Pattern.quote(portParam) + "\\s*\\.").matcher(source).find();
+        return BoundaryBypassScanner.referencesPortAsReceiver(source, portParam);
     }
 
     private static boolean passesPortAsInvocationArgument(String source, String portParam) {
-        return Pattern.compile("(?:\\(|,)\\s*" + Pattern.quote(portParam) + "\\s*(?:,|\\))").matcher(source).find();
+        return BoundaryBypassScanner.passesPortAsInvocationArgument(source, portParam);
     }
 
     private static String normalizeToken(String token) {
-        return token.replaceAll("\\s+", " ").trim();
+        return BoundaryBypassScanner.normalizeToken(token);
     }
 
     private static String stripJavaCommentsStringsAndChars(String source) {
-        StringBuilder out = new StringBuilder(source.length());
-        boolean inLineComment = false;
-        boolean inBlockComment = false;
-        boolean inString = false;
-        boolean inChar = false;
-        boolean escaped = false;
-
-        for (int i = 0; i < source.length(); i++) {
-            char c = source.charAt(i);
-            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
-
-            if (inLineComment) {
-                if (c == '\n' || c == '\r') {
-                    inLineComment = false;
-                    out.append(c);
-                } else {
-                    out.append(' ');
-                }
-                continue;
-            }
-            if (inBlockComment) {
-                if (c == '*' && next == '/') {
-                    inBlockComment = false;
-                    out.append(' ');
-                    out.append(' ');
-                    i++;
-                } else if (c == '\n' || c == '\r') {
-                    out.append(c);
-                } else {
-                    out.append(' ');
-                }
-                continue;
-            }
-            if (inString) {
-                if (!escaped && c == '"') {
-                    inString = false;
-                }
-                if (!escaped && c == '\\') {
-                    escaped = true;
-                } else {
-                    escaped = false;
-                }
-                out.append(c == '\n' || c == '\r' ? c : ' ');
-                continue;
-            }
-            if (inChar) {
-                if (!escaped && c == '\'') {
-                    inChar = false;
-                }
-                if (!escaped && c == '\\') {
-                    escaped = true;
-                } else {
-                    escaped = false;
-                }
-                out.append(c == '\n' || c == '\r' ? c : ' ');
-                continue;
-            }
-
-            if (c == '/' && next == '/') {
-                inLineComment = true;
-                out.append(' ');
-                out.append(' ');
-                i++;
-                continue;
-            }
-            if (c == '/' && next == '*') {
-                inBlockComment = true;
-                out.append(' ');
-                out.append(' ');
-                i++;
-                continue;
-            }
-            if (c == '"') {
-                inString = true;
-                escaped = false;
-                out.append(' ');
-                continue;
-            }
-            if (c == '\'') {
-                inChar = true;
-                escaped = false;
-                out.append(' ');
-                continue;
-            }
-            out.append(c);
-        }
-        return out.toString();
+        return BoundaryBypassScanner.stripJavaCommentsStringsAndChars(source);
     }
 
     private static CheckBlockedState readCheckBlockedState(Path projectRoot) {
@@ -3777,27 +2469,11 @@ public final class BearCli {
     }
 
     private static boolean hasOwnedBaselineFiles(Path baselineRoot, Set<String> ownedPrefixes, String markerRelPath) throws IOException {
-        if (!Files.isDirectory(baselineRoot)) {
-            return false;
-        }
-        Path marker = baselineRoot.resolve(markerRelPath);
-        if (Files.isRegularFile(marker)) {
-            return true;
-        }
-        try (var stream = Files.walk(baselineRoot)) {
-            return stream.filter(Files::isRegularFile)
-                .map(path -> baselineRoot.relativize(path).toString().replace('\\', '/'))
-                .anyMatch(path -> startsWithAny(path, ownedPrefixes));
-        }
+        return DriftAnalyzer.hasOwnedBaselineFiles(baselineRoot, ownedPrefixes, markerRelPath);
     }
 
     private static boolean startsWithAny(String value, Set<String> prefixes) {
-        for (String prefix : prefixes) {
-            if (value.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
+        return DriftAnalyzer.startsWithAny(value, prefixes);
     }
 
     private static String toBlockKey(String raw) {
@@ -3845,209 +2521,47 @@ public final class BearCli {
     }
 
     private static ProjectTestResult runProjectTests(Path projectRoot) throws IOException, InterruptedException {
-        Path wrapper = resolveWrapper(projectRoot);
-        List<String> command = new ArrayList<>();
-        if (isWindows()) {
-            command.add("cmd");
-            command.add("/c");
-            command.add(wrapper.toString());
-        } else {
-            command.add(wrapper.toString());
-        }
-        command.add("--no-daemon");
-        command.add("test");
-
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(projectRoot.toFile());
-        pb.redirectErrorStream(true);
-        Map<String, String> environment = pb.environment();
-        if (!environment.containsKey("GRADLE_USER_HOME")) {
-            environment.put("GRADLE_USER_HOME", projectRoot.resolve(".bear-gradle-user-home").toString());
-        }
-        Process process = pb.start();
-
-        String output;
-        try (InputStream in = process.getInputStream()) {
-            boolean finished = process.waitFor(testTimeoutSeconds(), TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                process.waitFor(5, TimeUnit.SECONDS);
-                output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                return new ProjectTestResult(ProjectTestStatus.TIMEOUT, output);
-            }
-            output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        }
-
-        if (process.exitValue() == 0) {
-            return new ProjectTestResult(ProjectTestStatus.PASSED, output);
-        }
-        if (isGradleWrapperLockOutput(output)) {
-            return new ProjectTestResult(ProjectTestStatus.LOCKED, output);
-        }
-        if (isGradleWrapperBootstrapIoOutput(output)) {
-            return new ProjectTestResult(ProjectTestStatus.BOOTSTRAP_IO, output);
-        }
-        return new ProjectTestResult(ProjectTestStatus.FAILED, output);
+        return ProjectTestRunner.runProjectTests(projectRoot);
     }
 
     private static boolean isGradleWrapperLockOutput(String output) {
-        String lower = normalizeLf(output).toLowerCase();
-        if (lower.contains(".zip.lck")) {
-            return true;
-        }
-        if (lower.contains("gradlewrappermain") && lower.contains("access is denied")) {
-            return true;
-        }
-        return lower.contains("project_test_gradle_lock_simulated");
+        return ProjectTestRunner.isGradleWrapperLockOutput(output);
     }
 
     private static boolean isGradleWrapperBootstrapIoOutput(String output) {
-        String lower = normalizeLf(output).toLowerCase();
-        if (lower.contains("project_test_gradle_bootstrap_simulated")) {
-            return true;
-        }
-
-        boolean mentionsGradleZip = lower.contains("gradle-") && lower.contains("-bin.zip");
-        if (mentionsGradleZip
-            && (lower.contains("nosuchfileexception")
-                || lower.contains("filenotfoundexception")
-                || lower.contains("zipexception")
-                || lower.contains("error in opening zip file")
-                || lower.contains("end header not found")
-                || lower.contains("cannot unzip")
-                || lower.contains("unable to unzip")
-                || lower.contains("unable to install gradle"))) {
-            return true;
-        }
-
-        return lower.contains("error in opening zip file")
-            || lower.contains("end header not found")
-            || lower.contains("project_test_gradle_bootstrap");
+        return ProjectTestRunner.isGradleWrapperBootstrapIoOutput(output);
     }
 
     private static String firstGradleLockLine(String output) {
-        for (String line : normalizeLf(output).lines().toList()) {
-            String lower = line.toLowerCase();
-            if (lower.contains(".zip.lck") || lower.contains("access is denied")) {
-                return line.trim();
-            }
-        }
-        return null;
+        return ProjectTestRunner.firstGradleLockLine(output);
     }
 
     private static String firstGradleBootstrapIoLine(String output) {
-        for (String line : normalizeLf(output).lines().toList()) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
-            String lower = trimmed.toLowerCase();
-            boolean mentionsGradleZip = lower.contains("gradle-") && lower.contains("-bin.zip");
-            if ((mentionsGradleZip
-                && (lower.contains("nosuchfileexception")
-                    || lower.contains("filenotfoundexception")
-                    || lower.contains("zipexception")
-                    || lower.contains("error in opening zip file")
-                    || lower.contains("end header not found")
-                    || lower.contains("cannot unzip")
-                    || lower.contains("unable to unzip")
-                    || lower.contains("unable to install gradle")))
-                || lower.contains("project_test_gradle_bootstrap_simulated")) {
-                return trimmed;
-            }
-        }
-        return null;
+        return ProjectTestRunner.firstGradleBootstrapIoLine(output);
     }
 
     private static String firstRelevantProjectTestFailureLine(String output) {
-        List<String> lines = normalizeLf(output).lines()
-            .map(String::trim)
-            .filter(line -> !line.isEmpty())
-            .toList();
-        for (String line : lines) {
-            String lower = line.toLowerCase();
-            if (lower.contains("exception")
-                || lower.contains("error")
-                || lower.contains("failed")
-                || lower.contains("failure")
-                || lower.contains("could not")) {
-                return line;
-            }
-        }
-        if (!lines.isEmpty()) {
-            return lines.get(0);
-        }
-        return null;
+        return ProjectTestRunner.firstRelevantProjectTestFailureLine(output);
     }
 
     private static String shortTailSummary(String output, int maxLines) {
-        List<String> lines = normalizeLf(output).lines()
-            .map(String::trim)
-            .filter(line -> !line.isEmpty())
-            .toList();
-        if (lines.isEmpty()) {
-            return null;
-        }
-        int start = Math.max(0, lines.size() - Math.max(1, maxLines));
-        List<String> tail = new ArrayList<>();
-        for (int i = start; i < lines.size(); i++) {
-            String line = lines.get(i);
-            if (line.length() > 180) {
-                line = line.substring(0, 177) + "...";
-            }
-            tail.add(line);
-        }
-        return String.join(" | ", tail);
+        return CliText.shortTailSummary(output, maxLines);
     }
 
     private static String projectTestDetail(String base, String firstLine, String tail) {
-        StringBuilder detail = new StringBuilder(base);
-        if (firstLine != null && !firstLine.isBlank()) {
-            detail.append("; line: ").append(firstLine.trim());
-        }
-        if (tail != null && !tail.isBlank()) {
-            String normalizedTail = tail.trim();
-            if (firstLine == null || !normalizedTail.equals(firstLine.trim())) {
-                detail.append("; tail: ").append(normalizedTail);
-            }
-        }
-        return detail.toString();
+        return ProjectTestRunner.projectTestDetail(base, firstLine, tail);
     }
 
     private static Path resolveWrapper(Path projectRoot) throws IOException {
-        if (isWindows()) {
-            Path wrapper = projectRoot.resolve("gradlew.bat");
-            if (!Files.isRegularFile(wrapper)) {
-                throw new IOException("PROJECT_TEST_WRAPPER_MISSING: expected " + wrapper);
-            }
-            return wrapper;
-        }
-
-        Path wrapper = projectRoot.resolve("gradlew");
-        if (!Files.isRegularFile(wrapper)) {
-            throw new IOException("PROJECT_TEST_WRAPPER_MISSING: expected " + wrapper);
-        }
-        if (!Files.isExecutable(wrapper)) {
-            throw new IOException("PROJECT_TEST_WRAPPER_NOT_EXECUTABLE: expected executable " + wrapper + " (run: chmod +x gradlew)");
-        }
-        return wrapper;
+        return ProjectTestRunner.resolveWrapper(projectRoot);
     }
 
     private static boolean isWindows() {
-        return System.getProperty("os.name").toLowerCase().contains("win");
+        return ProjectTestRunner.isWindows();
     }
 
     private static int testTimeoutSeconds() {
-        String raw = System.getProperty("bear.check.testTimeoutSeconds");
-        if (raw == null || raw.isBlank()) {
-            return 300;
-        }
-        try {
-            int parsed = Integer.parseInt(raw);
-            return parsed > 0 ? parsed : 300;
-        } catch (NumberFormatException ignored) {
-            return 300;
-        }
+        return ProjectTestRunner.testTimeoutSeconds();
     }
 
     private static void printTail(PrintStream err, String output) {
@@ -4059,7 +2573,7 @@ public final class BearCli {
     }
 
     private static String normalizeLf(String text) {
-        return text.replace("\r\n", "\n");
+        return CliText.normalizeLf(text);
     }
 
     private static String sha256Hex(byte[] bytes) {
@@ -4119,7 +2633,7 @@ public final class BearCli {
         }
     }
 
-    private static int failWithLegacy(
+    static int failWithLegacy(
         PrintStream err,
         int exitCode,
         String legacyLine,
@@ -4196,160 +2710,6 @@ public final class BearCli {
         private static final String INTERNAL_ERROR = "INTERNAL_ERROR";
     }
 
-    private record UndeclaredReachFinding(String path, String surface) {
-    }
-
-    private record UndeclaredReachSurface(String label, Pattern pattern) {
-        private boolean matches(String content) {
-            return pattern.matcher(content).find();
-        }
-    }
-
-    private record BoundaryBypassFinding(String rule, String path, String detail) {
-    }
-
-    private record CheckBlockedState(boolean blocked, String reason, String detail) {
-        private static CheckBlockedState notBlocked() {
-            return new CheckBlockedState(false, "", "");
-        }
-
-        private String summary() {
-            return "reason=" + reason + "; detail=" + detail;
-        }
-    }
-
-    private static final List<UndeclaredReachSurface> UNDECLARED_REACH_SURFACES = List.of(
-        new UndeclaredReachSurface("java.net.http.HttpClient", Pattern.compile("\\bjava\\.net\\.http\\.HttpClient\\b")),
-        new UndeclaredReachSurface("java.net.URL#openConnection", Pattern.compile("\\bjava\\.net\\.URL\\b(?s).*\\bopenConnection\\s*\\(")),
-        new UndeclaredReachSurface("okhttp3.OkHttpClient", Pattern.compile("\\bokhttp3\\.OkHttpClient\\b")),
-        new UndeclaredReachSurface(
-            "org.springframework.web.client.RestTemplate",
-            Pattern.compile("\\borg\\.springframework\\.web\\.client\\.RestTemplate\\b")
-        ),
-        new UndeclaredReachSurface("java.net.HttpURLConnection", Pattern.compile("\\bjava\\.net\\.HttpURLConnection\\b"))
-    );
-
-    private record AllCheckOptions(
-        Path repoRoot,
-        Path blocksPath,
-        Set<String> onlyNames,
-        boolean failFast,
-        boolean strictOrphans
-    ) {
-    }
-
-    private record AllFixOptions(
-        Path repoRoot,
-        Path blocksPath,
-        Set<String> onlyNames,
-        boolean failFast,
-        boolean strictOrphans
-    ) {
-    }
-
-    private record AllPrCheckOptions(
-        Path repoRoot,
-        Path blocksPath,
-        Set<String> onlyNames,
-        boolean strictOrphans,
-        String baseRef
-    ) {
-    }
-
-    private enum DriftType {
-        ADDED("ADDED", 0),
-        REMOVED("REMOVED", 1),
-        CHANGED("CHANGED", 2);
-
-        private final String label;
-        private final int order;
-
-        DriftType(String label, int order) {
-            this.label = label;
-            this.order = order;
-        }
-    }
-
-    private record DriftItem(String path, DriftType type) {
-    }
-
-    private enum BoundaryType {
-        CAPABILITY_ADDED("CAPABILITY_ADDED", 0),
-        PURE_DEP_ADDED("PURE_DEP_ADDED", 1),
-        PURE_DEP_VERSION_CHANGED("PURE_DEP_VERSION_CHANGED", 2),
-        CAPABILITY_OP_ADDED("CAPABILITY_OP_ADDED", 3),
-        INVARIANT_RELAXED("INVARIANT_RELAXED", 4);
-
-        private final String label;
-        private final int order;
-
-        BoundaryType(String label, int order) {
-            this.label = label;
-            this.order = order;
-        }
-    }
-
-    private record BoundarySignal(BoundaryType type, String key) {
-    }
-
-    private enum PrClass {
-        BOUNDARY_EXPANDING("BOUNDARY_EXPANDING", 0),
-        ORDINARY("ORDINARY", 1);
-
-        private final String label;
-        private final int order;
-
-        PrClass(String label, int order) {
-            this.label = label;
-            this.order = order;
-        }
-    }
-
-    private enum PrCategory {
-        PORTS("PORTS", 0),
-        ALLOWED_DEPS("ALLOWED_DEPS", 1),
-        OPS("OPS", 2),
-        IDEMPOTENCY("IDEMPOTENCY", 3),
-        CONTRACT("CONTRACT", 4),
-        INVARIANTS("INVARIANTS", 5);
-
-        private final String label;
-        private final int order;
-
-        PrCategory(String label, int order) {
-            this.label = label;
-            this.order = order;
-        }
-    }
-
-    private enum PrChange {
-        CHANGED("CHANGED", 0),
-        ADDED("ADDED", 1),
-        REMOVED("REMOVED", 2);
-
-        private final String label;
-        private final int order;
-
-        PrChange(String label, int order) {
-            this.label = label;
-            this.order = order;
-        }
-    }
-
-    private record PrDelta(PrClass clazz, PrCategory category, PrChange change, String key) {
-    }
-
-    private record PrSurface(
-        TreeSet<String> ports,
-        Map<String, TreeSet<String>> opsByPort,
-        Map<String, String> allowedDeps,
-        Map<String, BearIr.FieldType> inputs,
-        Map<String, BearIr.FieldType> outputs,
-        BearIr.Idempotency idempotency,
-        TreeSet<String> invariants
-    ) {
-    }
-
     private record GitResult(int exitCode, String stdout, String stderr) {
     }
 
@@ -4372,53 +2732,6 @@ public final class BearCli {
         }
     }
 
-    private record BoundaryManifest(
-        String schemaVersion,
-        String target,
-        String block,
-        String irHash,
-        String generatorVersion,
-        Map<String, TreeSet<String>> capabilities,
-        Map<String, String> allowedDeps,
-        TreeSet<String> invariants
-    ) {
-    }
-
-    private record WiringManifest(
-        String schemaVersion,
-        String blockKey,
-        String entrypointFqcn,
-        String logicInterfaceFqcn,
-        String implFqcn,
-        String implSourcePath,
-        List<String> requiredEffectPorts,
-        List<String> constructorPortParams
-    ) {
-    }
-
-    private static final class ManifestParseException extends Exception {
-        private final String reasonCode;
-
-        private ManifestParseException(String reasonCode) {
-            super(reasonCode);
-            this.reasonCode = reasonCode;
-        }
-
-        private String reasonCode() {
-            return reasonCode;
-        }
-    }
-
-    private enum ProjectTestStatus {
-        PASSED,
-        FAILED,
-        TIMEOUT,
-        LOCKED,
-        BOOTSTRAP_IO
-    }
-
-    private record ProjectTestResult(ProjectTestStatus status, String output) {
-    }
 }
 
 

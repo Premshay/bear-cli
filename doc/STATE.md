@@ -11,17 +11,17 @@ For milestone status and backlog ordering, use `doc/PROGRAM_BOARD.md`.
 
 P2 feature delivery:
 - active milestone is `P2`
-- boundary hardening v1.1 implementation is complete in CLI/kernel/docs/tests
-- active validation focus is demo sync and post-hardening greenfield behavior
-- compile/check reliability remains focused on deterministic lock/bootstrap triage behavior
+- CLI maintainability hardening via modular extraction from `BearCli.java`
+- preserve strict command contract compatibility (stdout/stderr ordering, exit codes, failure envelope)
+- expand targeted unit coverage around extracted parsing/classification/scanner/test-runner modules
 
 ## Next Concrete Task
 
-Close boundary-hardening rollout in demo and operator flow:
-1. sync updated CLI + BEAR package docs into demo
-2. run greenfield demo gate and verify `BOUNDARY_BYPASS`/blocked-marker behavior end-to-end
-3. capture any false-positive patterns and tune deterministic scanner rules only if needed
-4. prepare commit/review split (kernel/app/spec/docs)
+Finish CLI modularization follow-through:
+1. continue extracting orchestration-heavy command flows (`runCheckAll` / `executeCheck` / `executePrCheck`) into dedicated command services
+2. remove remaining legacy wrapper/dead methods from `BearCli.java` to approach orchestration-facade target
+3. keep full `:app:test` + root `test` green after each extraction slice
+4. prepare commit/review split for modularization + new test classes
 
 ## Session Notes
 
@@ -63,4 +63,9 @@ Close boundary-hardening rollout in demo and operator flow:
   - `check`/`check --all` enforce `BOUNDARY_BYPASS` rules (`DIRECT_IMPL_USAGE`, `NULL_PORT_WIRING`, `EFFECTS_BYPASS`)
   - project-test lock/bootstrap now write check-only marker (`build/bear/check.blocked.marker`) and `bear unblock --project <path>` clears it
   - updated CLI/kernel tests and docs/spec (`spec/commands/check.md`, `doc/bear-package/*`, `doc/USER_GUIDE.md`)
+- Started incremental `BearCli` modularization:
+  - extracted module classes: `CliText`, `AllModeOptionParser`, `AllModeAggregation`, `AllModeRenderer`, `DriftAnalyzer`, `ManifestParsers`, `PrDeltaClassifier`, `UndeclaredReachScanner`, `BoundaryBypassScanner`, `ProjectTestRunner`
+  - expanded shared package models in `AllModeModels.java` and delegated large method clusters from `BearCli`
+  - added targeted unit tests: `AllModeOptionParserTest`, `AllModeAggregationTest`, `AllModeRendererTest`, `DriftAnalyzerTest`, `ManifestParsersTest`, `PrDeltaClassifierTest`, `BoundaryBypassScannerTest`, `ProjectTestRunnerTest` plus `CliTestAsserts`
+  - verified regression gates: `:app:test` and root `test` pass after extraction
 
