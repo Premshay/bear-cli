@@ -273,5 +273,11 @@ enum ProjectTestStatus {
     BOOTSTRAP_IO
 }
 
-record ProjectTestResult(ProjectTestStatus status, String output) {
+record ProjectTestResult(
+    ProjectTestStatus status,
+    String output,
+    String attemptTrail,
+    String firstLockLine,
+    String firstBootstrapLine
+) {
 }

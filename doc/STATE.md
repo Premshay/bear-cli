@@ -73,4 +73,10 @@ Finish CLI modularization follow-through:
   - retain `.bear-gradle-user-home/` by default
   - remove cache only on explicit request (`-IncludeGradleCache`)
   - always report both git status and path exists/missing checklist after cleanup
+- Implemented Gradle reliability hardening for `check`/`check --all`:
+  - project test runner now uses deterministic attempt policy (`isolated + retry + user-cache fallback`, or external env pinned mode)
+  - added bounded self-heal for stale wrapper artifacts under `wrapper/dists`
+  - lock/bootstrap diagnostics now include deterministic attempt trails
+  - marker write failures preserve root-cause classification and append `markerWrite=failed:...`
+  - updated command/spec docs and expanded CLI/runner tests
 

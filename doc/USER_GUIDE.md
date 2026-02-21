@@ -155,6 +155,7 @@ Use when:
 Behavior:
 - clears `<project>/build/bear/check.blocked.marker` if present
 - idempotent (`unblock: OK` even when marker is absent)
+- marker is written only after BEAR exhausts deterministic retry/fallback for Gradle lock/bootstrap IO
 
 ### 5. PR governance gate (base diff classification)
 
@@ -227,10 +228,11 @@ If `compile`/`check`/`check --all` fails with lock signatures (for example `.zip
 
 Deterministic remediation order:
 1. Ensure no concurrent Gradle/BEAR gate process is running on the same repo.
-2. Rerun the command and let BEAR use isolated Gradle home (`<project>/.bear-gradle-user-home`) unless you intentionally set `GRADLE_USER_HOME`.
-3. Retry once with the same command after lock cleanup.
-4. If lock persists, stop and report blocker details (path + command + output); do not apply IR renames, ACL edits, or manual generated-file surgery as workarounds.
-5. If check writes `<project>/build/bear/check.blocked.marker`, clear it with `bear unblock --project <path>` after fixing lock/bootstrap cause.
+2. Rerun the command and let BEAR apply deterministic Gradle-home policy:
+   - if `GRADLE_USER_HOME` is externally set: BEAR uses only that path (self-heal + one retry)
+   - otherwise: isolated home (`<project>/.bear-gradle-user-home`) + one retry, then one fallback attempt via user cache (`<user-home>/.gradle`)
+3. If lock/bootstrap persists after BEAR retries, stop and report blocker details (path + command + output); do not apply IR renames, ACL edits, or manual generated-file surgery as workarounds.
+4. If check writes `<project>/build/bear/check.blocked.marker`, clear it with `bear unblock --project <path>` after fixing lock/bootstrap cause.
 
 Expected classification:
 - lock/tooling faults -> `IO_ERROR` (`74`)

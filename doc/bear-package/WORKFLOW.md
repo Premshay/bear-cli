@@ -152,9 +152,12 @@ Lock and environment troubleshooting:
 - Do not change unrelated IR to match stale generated outputs.
 - Do not introduce workaround classes under `com.bear.generated.*`.
 - Remediate by:
-  - rerunning with isolated `GRADLE_USER_HOME`
+  - rerunning and letting BEAR apply deterministic Gradle-home policy:
+    - external `GRADLE_USER_HOME` set: same path only, with one self-heal + one retry
+    - no external `GRADLE_USER_HOME`: isolated home (`<project>/.bear-gradle-user-home`) + one retry, then one fallback attempt via user cache (`<user-home>/.gradle`)
   - ensuring no concurrent gate/test process holds locks
   - rerunning compile/check after lock release
+  - if `check` writes `build/bear/check.blocked.marker`, clear it with `bear unblock --project <repoRoot>` after fixing lock/bootstrap cause
 
 ## Constraints
 

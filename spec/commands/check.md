@@ -265,10 +265,28 @@ Candidate manifest problems are fatal internal errors:
   - then print last 40 lines of merged test output
   - line handling is deterministic: normalize `\r\n` and `\n`, tail by normalized lines
   - tail lines are printed without extra per-line prefixes
+- Gradle home attempt policy (v1.8):
+  - when caller provides `GRADLE_USER_HOME`, use that path only
+    - on lock/bootstrap classification: one safe self-heal + one retry
+    - no fallback switching to BEAR/user-cache paths
+  - when caller does not provide `GRADLE_USER_HOME`:
+    - first attempt uses `<project>/.bear-gradle-user-home`
+    - on lock/bootstrap classification: one safe self-heal + one retry
+    - if still lock/bootstrap: one fallback attempt using user cache (`<user-home>/.gradle`)
+  - deterministic attempt trail is appended to lock/bootstrap diagnostics:
+    - `...; attempts=<label1,label2,...>`
+
+Safe self-heal scope (v1.8):
+- bounded to `<gradleUserHome>/wrapper/dists/**`
+- delete only stale bootstrap artifacts:
+  - `*.zip.lck`
+  - `*.zip.part`
+  - `*.zip.ok` only when sibling `.zip` is missing
+- best-effort only; self-heal failures must not replace primary lock/bootstrap classification
 
 Check-blocked marker (v1.7):
 - marker path: `<project>/build/bear/check.blocked.marker`
-- marker is written only when project-test classification is:
+- marker is written only after retry/fallback sequence is exhausted and final project-test classification is:
   - `PROJECT_TEST_LOCK`
   - `PROJECT_TEST_BOOTSTRAP`
 - marker blocks `check` / `check --all` until cleared
@@ -276,6 +294,10 @@ Check-blocked marker (v1.7):
 - clear command:
   - `bear unblock --project <path>`
 - successful `check` auto-clears marker
+- marker-write failure handling:
+  - lock/bootstrap root-cause classification remains primary
+  - diagnostics append deterministic suffix:
+    - `...; markerWrite=failed:<message>`
 
 ## No-mutation guarantee
 `bear check` does not modify project baseline files.

@@ -699,13 +699,27 @@ public final class BearCli {
 
                 ProjectTestResult testResult = runProjectTests(root);
                 if (testResult.status() == ProjectTestStatus.LOCKED) {
-                    String lockLine = firstGradleLockLine(testResult.output());
-                    writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_LOCK, lockLine);
+                    String lockLine = testResult.firstLockLine() != null
+                        ? testResult.firstLockLine()
+                        : firstGradleLockLine(testResult.output());
+                    String markerWriteSuffix = "";
+                    try {
+                        writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_LOCK, lockLine);
+                    } catch (IOException markerWriteError) {
+                        markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
+                    }
                     String detail = projectTestDetail(
                         "root-level project test runner lock in projectRoot " + entry.getKey(),
                         lockLine,
                         null
                     );
+                    String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
+                    if (!attemptsSuffix.isBlank()) {
+                        detail += attemptsSuffix;
+                    }
+                    if (!markerWriteSuffix.isBlank()) {
+                        detail += markerWriteSuffix;
+                    }
                     for (int idx : entry.getValue()) {
                         blockResults.set(idx, rootFailure(
                             blockResults.get(idx),
@@ -718,13 +732,27 @@ public final class BearCli {
                         ));
                     }
                 } else if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
-                    String bootstrapLine = firstGradleBootstrapIoLine(testResult.output());
-                    writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
+                    String bootstrapLine = testResult.firstBootstrapLine() != null
+                        ? testResult.firstBootstrapLine()
+                        : firstGradleBootstrapIoLine(testResult.output());
+                    String markerWriteSuffix = "";
+                    try {
+                        writeCheckBlockedMarker(root, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
+                    } catch (IOException markerWriteError) {
+                        markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
+                    }
                     String detail = projectTestDetail(
                         "root-level project test bootstrap IO failure in projectRoot " + entry.getKey(),
                         bootstrapLine,
                         shortTailSummary(testResult.output(), 3)
                     );
+                    String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
+                    if (!attemptsSuffix.isBlank()) {
+                        detail += attemptsSuffix;
+                    }
+                    if (!markerWriteSuffix.isBlank()) {
+                        detail += markerWriteSuffix;
+                    }
                     for (int idx : entry.getValue()) {
                         blockResults.set(idx, rootFailure(
                             blockResults.get(idx),
@@ -1314,11 +1342,25 @@ public final class BearCli {
 
             ProjectTestResult testResult = runProjectTests(projectRoot);
             if (testResult.status() == ProjectTestStatus.LOCKED) {
-                String lockLine = firstGradleLockLine(testResult.output());
-                writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_LOCK, lockLine);
+                String lockLine = testResult.firstLockLine() != null
+                    ? testResult.firstLockLine()
+                    : firstGradleLockLine(testResult.output());
+                String markerWriteSuffix = "";
+                try {
+                    writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_LOCK, lockLine);
+                } catch (IOException markerWriteError) {
+                    markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
+                }
                 String ioLine = lockLine == null
                     ? "io: IO_ERROR: PROJECT_TEST_LOCK: Gradle wrapper lock detected"
                     : "io: IO_ERROR: PROJECT_TEST_LOCK: " + lockLine;
+                String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
+                if (!attemptsSuffix.isBlank()) {
+                    ioLine += attemptsSuffix;
+                }
+                if (!markerWriteSuffix.isBlank()) {
+                    ioLine += markerWriteSuffix;
+                }
                 diagnostics.add(ioLine);
                 diagnostics.addAll(tailLines(testResult.output()));
                 return checkFailure(
@@ -1332,11 +1374,25 @@ public final class BearCli {
                 );
             }
             if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
-                String bootstrapLine = firstGradleBootstrapIoLine(testResult.output());
-                writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
+                String bootstrapLine = testResult.firstBootstrapLine() != null
+                    ? testResult.firstBootstrapLine()
+                    : firstGradleBootstrapIoLine(testResult.output());
+                String markerWriteSuffix = "";
+                try {
+                    writeCheckBlockedMarker(projectRoot, CHECK_BLOCKED_REASON_BOOTSTRAP, bootstrapLine);
+                } catch (IOException markerWriteError) {
+                    markerWriteSuffix = markerWriteFailureSuffix(markerWriteError);
+                }
                 String ioLine = bootstrapLine == null
                     ? "io: IO_ERROR: PROJECT_TEST_BOOTSTRAP: Gradle wrapper bootstrap/unzip failed"
                     : "io: IO_ERROR: PROJECT_TEST_BOOTSTRAP: " + bootstrapLine;
+                String attemptsSuffix = attemptTrailSuffix(testResult.attemptTrail());
+                if (!attemptsSuffix.isBlank()) {
+                    ioLine += attemptsSuffix;
+                }
+                if (!markerWriteSuffix.isBlank()) {
+                    ioLine += markerWriteSuffix;
+                }
                 diagnostics.add(ioLine);
                 diagnostics.addAll(tailLines(testResult.output()));
                 return checkFailure(
@@ -2550,6 +2606,17 @@ public final class BearCli {
 
     private static String projectTestDetail(String base, String firstLine, String tail) {
         return ProjectTestRunner.projectTestDetail(base, firstLine, tail);
+    }
+
+    private static String attemptTrailSuffix(String attemptTrail) {
+        if (attemptTrail == null || attemptTrail.isBlank()) {
+            return "";
+        }
+        return "; attempts=" + attemptTrail.trim();
+    }
+
+    private static String markerWriteFailureSuffix(IOException error) {
+        return "; markerWrite=failed:" + squash(error.getMessage());
     }
 
     private static Path resolveWrapper(Path projectRoot) throws IOException {

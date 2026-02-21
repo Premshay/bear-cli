@@ -895,7 +895,9 @@ class BearCliTest {
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(74, check.exitCode);
-        assertTrue(normalizeLf(check.stderr).startsWith("io: IO_ERROR: PROJECT_TEST_LOCK:"));
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.startsWith("io: IO_ERROR: PROJECT_TEST_LOCK:"));
+        assertTrue(stderr.contains("; attempts="));
         assertFailureEnvelope(
             check.stderr,
             "IO_ERROR",
@@ -918,7 +920,9 @@ class BearCliTest {
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(74, check.exitCode);
-        assertTrue(normalizeLf(check.stderr).startsWith("io: IO_ERROR: PROJECT_TEST_BOOTSTRAP:"));
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.startsWith("io: IO_ERROR: PROJECT_TEST_BOOTSTRAP:"));
+        assertTrue(stderr.contains("; attempts="));
         assertFailureEnvelope(
             check.stderr,
             "IO_ERROR",
@@ -1578,6 +1582,7 @@ class BearCliTest {
         assertEquals(74, run.exitCode);
         assertTrue(normalizeLf(run.stderr).contains("CATEGORY: IO_ERROR"));
         assertTrue(normalizeLf(run.stderr).contains("DETAIL: root-level project test runner lock in projectRoot services/alpha; line:"));
+        assertTrue(normalizeLf(run.stderr).contains("; attempts="));
         assertFailureEnvelope(
             run.stderr,
             "REPO_MULTI_BLOCK_FAILED",
@@ -1603,11 +1608,41 @@ class BearCliTest {
         String stderr = normalizeLf(run.stderr);
         assertTrue(stderr.contains("CATEGORY: IO_ERROR"));
         assertTrue(stderr.contains("DETAIL: root-level project test bootstrap IO failure in projectRoot services/alpha; line:"));
+        assertTrue(stderr.contains("; attempts="));
         assertFailureEnvelope(
             run.stderr,
             "REPO_MULTI_BLOCK_FAILED",
             "bear.blocks.yaml",
             "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    @Test
+    void checkPreservesRootCauseWhenBlockedMarkerWriteFails(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+
+        Path markerParentAsFile = tempDir.resolve("build/bear");
+        Files.createDirectories(markerParentAsFile.getParent());
+        Files.writeString(markerParentAsFile, "not-a-directory", StandardCharsets.UTF_8);
+
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho java.io.FileNotFoundException: C:\\\\tmp\\\\gradle-8.12.1-bin.zip.lck (Access is denied)\r\nexit /b 1\r\n",
+            "#!/usr/bin/env sh\necho \"java.io.FileNotFoundException: /tmp/gradle-8.12.1-bin.zip.lck (Access is denied)\"\nexit 1\n"
+        );
+
+        CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(74, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.startsWith("io: IO_ERROR: PROJECT_TEST_LOCK:"));
+        assertTrue(stderr.contains("; markerWrite=failed:"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_ERROR",
+            "project.tests",
+            "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check <ir-file> --project <path>`."
         );
     }
 
