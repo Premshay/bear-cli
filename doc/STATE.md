@@ -11,20 +11,36 @@ For milestone status and backlog ordering, use `doc/PROGRAM_BOARD.md`.
 
 P2 feature delivery:
 - active milestone is `P2`
-- v1.2 identity/matching hardening for single-command and index-resolved flows
-- preserve strict command contract compatibility (stdout/stderr ordering, exit codes, failure envelope)
-- keep modularized command-service architecture (`BearCli` delegates) with deterministic resolver behavior
+- v1.2 Final Lock++ semantic hardening (wrapper-owned idempotency + invariants)
+- deterministic marker-first invariant classification and manifest semantic validation
+- preserve strict command contract compatibility (stdout/stderr ordering, exit buckets, failure envelope)
 
 ## Next Concrete Task
 
-Follow through after v1.2 identity lock implementation:
-1. sync updated CLI behavior to demo and validate single-command tuple matching scenarios end-to-end
-2. decide default posture for duplicate `(ir,projectRoot)` parser guard (`strict` in all-mode, optional in single-mode already implemented)
-3. continue shrinking `BearCli` helper surface where now superseded by resolver/service modules
-4. keep full `:app:test` + root `test` green after each incremental cleanup
+Post-Lock++ follow-through:
+1. sync updated BEAR runtime/contracts into demo repo and validate end-to-end `compile/check/pr-check` flows
+2. run targeted scenario checks for semantic-port bypass and invariant marker paths in demo contexts
+3. continue command-service modularization cleanup with no contract drift
+4. keep full `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
 
+- Implemented BEAR v1.2 Final Lock++ core:
+  - IR: `idempotency.keyFromInputs`, expanded invariant schema (`kind/scope/params`)
+  - validator: strict exactly-one-of idempotency key mode + invariant kind/type/params checks
+  - generator: wrapper-owned idempotency flow and wrapper-owned invariant checks on fresh+replay
+  - generator: project-global runtime exception at `build/generated/bear/runtime/...` with write-if-diff
+  - generator: logic signatures exclude wrapper-owned semantic ports
+  - wiring manifest: `logicRequiredPorts`, `wrapperOwnedSemanticPorts`, `wrapperOwnedSemanticChecks`
+  - scanner: reflection literal detection + semantic-port suppression/usage bans by manifest identifiers
+  - check: marker-first invariant classification + deterministic `MANIFEST_INVALID` overlap gate
+- Added/updated tests for:
+  - keyFromInputs/idempotency validator rules
+  - invariant kind validation and marker/rule serialization contracts
+  - runtime exception single-path generation and write-if-diff
+  - semantic-port identifier binding and reflection bypass detection
+  - manifest overlap and unsupported-target semantic enforcement paths
+- Refreshed `spec/golden/compile/withdraw-v1` to runtime-exception layout and updated canonical fixture expectations.
 - Created `doc/PROGRAM_BOARD.md` as the single live milestone/backlog board.
 - Merged near-term and strategic roadmap content into `doc/ROADMAP.md`.
 - Archived old `doc/ROADMAP_V0.md` snapshot at `doc/archive/ROADMAP_V0.md`.

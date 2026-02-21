@@ -3,6 +3,7 @@ package com.bear.kernel.ir;
 import java.util.HashMap;
 import java.util.List;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -81,7 +82,33 @@ public final class BearIrValidator {
 
     private void validateIdempotency(BearIr.Block block) {
         BearIr.Idempotency idempotency = block.idempotency();
-        requireNonBlank(idempotency.key(), "block.idempotency.key");
+        boolean hasKey = idempotency.key() != null;
+        boolean hasKeyFromInputs = idempotency.keyFromInputs() != null;
+        if (hasKey == hasKeyFromInputs) {
+            throw semantic(
+                "block.idempotency",
+                BearIrValidationException.Code.INVALID_VALUE,
+                "exactly one of key or keyFromInputs must be provided"
+            );
+        }
+        if (hasKey) {
+            requireNonBlank(idempotency.key(), "block.idempotency.key");
+        }
+        if (hasKeyFromInputs) {
+            requireNonNull(idempotency.keyFromInputs(), "block.idempotency.keyFromInputs");
+            if (idempotency.keyFromInputs().isEmpty()) {
+                throw semantic("block.idempotency.keyFromInputs", BearIrValidationException.Code.INVALID_VALUE, "must be a non-empty list");
+            }
+            Set<String> seen = new LinkedHashSet<>();
+            for (int i = 0; i < idempotency.keyFromInputs().size(); i++) {
+                String value = idempotency.keyFromInputs().get(i);
+                String fieldPath = "block.idempotency.keyFromInputs[" + i + "]";
+                requireNonBlank(value, fieldPath);
+                if (!seen.add(value)) {
+                    throw semantic(fieldPath, BearIrValidationException.Code.DUPLICATE, "duplicate key field: " + value);
+                }
+            }
+        }
         requireNonNull(idempotency.store(), "block.idempotency.store");
         requireNonBlank(idempotency.store().port(), "block.idempotency.store.port");
         requireNonBlank(idempotency.store().getOp(), "block.idempotency.store.getOp");
@@ -91,8 +118,21 @@ public final class BearIrValidator {
         for (BearIr.Field input : block.contract().inputs()) {
             inputNames.add(input.name());
         }
-        if (!inputNames.contains(idempotency.key())) {
-            throw semantic("block.idempotency.key", BearIrValidationException.Code.UNKNOWN_REFERENCE, "must reference an input field");
+        if (hasKey) {
+            if (!inputNames.contains(idempotency.key())) {
+                throw semantic("block.idempotency.key", BearIrValidationException.Code.UNKNOWN_REFERENCE, "must reference an input field");
+            }
+        } else {
+            for (int i = 0; i < idempotency.keyFromInputs().size(); i++) {
+                String field = idempotency.keyFromInputs().get(i);
+                if (!inputNames.contains(field)) {
+                    throw semantic(
+                        "block.idempotency.keyFromInputs[" + i + "]",
+                        BearIrValidationException.Code.UNKNOWN_REFERENCE,
+                        "must reference an input field"
+                    );
+                }
+            }
         }
 
         Map<String, Set<String>> portToOps = effectsMap(block.effects());
@@ -109,18 +149,68 @@ public final class BearIrValidator {
     }
 
     private void validateInvariants(BearIr.Block block) {
-        Set<String> outputNames = new HashSet<>();
+        Map<String, BearIr.FieldType> outputTypesByName = new HashMap<>();
         for (BearIr.Field output : block.contract().outputs()) {
-            outputNames.add(output.name());
+            outputTypesByName.put(output.name(), output.type());
         }
 
         for (int i = 0; i < block.invariants().size(); i++) {
             BearIr.Invariant invariant = block.invariants().get(i);
             String basePath = "block.invariants[" + i + "]";
             requireNonNull(invariant.kind(), basePath + ".kind");
+            requireNonNull(invariant.scope(), basePath + ".scope");
             requireNonBlank(invariant.field(), basePath + ".field");
-            if (!outputNames.contains(invariant.field())) {
+            requireNonNull(invariant.params(), basePath + ".params");
+            if (!outputTypesByName.containsKey(invariant.field())) {
                 throw semantic(basePath + ".field", BearIrValidationException.Code.UNKNOWN_REFERENCE, "must reference an output field");
+            }
+            if (invariant.scope() != BearIr.InvariantScope.RESULT) {
+                throw semantic(basePath + ".scope", BearIrValidationException.Code.INVALID_VALUE, "scope must be result");
+            }
+
+            BearIr.FieldType fieldType = outputTypesByName.get(invariant.field());
+            switch (invariant.kind()) {
+                case NON_NEGATIVE -> {
+                    if (fieldType != BearIr.FieldType.INT && fieldType != BearIr.FieldType.DECIMAL) {
+                        throw semantic(basePath + ".kind", BearIrValidationException.Code.INVALID_VALUE, "non_negative requires int or decimal output");
+                    }
+                    if (invariant.params().value() != null || !invariant.params().values().isEmpty()) {
+                        throw semantic(basePath + ".params", BearIrValidationException.Code.INVALID_VALUE, "non_negative does not accept params");
+                    }
+                }
+                case NON_EMPTY -> {
+                    if (fieldType != BearIr.FieldType.STRING) {
+                        throw semantic(basePath + ".kind", BearIrValidationException.Code.INVALID_VALUE, "non_empty requires string output");
+                    }
+                    if (invariant.params().value() != null || !invariant.params().values().isEmpty()) {
+                        throw semantic(basePath + ".params", BearIrValidationException.Code.INVALID_VALUE, "non_empty does not accept params");
+                    }
+                }
+                case EQUALS -> {
+                    if (invariant.params().value() == null) {
+                        throw semantic(basePath + ".params.value", BearIrValidationException.Code.INVALID_VALUE, "equals requires params.value");
+                    }
+                    if (!invariant.params().values().isEmpty()) {
+                        throw semantic(basePath + ".params.values", BearIrValidationException.Code.INVALID_VALUE, "equals does not accept params.values");
+                    }
+                }
+                case ONE_OF -> {
+                    if (invariant.params().value() != null) {
+                        throw semantic(basePath + ".params.value", BearIrValidationException.Code.INVALID_VALUE, "one_of does not accept params.value");
+                    }
+                    if (invariant.params().values().isEmpty()) {
+                        throw semantic(basePath + ".params.values", BearIrValidationException.Code.INVALID_VALUE, "one_of requires non-empty params.values");
+                    }
+                    Set<String> seen = new LinkedHashSet<>();
+                    for (int j = 0; j < invariant.params().values().size(); j++) {
+                        String value = invariant.params().values().get(j);
+                        String valuePath = basePath + ".params.values[" + j + "]";
+                        requireNonNull(value, valuePath);
+                        if (!seen.add(value)) {
+                            throw semantic(valuePath, BearIrValidationException.Code.DUPLICATE, "duplicate params.values entry: " + value);
+                        }
+                    }
+                }
             }
         }
     }

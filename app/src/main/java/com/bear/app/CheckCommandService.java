@@ -66,7 +66,8 @@ final class CheckCommandService {
             String packageSegment = toGeneratedPackageSegment(normalized.block().name());
             Set<String> ownedPrefixes = Set.of(
                 "src/main/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
-                "src/test/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/"
+                "src/test/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
+                "runtime/src/main/java/com/bear/generated/runtime/"
             );
             String markerRelPath = "surfaces/" + blockKey + ".surface.json";
             String wiringRelPath = "wiring/" + blockKey + ".wiring.json";
@@ -183,8 +184,9 @@ final class CheckCommandService {
                     "drift: BASELINE_WIRING_MANIFEST_INVALID: " + e.reasonCode()
                 );
             }
+            WiringManifest candidateWiringManifest;
             try {
-                ManifestParsers.parseWiringManifest(candidateWiringPath);
+                candidateWiringManifest = ManifestParsers.parseWiringManifest(candidateWiringPath);
             } catch (ManifestParseException e) {
                 return checkFailure(
                     CliCodes.EXIT_INTERNAL,
@@ -194,6 +196,26 @@ final class CheckCommandService {
                     "build/generated/bear/" + wiringRelPath,
                     "Capture stderr and file an issue against bear-cli.",
                     "internal: INTERNAL_ERROR: CANDIDATE_WIRING_MANIFEST_INVALID:" + e.reasonCode()
+                );
+            }
+            CheckResult baselineWiringValidation = validateWiringManifestSemantics(baselineWiringManifest, "build/generated/bear/" + wiringRelPath);
+            if (baselineWiringValidation != null) {
+                return baselineWiringValidation;
+            }
+            CheckResult candidateWiringValidation = validateWiringManifestSemantics(candidateWiringManifest, "build/generated/bear/" + wiringRelPath);
+            if (candidateWiringValidation != null) {
+                return candidateWiringValidation;
+            }
+            if ((normalized.block().idempotency() != null || (normalized.block().invariants() != null && !normalized.block().invariants().isEmpty()))
+                && !"jvm".equals(candidateManifest.target())) {
+                return checkFailure(
+                    CliCodes.EXIT_VALIDATION,
+                    List.of("check: MANIFEST_INVALID: unsupported semantic enforcement target: " + candidateManifest.target()),
+                    "VALIDATION",
+                    CliCodes.MANIFEST_INVALID,
+                    "build/generated/bear/" + markerRelPath,
+                    "Use a target that enforces declared semantics or remove semantic declarations.",
+                    "check: MANIFEST_INVALID: unsupported semantic enforcement target: " + candidateManifest.target()
                 );
             }
 
@@ -353,6 +375,23 @@ final class CheckCommandService {
                     "project.tests",
                     "Fix project tests and rerun `bear check <ir-file> --project <path>`.",
                     "check: TEST_FAILED: project tests failed"
+                );
+            }
+            if (testResult.status() == ProjectTestStatus.INVARIANT_VIOLATION) {
+                String markerLine = ProjectTestRunner.firstInvariantViolationLine(testResult.output());
+                String line = markerLine == null
+                    ? "check: TEST_FAILED: invariant violation detected"
+                    : "check: TEST_FAILED: " + markerLine;
+                diagnostics.add(line);
+                diagnostics.addAll(CliText.tailLines(testResult.output()));
+                return checkFailure(
+                    CliCodes.EXIT_TEST_FAILURE,
+                    diagnostics,
+                    "TEST_FAILURE",
+                    CliCodes.INVARIANT_VIOLATION,
+                    "project.tests",
+                    "Fix invariant violation and rerun `bear check <ir-file> --project <path>`.",
+                    line
                 );
             }
             if (testResult.status() == ProjectTestStatus.TIMEOUT) {
@@ -543,6 +582,16 @@ final class CheckCommandService {
         }
         if ("invalid".equals(mode)) {
             Files.writeString(candidateManifestPath, "{", StandardCharsets.UTF_8);
+            return;
+        }
+        if (mode.startsWith("target:")) {
+            String forcedTarget = mode.substring("target:".length());
+            String json = Files.readString(candidateManifestPath, StandardCharsets.UTF_8);
+            Files.writeString(
+                candidateManifestPath,
+                json.replace("\"target\":\"jvm\"", "\"target\":\"" + forcedTarget + "\""),
+                StandardCharsets.UTF_8
+            );
         }
     }
 
@@ -555,6 +604,24 @@ final class CheckCommandService {
 
     private static String markerWriteFailureSuffix(IOException error) {
         return "; markerWrite=failed:" + CliText.squash(error.getMessage());
+    }
+
+    private static CheckResult validateWiringManifestSemantics(WiringManifest manifest, String path) {
+        for (String semanticPort : manifest.wrapperOwnedSemanticPorts()) {
+            if (manifest.logicRequiredPorts().contains(semanticPort)) {
+                String line = "check: MANIFEST_INVALID: wrapperOwnedSemanticPorts overlaps logicRequiredPorts: " + semanticPort;
+                return checkFailure(
+                    CliCodes.EXIT_VALIDATION,
+                    List.of(line),
+                    "VALIDATION",
+                    CliCodes.MANIFEST_INVALID,
+                    path,
+                    "Regenerate wiring so semantic ports are wrapper-owned only, then rerun `bear check`.",
+                    line
+                );
+            }
+        }
+        return null;
     }
 
     private static void writeCheckBlockedMarker(Path projectRoot, String reason, String detail) throws IOException {

@@ -1,4 +1,4 @@
-# `bear compile` (v0)
+# `bear compile` (v1.2)
 
 ## Command
 `bear compile <ir-file> --project <path>`
@@ -89,7 +89,9 @@ Main sources:
 - `<BlockName>Result.java` immutable output model
 - `<PortName>Port.java` for each declared `effects.allow[*].port`
 - `BearValue.java` deterministic envelope type for port calls
-- `BearInvariantViolationException.java` runtime invariant failure type
+- project-global runtime exception:
+  - `build/generated/bear/runtime/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java`
+  - generated once per project (write-if-diff)
 
 User source:
 - `<BlockName>Impl.java` in `src/main/java/blocks/<package-segment-path>/impl` (create once)
@@ -103,12 +105,12 @@ Generated metadata:
   - deterministic surface manifest used by `bear check` boundary classification
   - minified canonical JSON, UTF-8, LF, trailing newline
   - fields:
-    - `schemaVersion` (`v0`)
-    - `surfaceVersion` (`2`)
+    - `schemaVersion` (`v1`)
+    - `surfaceVersion` (`3`)
     - `target` (`jvm`)
     - `block` (IR `block.name`)
     - `irHash` (SHA-256 of canonical normalized IR YAML bytes)
-    - `generatorVersion` (`jvm-v0`)
+    - `generatorVersion` (`jvm-v1`)
     - `capabilities` (`name` from IR `effects.allow[*].port`, sorted `ops`)
     - `invariants` (v0: `kind=non_negative`, `field`)
 - `<blockKey>.wiring.json` at `<project>/build/generated/bear/wiring/<blockKey>.wiring.json`
@@ -126,6 +128,7 @@ Generated metadata:
     - `constructorPortParams`
     - `logicRequiredPorts`
     - `wrapperOwnedSemanticPorts`
+    - `wrapperOwnedSemanticChecks`
 
 ## Port Method Contract
 - One interface per declared port.
@@ -158,14 +161,21 @@ Generated metadata:
 - Generated entrypoint execution method:
   - `public <BlockName>Result execute(<BlockName>Request request)`
 - Generated logic interface method:
-  - `<BlockName>Result execute(<BlockName>Request request, <DeclaredPortInterfaces...>)`
+  - `<BlockName>Result execute(<BlockName>Request request, <LogicRequiredPortInterfaces...>)`
+  - wrapper-owned semantic ports (for example idempotency store) are excluded from logic signatures
 - Entrypoint must not instantiate `<BlockName>Impl` directly. Logic implementation is always injected via `<BlockName>Logic`.
 
 ## Idempotency Payload Schema (Normative)
 For idempotent blocks, generated runtime uses the following `BearValue` payload contract:
 
 - `getOp` input payload:
-  - `key`: string form of the declared `idempotency.key` request field
+  - `key`: wrapper-computed storage key
+    - format:
+      - `<blockKey>|<fieldName>=<len>#<escapedValue>|...`
+    - key-field source:
+      - `idempotency.key` (single-field)
+      - `idempotency.keyFromInputs` (ordered list, IR order)
+    - `<len>` is UTF-8 byte length of escaped value
 - `getOp` output payload:
   - miss: `hit` absent or not equal to `"true"`
   - hit: `hit="true"` and encoded result fields present
@@ -175,18 +185,20 @@ For idempotent blocks, generated runtime uses the following `BearValue` payload 
   - `result.<outputFieldName>` for each declared output field
 
 Result encoding/decoding rules:
-- `key` conversion uses the same deterministic type encoding rules listed below.
+- `key` conversion uses deterministic typed serialization.
 - `result.<outputFieldName>` keys use canonical output field names from normalized IR.
 - Fields are written in normalized output field order.
 - Type encoding is deterministic string conversion:
   - `String`/`enum`: identity string
   - `BigDecimal`: `toString()`
   - `Integer`: base-10 string
-  - `Boolean`: `true`/`false`
-- Replay payload validity is strict in v0:
+  - `Boolean`: `true`/`false` (case-sensitive on decode)
+- Replay payload validity is strict in v1.2:
   - when `hit="true"`, every declared `result.<outputFieldName>` key must be present
   - missing required replay fields fail fast with deterministic exception:
     - `idempotency replay payload missing field: result.<outputFieldName>`
+  - invalid typed replay value fails fast with deterministic exception:
+    - `idempotency replay payload invalid value: result.<outputFieldName>`
 
 ## Determinism Guarantees
 - Deterministic generated file list, file paths, class names, method order, and imports.
@@ -194,12 +206,25 @@ Result encoding/decoding rules:
 - Text format is canonical UTF-8 with LF newlines.
 - Running `bear compile` twice with identical normalized IR yields byte-identical generated artifacts.
 
-## Invariant Violation Message (Normative)
-For runtime `non_negative` failures, generated code must throw `BearInvariantViolationException` with:
+## Invariant Violation Marker (Normative)
+Generated wrappers throw `com.bear.generated.runtime.BearInvariantViolationException` and the top-level exception message must begin with:
 
-`block=<BlockName>, invariant=non_negative, field=<fieldName>, actual=<value>`
+`BEAR_INVARIANT_VIOLATION|`
 
-This message format is stable and part of compile conformance.
+Marker payload contract (exact order/count):
+
+`block=...|kind=...|field=...|observed=...|rule=...`
+
+Rules:
+- exactly 5 keyed fields
+- no extras/duplicates/missing fields
+- per-field escaping only (prefix/separators are never escaped)
+
+Canonical `rule` value serialization:
+- `non_negative` -> `non_negative`
+- `non_empty` -> `non_empty`
+- `equals` -> `equals:<escapedValue>`
+- `one_of` -> `one_of:<n>|<len>#<v1>|<len>#<v2>|...` (IR order)
 
 ## Failure Atomicity (v0)
 v0 does not guarantee atomic replacement of generated trees.

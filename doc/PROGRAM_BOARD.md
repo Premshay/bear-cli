@@ -54,9 +54,9 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `Boundary hardening v1.2 (identity lock+)` (implementation complete; demo validation pending)
+1. `Boundary hardening v1.2 Final Lock++` (implemented in cli/kernel; stabilization + demo sync pending)
 2. `Declared allowed deps containment` (stabilization/operational hardening)
-3. Generated structural tests
+3. Generated structural tests and cross-target parity follow-up
 
 ## Backlog Buckets (P1/P2/P3)
 

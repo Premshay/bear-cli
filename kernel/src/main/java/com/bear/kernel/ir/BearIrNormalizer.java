@@ -16,9 +16,10 @@ public final class BearIrNormalizer {
         BearIr.Effects effects = new BearIr.Effects(ports);
         BearIr.Impl impl = sortImpl(block.impl());
 
+        BearIr.Idempotency idempotency = normalizeIdempotency(block.idempotency());
         List<BearIr.Invariant> invariants = block.invariants();
         if (invariants != null) {
-            invariants = sortInvariants(invariants);
+            invariants = normalizeInvariants(invariants);
             if (invariants.isEmpty()) {
                 invariants = null;
             }
@@ -30,7 +31,7 @@ public final class BearIrNormalizer {
             contract,
             effects,
             impl,
-            block.idempotency(),
+            idempotency,
             invariants
         );
         return new BearIr(ir.version(), normalizedBlock);
@@ -53,12 +54,28 @@ public final class BearIrNormalizer {
         return list;
     }
 
-    private List<BearIr.Invariant> sortInvariants(List<BearIr.Invariant> invariants) {
-        List<BearIr.Invariant> list = new ArrayList<>(invariants);
-        list.sort(Comparator
-            .comparing(BearIr.Invariant::kind)
-            .thenComparing(BearIr.Invariant::field));
-        return list;
+    private List<BearIr.Invariant> normalizeInvariants(List<BearIr.Invariant> invariants) {
+        ArrayList<BearIr.Invariant> list = new ArrayList<>();
+        for (BearIr.Invariant invariant : invariants) {
+            BearIr.InvariantParams params = invariant.params() == null
+                ? new BearIr.InvariantParams(null, List.of())
+                : new BearIr.InvariantParams(
+                    invariant.params().value(),
+                    invariant.params().values() == null ? List.of() : List.copyOf(invariant.params().values())
+                );
+            list.add(new BearIr.Invariant(invariant.kind(), invariant.scope(), invariant.field(), params));
+        }
+        return List.copyOf(list);
+    }
+
+    private BearIr.Idempotency normalizeIdempotency(BearIr.Idempotency idempotency) {
+        if (idempotency == null) {
+            return null;
+        }
+        List<String> keyFromInputs = idempotency.keyFromInputs() == null
+            ? null
+            : List.copyOf(idempotency.keyFromInputs());
+        return new BearIr.Idempotency(idempotency.key(), keyFromInputs, idempotency.store());
     }
 
     private BearIr.Impl sortImpl(BearIr.Impl impl) {

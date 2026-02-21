@@ -815,7 +815,7 @@ class BearCliTest {
                 + "if not exist src\\test\\java\\com\\example\\UsesWithdrawImpl.java exit /b 1\r\n"
                 + "if not exist src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java exit /b 1\r\n"
                 + "if not exist build\\project-test-classes mkdir build\\project-test-classes\r\n"
-                + "javac -d build\\project-test-classes build\\generated\\bear\\src\\main\\java\\com\\bear\\generated\\withdraw\\*.java src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java src\\test\\java\\com\\example\\UsesWithdrawImpl.java\r\n"
+                + "javac -d build\\project-test-classes build\\generated\\bear\\src\\main\\java\\com\\bear\\generated\\withdraw\\*.java build\\generated\\bear\\runtime\\src\\main\\java\\com\\bear\\generated\\runtime\\*.java src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java src\\test\\java\\com\\example\\UsesWithdrawImpl.java\r\n"
                 + "if errorlevel 1 exit /b 1\r\n"
                 + "echo TEST_OK\r\n"
                 + "exit /b 0\r\n",
@@ -828,7 +828,7 @@ class BearCliTest {
                 + "test -f src/test/java/com/example/UsesWithdrawImpl.java\n"
                 + "test -f src/main/java/blocks/withdraw/impl/WithdrawImpl.java\n"
                 + "mkdir -p build/project-test-classes\n"
-                + "javac -d build/project-test-classes build/generated/bear/src/main/java/com/bear/generated/withdraw/*.java src/main/java/blocks/withdraw/impl/WithdrawImpl.java src/test/java/com/example/UsesWithdrawImpl.java\n"
+                + "javac -d build/project-test-classes build/generated/bear/src/main/java/com/bear/generated/withdraw/*.java build/generated/bear/runtime/src/main/java/com/bear/generated/runtime/*.java src/main/java/blocks/withdraw/impl/WithdrawImpl.java src/test/java/com/example/UsesWithdrawImpl.java\n"
                 + "echo TEST_OK\n"
                 + "exit 0\n"
         );
@@ -1298,7 +1298,7 @@ class BearCliTest {
         Files.writeString(impl, ""
             + "package blocks.withdraw.impl;\n"
             + "public final class WithdrawImpl {\n"
-            + "  Object execute(Object request, Object idempotencyPort, Object ledgerPort) {\n"
+            + "  Object execute(Object request, Object ledgerPort) {\n"
             + "    return null;\n"
             + "  }\n"
             + "}\n",
@@ -1308,7 +1308,7 @@ class BearCliTest {
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(6, check.exitCode);
         String stderr = normalizeLf(check.stderr);
-        assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: missing required effect port usage: idempotencyPort"));
+        assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: missing required effect port usage: ledgerPort"));
         assertFailureEnvelope(
             check.stderr,
             "BOUNDARY_BYPASS",
@@ -1332,10 +1332,10 @@ class BearCliTest {
         Files.writeString(impl, ""
             + "package blocks.withdraw.impl;\n"
             + "public final class WithdrawImpl {\n"
-            + "  Object execute(Object request, Object idempotencyPort, Object ledgerPort) {\n"
-            + "    return helper(idempotencyPort, ledgerPort);\n"
+            + "  Object execute(Object request, Object ledgerPort) {\n"
+            + "    return helper(ledgerPort);\n"
             + "  }\n"
-            + "  Object helper(Object left, Object right) { return null; }\n"
+            + "  Object helper(Object value) { return null; }\n"
             + "}\n",
             StandardCharsets.UTF_8
         );
@@ -1345,8 +1345,7 @@ class BearCliTest {
         Files.writeString(impl, ""
             + "package blocks.withdraw.impl;\n"
             + "public final class WithdrawImpl {\n"
-            + "  Object execute(Object request, Object idempotencyPort, Object ledgerPort) {\n"
-            + "    // BEAR:PORT_USED idempotencyPort\n"
+            + "  Object execute(Object request, Object ledgerPort) {\n"
             + "    // BEAR:PORT_USED ledgerPort\n"
             + "    return null;\n"
             + "  }\n"
@@ -1359,7 +1358,26 @@ class BearCliTest {
         Files.writeString(impl, ""
             + "package blocks.withdraw.impl;\n"
             + "public final class WithdrawImpl {\n"
-            + "  Object execute(Object request, Object idempotencyPort, Object ledgerPort) {\n"
+            + "  Object execute(Object request, Object ledgerPort) {\n"
+            + "    Object idempotencyPort = null;\n"
+            + "    // BEAR:PORT_USED idempotencyPort\n"
+            + "    return idempotencyPort;\n"
+            + "  }\n"
+            + "}\n",
+            StandardCharsets.UTF_8
+        );
+        CliRunResult semanticSuppression = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(6, semanticSuppression.exitCode);
+        assertTrue(
+            normalizeLf(semanticSuppression.stderr).contains(
+                "check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: semantic port suppression forbidden: idempotencyPort"
+            )
+        );
+
+        Files.writeString(impl, ""
+            + "package blocks.withdraw.impl;\n"
+            + "public final class WithdrawImpl {\n"
+            + "  Object execute(Object request, Object ledgerPort) {\n"
             + "    // BEAR:PORT_USED\n"
             + "    return null;\n"
             + "  }\n"
@@ -1370,7 +1388,7 @@ class BearCliTest {
         assertEquals(6, malformedSuppression.exitCode);
         assertTrue(
             normalizeLf(malformedSuppression.stderr).contains(
-                "check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: missing required effect port usage: idempotencyPort"
+                "check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: missing required effect port usage: ledgerPort"
             )
         );
     }
@@ -2468,6 +2486,83 @@ class BearCliTest {
         assertTrue(normalizeLf(removed.stderr).contains(
             "pr-delta: ORDINARY: ALLOWED_DEPS: REMOVED: com.fasterxml.jackson.core:jackson-databind@2.18.0"
         ));
+    }
+
+    @Test
+    void checkFailsValidationOnWiringSemanticPortOverlap(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+
+        Path wiring = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
+        String content = Files.readString(wiring, StandardCharsets.UTF_8);
+        content = content.replace(
+            "\"logicRequiredPorts\":[\"ledgerPort\"]",
+            "\"logicRequiredPorts\":[\"idempotencyPort\",\"ledgerPort\"]"
+        );
+        Files.writeString(wiring, content, StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(2, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: MANIFEST_INVALID: wrapperOwnedSemanticPorts overlaps logicRequiredPorts: idempotencyPort"));
+        assertFailureEnvelope(
+            check.stderr,
+            "MANIFEST_INVALID",
+            "build/generated/bear/wiring/withdraw.wiring.json",
+            "Regenerate wiring so semantic ports are wrapper-owned only, then rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkFailsValidationWhenSemanticChecksTargetIsUnsupported(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+
+        String key = "bear.check.test.candidateManifestMode";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "target:python");
+            CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+            assertEquals(2, check.exitCode);
+            assertTrue(normalizeLf(check.stderr).contains("check: MANIFEST_INVALID: unsupported semantic enforcement target: python"));
+            assertFailureEnvelope(
+                check.stderr,
+                "MANIFEST_INVALID",
+                "build/generated/bear/surfaces/withdraw.surface.json",
+                "Use a target that enforces declared semantics or remove semantic declarations."
+            );
+        } finally {
+            restoreSystemProperty(key, previous);
+        }
+    }
+
+    @Test
+    void checkClassifiesInvariantMarkerAsInvariantViolation(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+
+        String marker = "BEAR_INVARIANT_VIOLATION|block=withdraw|kind=non_negative|field=balance|observed=-1|rule=non_negative";
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\n"
+                + "echo " + marker.replace("|", "^|") + "\r\n"
+                + "exit /b 1\r\n",
+            "#!/usr/bin/env sh\n"
+                + "echo \"" + marker + "\"\n"
+                + "exit 1\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(4, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: TEST_FAILED: " + marker));
+        assertFailureEnvelope(
+            check.stderr,
+            "INVARIANT_VIOLATION",
+            "project.tests",
+            "Fix invariant violation and rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     private static String fixtureIrForBlockName(String blockName) throws Exception {

@@ -11,6 +11,10 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 final class ProjectTestRunner {
+    private static final String INVARIANT_MARKER_PREFIX = "BEAR_INVARIANT_VIOLATION|";
+    private static final List<String> INVARIANT_MARKER_KEYS =
+        List.of("block", "kind", "field", "observed", "rule");
+
     private enum GradleHomeMode {
         EXTERNAL_ENV("external-env", "external-env-retry"),
         ISOLATED("isolated", "isolated-retry"),
@@ -146,6 +150,9 @@ final class ProjectTestRunner {
         }
         if (isGradleWrapperBootstrapIoOutput(output)) {
             return ProjectTestStatus.BOOTSTRAP_IO;
+        }
+        if (isInvariantViolationOutput(output)) {
+            return ProjectTestStatus.INVARIANT_VIOLATION;
         }
         return ProjectTestStatus.FAILED;
     }
@@ -337,6 +344,96 @@ final class ProjectTestRunner {
             return lines.get(0);
         }
         return null;
+    }
+
+    static boolean isInvariantViolationOutput(String output) {
+        return firstInvariantViolationLine(output) != null;
+    }
+
+    static String firstInvariantViolationLine(String output) {
+        for (String line : CliText.normalizeLf(output).lines().toList()) {
+            String trimmed = line.trim();
+            int markerIndex = trimmed.indexOf(INVARIANT_MARKER_PREFIX);
+            if (markerIndex >= 0) {
+                String marker = parseInvariantMarker(trimmed.substring(markerIndex));
+                if (marker != null) {
+                    return marker;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String parseInvariantMarker(String marker) {
+        if (marker == null || !marker.startsWith(INVARIANT_MARKER_PREFIX)) {
+            return null;
+        }
+        String payload = marker.substring(INVARIANT_MARKER_PREFIX.length());
+        List<String> fields = splitEscapedByPipe(payload);
+        if (fields == null || fields.size() != INVARIANT_MARKER_KEYS.size()) {
+            return null;
+        }
+        for (int i = 0; i < INVARIANT_MARKER_KEYS.size(); i++) {
+            String field = fields.get(i);
+            int eq = firstUnescapedEquals(field);
+            if (eq <= 0) {
+                return null;
+            }
+            String key = field.substring(0, eq);
+            if (!INVARIANT_MARKER_KEYS.get(i).equals(key)) {
+                return null;
+            }
+        }
+        return marker;
+    }
+
+    private static List<String> splitEscapedByPipe(String payload) {
+        ArrayList<String> parts = new ArrayList<>();
+        StringBuilder current = new StringBuilder(payload.length());
+        boolean escaped = false;
+        for (int i = 0; i < payload.length(); i++) {
+            char c = payload.charAt(i);
+            if (escaped) {
+                current.append(c);
+                escaped = false;
+                continue;
+            }
+            if (c == '\\') {
+                current.append(c);
+                escaped = true;
+                continue;
+            }
+            if (c == '|') {
+                parts.add(current.toString());
+                current.setLength(0);
+                continue;
+            }
+            current.append(c);
+        }
+        if (escaped) {
+            return null;
+        }
+        parts.add(current.toString());
+        return parts;
+    }
+
+    private static int firstUnescapedEquals(String value) {
+        boolean escaped = false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (c == '\\') {
+                escaped = true;
+                continue;
+            }
+            if (c == '=') {
+                return i;
+            }
+        }
+        return -1;
     }
 
     static String projectTestDetail(String base, String firstLine, String tail) {

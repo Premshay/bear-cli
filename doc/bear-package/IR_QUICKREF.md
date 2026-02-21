@@ -1,10 +1,7 @@
 # IR_QUICKREF.md
 
 Purpose:
-- Fast, authoritative reference for writing valid BEAR IR in v1.
-
-Use this file plus `doc/IR_EXAMPLES.md` as the IR source of truth.
-Do not reverse engineer CLI binaries to discover schema.
+- Fast, authoritative reference for valid BEAR IR v1.2.
 
 ## Required Root Shape
 
@@ -15,23 +12,23 @@ block:
 ```
 
 Required keys:
-- `version` (must be `v1`)
+- `version` (`v1`)
 - `block`
 
 ## `block` Object
 
-Required keys:
-- `name` (string)
-- `kind` (must be `logic` in v1 preview)
+Required:
+- `name`
+- `kind` (`logic`)
 - `contract`
 - `effects`
 
-Optional keys:
+Optional:
 - `idempotency`
 - `invariants`
 - `impl`
 
-## Contract Shape
+## Contract
 
 ```yaml
 contract:
@@ -44,19 +41,18 @@ contract:
 ```
 
 Rules:
-- `inputs` must be non-empty
-- `outputs` must be non-empty
-- input names must be unique
-- output names must be unique
+- `inputs` non-empty
+- `outputs` non-empty
+- unique input/output names
 
-Allowed field types in v1 preview:
+Types:
 - `string`
 - `decimal`
 - `int`
 - `bool`
 - `enum`
 
-## Effects Shape
+## Effects
 
 ```yaml
 effects:
@@ -66,12 +62,13 @@ effects:
 ```
 
 Rules:
-- `allow` is required (may be empty)
-- port names must be unique
-- ops must be unique within each port
+- `allow` required (may be empty)
+- unique ports
+- unique ops per port
 
-## Idempotency Shape (Optional)
+## Idempotency (Optional)
 
+Single-field key:
 ```yaml
 idempotency:
   key: requestId
@@ -81,24 +78,45 @@ idempotency:
     putOp: put
 ```
 
-Rules:
-- `key` must reference an input field name
-- `store.port` must reference a declared effect port
-- `store.getOp` and `store.putOp` must reference declared ops under that port
+Composite key:
+```yaml
+idempotency:
+  keyFromInputs: [walletId, requestId]
+  store:
+    port: idempotency
+    getOp: get
+    putOp: put
+```
 
-## Invariants Shape (Optional)
+Rules:
+- exactly one of `key` / `keyFromInputs`
+- `keyFromInputs` non-empty, ordered, unique values
+- referenced fields must exist in `contract.inputs`
+- `store` references must exist in declared effects
+
+## Invariants (Optional)
 
 ```yaml
 invariants:
   - kind: non_negative
-    field: remainingQuota
+    scope: result
+    field: balanceCents
+    params: {}
 ```
 
-Rules:
-- v1 preview supports `kind: non_negative`
-- `field` must reference an output field name
+Kinds:
+- `non_negative`
+- `non_empty`
+- `equals`
+- `one_of`
 
-## Impl allowed dependencies (Optional)
+Rules:
+- `scope` must be `result`
+- `field` must exist in outputs
+- kind/type compatibility is enforced
+- kind-specific params are strict
+
+## Impl allowed deps (Optional)
 
 ```yaml
 impl:
@@ -108,46 +126,18 @@ impl:
 ```
 
 Rules:
-- `maven` must be exact `groupId:artifactId` (no wildcards)
-- `version` must be pinned (no ranges/wildcards)
-- duplicate `groupId:artifactId` entries are invalid
-- add/version-change is boundary-expanding in `bear pr-check`
+- exact `groupId:artifactId`
+- pinned exact version
+- duplicate GA invalid
 
-## Common Validation Failures
+## Key v1.2 Enforcement Notes
+- Idempotency and invariants are wrapper-owned semantics.
+- Idempotent logic signatures exclude idempotency port.
+- IR-declared semantics must be enforceable by target; otherwise `check` fails.
 
-- unknown keys at any level
-- invalid enum values (`kind`, field `type`, invariant `kind`)
-- duplicate input/output/port/op names
-- broken references in idempotency/invariants
-- empty `inputs` or `outputs`
-
-## Intent -> IR Change Map
-
-If request changes external reach:
-- update `effects.allow`
-
-If request changes request/response shape:
-- update `contract.inputs`/`contract.outputs`
-
-If request adds replay-safe behavior:
-- add/update `idempotency`
-
-If request adds structural output guarantees:
-- add/update `invariants`
-
-If request needs a new pure library in impl logic:
-- add/update `impl.allowedDeps`
-
-## Commands (Deterministic Order)
-
+## Commands
 For each changed IR:
 1. `bear validate <ir-file>`
 2. `bear compile <ir-file> --project <repoRoot>`
-3. `bear fix <ir-file> --project <repoRoot>` (or `bear fix --all --project <repoRoot>` when indexed) when generated artifacts need deterministic repair
-4. `bear check <ir-file> --project <repoRoot>` or `bear check --all --project <repoRoot>`
-
-If IR declares `impl.allowedDeps` on Java+Gradle projects:
-5. ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
-6. run Gradle build/test once so `build/bear/containment/applied.marker` is written
-7. rerun `bear check`
-
+3. `bear fix <ir-file> --project <repoRoot>` (or `fix --all`)
+4. `bear check <ir-file> --project <repoRoot>` (or `check --all`)

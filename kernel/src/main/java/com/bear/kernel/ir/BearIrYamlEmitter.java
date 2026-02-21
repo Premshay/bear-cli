@@ -104,7 +104,12 @@ public final class BearIrYamlEmitter {
 
     private Map<String, Object> toIdempotencyMap(BearIr.Idempotency idempotency) {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("key", idempotency.key());
+        if (idempotency.key() != null) {
+            map.put("key", idempotency.key());
+        }
+        if (idempotency.keyFromInputs() != null) {
+            map.put("keyFromInputs", new ArrayList<>(idempotency.keyFromInputs()));
+        }
         map.put("store", toIdempotencyStoreMap(idempotency.store()));
         return map;
     }
@@ -136,8 +141,24 @@ public final class BearIrYamlEmitter {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("kind", switch (invariant.kind()) {
                 case NON_NEGATIVE -> "non_negative";
+                case NON_EMPTY -> "non_empty";
+                case EQUALS -> "equals";
+                case ONE_OF -> "one_of";
+            });
+            map.put("scope", switch (invariant.scope()) {
+                case RESULT -> "result";
             });
             map.put("field", invariant.field());
+            Map<String, Object> params = new LinkedHashMap<>();
+            if (invariant.params() != null && invariant.params().value() != null) {
+                params.put("value", invariant.params().value());
+            }
+            if (invariant.params() != null && invariant.params().values() != null && !invariant.params().values().isEmpty()) {
+                params.put("values", new ArrayList<>(invariant.params().values()));
+            }
+            if (!params.isEmpty()) {
+                map.put("params", params);
+            }
             list.add(map);
         }
         return list;

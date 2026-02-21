@@ -33,4 +33,5 @@ block:
       putOp: put
   invariants:
   - kind: non_negative
+    scope: result
     field: balance

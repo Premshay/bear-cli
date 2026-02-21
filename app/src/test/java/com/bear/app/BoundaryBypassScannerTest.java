@@ -55,6 +55,7 @@ class BoundaryBypassScannerTest {
             List.of("ledgerPort"),
             List.of("logic", "ledgerPort"),
             List.of("ledgerPort"),
+            List.of(),
             List.of()
         );
 
@@ -65,5 +66,48 @@ class BoundaryBypassScannerTest {
         assertEquals("EFFECTS_BYPASS", first.rule());
         assertNotNull(first.path());
         assertTrue(first.detail().contains("missing governed impl source"));
+    }
+
+    @Test
+    void firstReflectiveImplUsageTokenDetectsClassForNameLiteral() {
+        String token = BoundaryBypassScanner.firstReflectiveImplUsageToken(
+            "class X { void m(){ Class.forName(\"blocks.withdraw.impl.WithdrawImpl\"); } }"
+        );
+        assertEquals("Class.forName(\"blocks.withdraw.impl.WithdrawImpl\")", token);
+    }
+
+    @Test
+    void semanticPortIdentifierBindingUsesManifestIdentifierOnly(@TempDir Path tempDir) throws Exception {
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
+        Files.createDirectories(impl.getParent());
+        Files.writeString(
+            impl,
+            "package blocks.withdraw.impl;\n"
+                + "public final class WithdrawImpl {\n"
+                + "  public void execute(Object request, Object ledgerPort) {\n"
+                + "    ledgerPort.toString();\n"
+                + "    Object idempotencyPort = null;\n"
+                + "  }\n"
+                + "}\n"
+        );
+
+        WiringManifest manifest = new WiringManifest(
+            "v2",
+            "withdraw",
+            "com.bear.generated.withdraw.Withdraw",
+            "com.bear.generated.withdraw.WithdrawLogic",
+            "blocks.withdraw.impl.WithdrawImpl",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
+            List.of("idempotencyPort", "ledgerPort"),
+            List.of("idempotencyPort", "ledgerPort"),
+            List.of("ledgerPort"),
+            List.of("idempotencyPortParam"),
+            List.of("IDEMPOTENCY")
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
+        boolean hasSemanticViolation = findings.stream().anyMatch(f ->
+            "EFFECTS_BYPASS".equals(f.rule()) && f.detail().contains("semantic port usage forbidden"));
+        assertTrue(!hasSemanticViolation);
     }
 }

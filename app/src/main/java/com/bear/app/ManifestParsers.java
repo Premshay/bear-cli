@@ -51,6 +51,7 @@ final class ManifestParsers {
         String constructorPortParamsPayload = extractRequiredArrayPayload(json, "constructorPortParams");
         String logicRequiredPortsPayload = extractOptionalArrayPayload(json, "logicRequiredPorts");
         String wrapperOwnedSemanticPortsPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticPorts");
+        String wrapperOwnedSemanticChecksPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticChecks");
         List<String> requiredEffectPorts = parseStringArray(requiredEffectPortsPayload);
         List<String> constructorPortParams = parseStringArray(constructorPortParamsPayload);
         List<String> logicRequiredPorts = logicRequiredPortsPayload == null
@@ -59,6 +60,9 @@ final class ManifestParsers {
         List<String> wrapperOwnedSemanticPorts = wrapperOwnedSemanticPortsPayload == null
             ? List.of()
             : parseStringArray(wrapperOwnedSemanticPortsPayload);
+        List<String> wrapperOwnedSemanticChecks = wrapperOwnedSemanticChecksPayload == null
+            ? List.of()
+            : parseStringArray(wrapperOwnedSemanticChecksPayload);
         return new WiringManifest(
             schemaVersion,
             blockKey,
@@ -69,7 +73,8 @@ final class ManifestParsers {
             requiredEffectPorts,
             constructorPortParams,
             logicRequiredPorts,
-            wrapperOwnedSemanticPorts
+            wrapperOwnedSemanticPorts,
+            wrapperOwnedSemanticChecks
         );
     }
 
@@ -170,9 +175,7 @@ final class ManifestParsers {
             count++;
             String kind = jsonUnescape(m.group(1));
             String field = jsonUnescape(m.group(2));
-            if ("non_negative".equals(kind)) {
-                invariants.add("non_negative:" + field);
-            }
+            invariants.add(kind + ":" + field);
         }
 
         if (count == 0) {

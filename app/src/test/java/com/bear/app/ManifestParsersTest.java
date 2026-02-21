@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -52,5 +53,20 @@ class ManifestParsersTest {
         assertEquals(1, parsed.logicRequiredPorts().size());
         assertEquals("ledgerPort", parsed.logicRequiredPorts().get(0));
         assertEquals(0, parsed.wrapperOwnedSemanticPorts().size());
+        assertEquals(0, parsed.wrapperOwnedSemanticChecks().size());
+    }
+
+    @Test
+    void parseWiringManifestParsesSemanticFieldsWhenPresent(@TempDir Path tempDir) throws Exception {
+        Path wiring = tempDir.resolve("x.wiring.json");
+        Files.writeString(
+            wiring,
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"],\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"],\"logicRequiredPorts\":[\"ledgerPort\"],\"wrapperOwnedSemanticPorts\":[\"idempotencyPort\"],\"wrapperOwnedSemanticChecks\":[\"IDEMPOTENCY\",\"INVARIANTS\"]}"
+        );
+
+        WiringManifest parsed = ManifestParsers.parseWiringManifest(wiring);
+        assertEquals(List.of("ledgerPort"), parsed.logicRequiredPorts());
+        assertEquals(List.of("idempotencyPort"), parsed.wrapperOwnedSemanticPorts());
+        assertEquals(List.of("IDEMPOTENCY", "INVARIANTS"), parsed.wrapperOwnedSemanticChecks());
     }
 }

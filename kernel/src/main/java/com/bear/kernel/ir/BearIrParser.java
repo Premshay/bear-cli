@@ -105,10 +105,20 @@ public final class BearIrParser {
     }
 
     private BearIr.InvariantKind parseInvariantKind(String raw, String path) {
-        if ("non_negative".equals(raw)) {
-            return BearIr.InvariantKind.NON_NEGATIVE;
+        return switch (raw) {
+            case "non_negative" -> BearIr.InvariantKind.NON_NEGATIVE;
+            case "non_empty" -> BearIr.InvariantKind.NON_EMPTY;
+            case "equals" -> BearIr.InvariantKind.EQUALS;
+            case "one_of" -> BearIr.InvariantKind.ONE_OF;
+            default -> throw schema(path, BearIrValidationException.Code.INVALID_ENUM, "invalid invariant kind: " + raw);
+        };
+    }
+
+    private BearIr.InvariantScope parseInvariantScope(String raw, String path) {
+        if ("result".equals(raw)) {
+            return BearIr.InvariantScope.RESULT;
         }
-        throw schema(path, BearIrValidationException.Code.INVALID_ENUM, "expected 'non_negative'");
+        throw schema(path, BearIrValidationException.Code.INVALID_ENUM, "expected 'result'");
     }
 
     private BearIr.Contract parseContract(Map<?, ?> contract, String path) {
@@ -161,14 +171,21 @@ public final class BearIrParser {
     }
 
     private BearIr.Idempotency parseIdempotency(Map<?, ?> idempotency, String path) {
-        requireOnlyKeys(idempotency, path, Set.of("key", "store"));
-        String key = requireString(idempotency, "key", path + ".key");
+        requireOnlyKeys(idempotency, path, Set.of("key", "keyFromInputs", "store"));
+        String key = null;
+        if (idempotency.containsKey("key")) {
+            key = requireString(idempotency, "key", path + ".key");
+        }
+        List<String> keyFromInputs = null;
+        if (idempotency.containsKey("keyFromInputs")) {
+            keyFromInputs = parseStringList(requireList(idempotency, "keyFromInputs", path + ".keyFromInputs"), path + ".keyFromInputs");
+        }
         Map<?, ?> store = requireMap(idempotency, "store", path + ".store");
         requireOnlyKeys(store, path + ".store", Set.of("port", "getOp", "putOp"));
         String port = requireString(store, "port", path + ".store.port");
         String getOp = requireString(store, "getOp", path + ".store.getOp");
         String putOp = requireString(store, "putOp", path + ".store.putOp");
-        return new BearIr.Idempotency(key, new BearIr.IdempotencyStore(port, getOp, putOp));
+        return new BearIr.Idempotency(key, keyFromInputs, new BearIr.IdempotencyStore(port, getOp, putOp));
     }
 
     private List<BearIr.Invariant> parseInvariants(List<?> items, String path) {
@@ -179,12 +196,39 @@ public final class BearIrParser {
             if (!(item instanceof Map<?, ?> invariant)) {
                 throw schema(itemPath, BearIrValidationException.Code.INVALID_TYPE, "expected mapping");
             }
-            requireOnlyKeys(invariant, itemPath, Set.of("kind", "field"));
+            requireOnlyKeys(invariant, itemPath, Set.of("kind", "scope", "field", "params"));
             String kindRaw = requireString(invariant, "kind", itemPath + ".kind");
+            String scopeRaw = invariant.containsKey("scope")
+                ? requireString(invariant, "scope", itemPath + ".scope")
+                : "result";
             String field = requireString(invariant, "field", itemPath + ".field");
-            invariants.add(new BearIr.Invariant(parseInvariantKind(kindRaw, itemPath + ".kind"), field));
+            BearIr.InvariantParams params = parseInvariantParams(
+                invariant.containsKey("params")
+                    ? requireMap(invariant, "params", itemPath + ".params")
+                    : Map.of(),
+                itemPath + ".params"
+            );
+            invariants.add(new BearIr.Invariant(
+                parseInvariantKind(kindRaw, itemPath + ".kind"),
+                parseInvariantScope(scopeRaw, itemPath + ".scope"),
+                field,
+                params
+            ));
         }
         return invariants;
+    }
+
+    private BearIr.InvariantParams parseInvariantParams(Map<?, ?> params, String path) {
+        requireOnlyKeys(params, path, Set.of("value", "values"));
+        String value = null;
+        if (params.containsKey("value")) {
+            value = requireString(params, "value", path + ".value");
+        }
+        List<String> values = List.of();
+        if (params.containsKey("values")) {
+            values = parseStringList(requireList(params, "values", path + ".values"), path + ".values");
+        }
+        return new BearIr.InvariantParams(value, values);
     }
 
     private BearIr.Impl parseImpl(Map<?, ?> impl, String path) {
@@ -236,6 +280,18 @@ public final class BearIrParser {
             throw schema(path, BearIrValidationException.Code.INVALID_TYPE, "expected list");
         }
         return list;
+    }
+
+    private List<String> parseStringList(List<?> list, String path) {
+        ArrayList<String> values = new ArrayList<>();
+        for (int i = 0; i < list.size(); i++) {
+            Object item = list.get(i);
+            if (!(item instanceof String text)) {
+                throw schema(path + "[" + i + "]", BearIrValidationException.Code.INVALID_TYPE, "expected string");
+            }
+            values.add(text);
+        }
+        return List.copyOf(values);
     }
 
     private String requireString(Map<?, ?> map, String key, String path) {

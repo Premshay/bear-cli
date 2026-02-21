@@ -9,7 +9,7 @@ This file is the single source of truth for:
 ## Numeric Exit Registry
 
 - `0`: pass
-- `2`: validation/schema/semantic failure
+- `2`: validation/schema/semantic failure (`IR_VALIDATION`, `MANIFEST_INVALID`)
 - `3`: drift failure
 - `4`: project test failure (including timeout)
 - `5`: boundary expansion detected (`pr-check`)
@@ -57,6 +57,8 @@ Disallowed:
 - `BOUNDARY_EXPANSION`
 - `UNDECLARED_REACH`
 - `BOUNDARY_BYPASS`
+- `MANIFEST_INVALID`
+- `INVARIANT_VIOLATION`
 - `REPO_MULTI_BLOCK_FAILED`
 - `INTERNAL_ERROR`
 

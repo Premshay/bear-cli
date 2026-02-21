@@ -111,13 +111,15 @@ Do not assume `bin/bear-all.*` or `bin/pr-gate.*` exists.
 - for `CODE=BOUNDARY_BYPASS`:
   - remove direct impl usage from `src/main/**`
   - wire generated entrypoints with non-null ports
-  - ensure declared effect ports are used (or add exact `// BEAR:PORT_USED <portParam>` suppression)
+  - ensure declared logic-required effect ports are used
+  - do not suppress wrapper-owned semantic ports (`// BEAR:PORT_USED ...` is invalid for those)
 - declare required port/op in IR
 - compile
 - route call through generated port interface
 
 5. `4` project tests failed:
 - fix implementation/tests
+- if `CODE=INVARIANT_VIOLATION`, treat marker details as authoritative semantic failure from wrapper checks (fresh/replay)
 - if compiler reports unreachable code in `*Impl.java`, replace the generated stub body entirely (do not append logic below placeholder return/throw)
 - verify `*Impl.java` stays in `src/main/java/blocks/<pkg-segment>/impl/` (package `blocks.<pkg-segment>.impl`) unless BEAR compile regenerated a different path
 
@@ -141,6 +143,10 @@ Index troubleshooting:
 
 8. `70` internal failure:
 - collect output and report as tool defect
+
+8b. `2` manifest semantic validation failure:
+- `CODE=MANIFEST_INVALID` means generated wiring semantic contracts are inconsistent
+- regenerate compile artifacts and rerun; do not hand-edit generated wiring as a final fix
 
 9. `74` containment failure (`CONTAINMENT_NOT_VERIFIED` / `CONTAINMENT_UNSUPPORTED_TARGET`):
 - if missing/stale marker or missing generated containment script/index:

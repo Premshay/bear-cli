@@ -38,7 +38,14 @@ final class BoundaryBypassScanner {
     private static final Pattern DIRECT_IMPL_IMPLEMENTS_IMPL_PATTERN = Pattern.compile(
         "\\bimplements\\s+(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\.\\s*)*[A-Za-z_][A-Za-z0-9_]*Impl\\b"
     );
+    private static final Pattern REFLECT_FORNAME_PATTERN = Pattern.compile(
+        "\\bClass\\s*\\.\\s*forName\\s*\\(\\s*\"blocks\\.[A-Za-z0-9_$.]+\\.impl\\.[A-Za-z0-9_]+Impl\"\\s*\\)"
+    );
+    private static final Pattern REFLECT_LOADCLASS_PATTERN = Pattern.compile(
+        "\\bloadClass\\s*\\(\\s*\"blocks\\.[A-Za-z0-9_$.]+\\.impl\\.[A-Za-z0-9_]+Impl\"\\s*\\)"
+    );
     private static final Pattern SUPPRESSION_PATTERN = Pattern.compile("(?m)^\\s*//\\s*BEAR:PORT_USED\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*$");
+    private static final Pattern IDENTIFIER_TOKEN_PATTERN = Pattern.compile("\\b[A-Za-z_][A-Za-z0-9_]*\\b");
 
     private BoundaryBypassScanner() {
     }
@@ -72,10 +79,15 @@ final class BoundaryBypassScanner {
                     }
                     String source = Files.readString(file, StandardCharsets.UTF_8);
                     String sanitized = stripJavaCommentsStringsAndChars(source);
+                    String noCommentSource = stripJavaCommentsPreserveStringsAndChars(source);
 
                     String directImplToken = firstDirectImplUsageToken(sanitized);
                     if (directImplToken != null) {
                         findings.add(new BoundaryBypassFinding("DIRECT_IMPL_USAGE", rel, directImplToken));
+                    }
+                    String reflectiveToken = firstReflectiveImplUsageToken(noCommentSource);
+                    if (reflectiveToken != null) {
+                        findings.add(new BoundaryBypassFinding("DIRECT_IMPL_USAGE", rel, reflectiveToken));
                     }
 
                     String nullWiringToken = firstTopLevelNullPortWiringToken(sanitized, governedEntrypointFqcns, governedSimpleNameCounts);
@@ -102,6 +114,24 @@ final class BoundaryBypassScanner {
             String source = Files.readString(implPath, StandardCharsets.UTF_8);
             String sanitized = stripJavaCommentsStringsAndChars(source);
             Set<String> suppressions = parsePortSuppressions(source);
+            List<String> semanticPorts = new ArrayList<>(manifest.wrapperOwnedSemanticPorts());
+            semanticPorts.sort(String::compareTo);
+            for (String semanticPort : semanticPorts) {
+                if (suppressions.contains(semanticPort)) {
+                    findings.add(new BoundaryBypassFinding(
+                        "EFFECTS_BYPASS",
+                        rel,
+                        "semantic port suppression forbidden: " + semanticPort
+                    ));
+                }
+                if (containsIdentifierToken(sanitized, semanticPort)) {
+                    findings.add(new BoundaryBypassFinding(
+                        "EFFECTS_BYPASS",
+                        rel,
+                        "semantic port usage forbidden: " + semanticPort
+                    ));
+                }
+            }
 
             List<String> requiredPorts = manifest.logicRequiredPorts().isEmpty()
                 ? new ArrayList<>(manifest.requiredEffectPorts())
@@ -165,6 +195,18 @@ final class BoundaryBypassScanner {
         Matcher implementsMatcher = DIRECT_IMPL_IMPLEMENTS_IMPL_PATTERN.matcher(source);
         if (implementsMatcher.find()) {
             return normalizeToken(implementsMatcher.group());
+        }
+        return null;
+    }
+
+    static String firstReflectiveImplUsageToken(String source) {
+        Matcher forNameMatcher = REFLECT_FORNAME_PATTERN.matcher(source);
+        if (forNameMatcher.find()) {
+            return normalizeToken(forNameMatcher.group());
+        }
+        Matcher loadClassMatcher = REFLECT_LOADCLASS_PATTERN.matcher(source);
+        if (loadClassMatcher.find()) {
+            return normalizeToken(loadClassMatcher.group());
         }
         return null;
     }
@@ -289,6 +331,16 @@ final class BoundaryBypassScanner {
         return Pattern.compile("(?:\\(|,)\\s*" + Pattern.quote(portParam) + "\\s*(?:,|\\))").matcher(source).find();
     }
 
+    static boolean containsIdentifierToken(String source, String identifier) {
+        Matcher matcher = IDENTIFIER_TOKEN_PATTERN.matcher(source);
+        while (matcher.find()) {
+            if (identifier.equals(matcher.group())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static String normalizeToken(String token) {
         return token.replaceAll("\\s+", " ").trim();
     }
@@ -376,6 +428,96 @@ final class BoundaryBypassScanner {
                 inChar = true;
                 escaped = false;
                 out.append(' ');
+                continue;
+            }
+            out.append(c);
+        }
+        return out.toString();
+    }
+
+    static String stripJavaCommentsPreserveStringsAndChars(String source) {
+        StringBuilder out = new StringBuilder(source.length());
+        boolean inLineComment = false;
+        boolean inBlockComment = false;
+        boolean inString = false;
+        boolean inChar = false;
+        boolean escaped = false;
+
+        for (int i = 0; i < source.length(); i++) {
+            char c = source.charAt(i);
+            char next = i + 1 < source.length() ? source.charAt(i + 1) : '\0';
+
+            if (inLineComment) {
+                if (c == '\n' || c == '\r') {
+                    inLineComment = false;
+                    out.append(c);
+                } else {
+                    out.append(' ');
+                }
+                continue;
+            }
+            if (inBlockComment) {
+                if (c == '*' && next == '/') {
+                    inBlockComment = false;
+                    out.append(' ');
+                    out.append(' ');
+                    i++;
+                } else if (c == '\n' || c == '\r') {
+                    out.append(c);
+                } else {
+                    out.append(' ');
+                }
+                continue;
+            }
+            if (inString) {
+                out.append(c);
+                if (!escaped && c == '\"') {
+                    inString = false;
+                }
+                if (!escaped && c == '\\') {
+                    escaped = true;
+                } else {
+                    escaped = false;
+                }
+                continue;
+            }
+            if (inChar) {
+                out.append(c);
+                if (!escaped && c == '\'') {
+                    inChar = false;
+                }
+                if (!escaped && c == '\\') {
+                    escaped = true;
+                } else {
+                    escaped = false;
+                }
+                continue;
+            }
+
+            if (c == '/' && next == '/') {
+                inLineComment = true;
+                out.append(' ');
+                out.append(' ');
+                i++;
+                continue;
+            }
+            if (c == '/' && next == '*') {
+                inBlockComment = true;
+                out.append(' ');
+                out.append(' ');
+                i++;
+                continue;
+            }
+            if (c == '\"') {
+                inString = true;
+                escaped = false;
+                out.append(c);
+                continue;
+            }
+            if (c == '\'') {
+                inChar = true;
+                escaped = false;
+                out.append(c);
                 continue;
             }
             out.append(c);

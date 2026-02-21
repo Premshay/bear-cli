@@ -1,4 +1,4 @@
-# `bear check` (v1.7)
+# `bear check` (v1.9)
 
 ## Command
 `bear check <ir-file> --project <path>`
@@ -12,6 +12,7 @@
 4. project test execution after drift and static boundary gates pass
 5. boundary-expansion signaling derived from BEAR surface manifests
 6. allowed-deps containment verification when IR declares `block.impl.allowedDeps`
+7. wrapper-owned semantic enforcement validation (wiring manifest consistency + marker-first invariant classification)
 
 For base-branch PR governance classification, use `bear pr-check`.
 
@@ -80,6 +81,7 @@ Exit codes are defined centrally in `spec/commands/exit-codes.md`.
 - `2`: schema/semantic IR validation error
 - `3`: drift detected (including missing baseline)
 - `4`: project test failure (including timeout)
+- `4`: project test semantic failure (`INVARIANT_VIOLATION`)
 - `6`: undeclared reach detected
 - `6`: boundary bypass detected (`CODE=BOUNDARY_BYPASS`)
 - `64`: usage error
@@ -136,8 +138,16 @@ Missing baseline:
   - `constructorPortParams`
   - `logicRequiredPorts`
   - `wrapperOwnedSemanticPorts`
+  - `wrapperOwnedSemanticChecks`
 
 Boundary classification uses manifest data only (no Java source parsing).
+
+Wiring semantic consistency gate:
+- if `wrapperOwnedSemanticPorts ∩ logicRequiredPorts != ∅`, `check` fails deterministically:
+  - category: `VALIDATION`
+  - `CODE=MANIFEST_INVALID`
+  - `PATH=build/generated/bear/wiring/<blockKey>.wiring.json`
+  - exit bucket: validation/config (`2`)
 
 ## Boundary signal format (stderr)
 Boundary lines:
@@ -189,6 +199,7 @@ Failure lines (stderr):
 - `check: BOUNDARY_BYPASS: RULE=DIRECT_IMPL_USAGE: <relative/path>: <token>`
 - `check: BOUNDARY_BYPASS: RULE=NULL_PORT_WIRING: <relative/path>: <token>`
 - `check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: <relative/path>: <detail>`
+- reflective impl coupling literals are included under `DIRECT_IMPL_USAGE` (for example `Class.forName("blocks...impl...Impl")`)
 
 Failure envelope:
 - `CODE=BOUNDARY_BYPASS`
@@ -200,6 +211,7 @@ Suppression:
 - exact same-file line:
   - `// BEAR:PORT_USED <portParamName>`
 - wildcard/global suppression is invalid
+- suppression is forbidden for wrapper-owned semantic ports (deterministic bypass failure)
 
 ## Allowed Deps Containment (v1.6 preview)
 Containment gate runs only when IR declares `block.impl.allowedDeps` and drift has passed.
@@ -326,6 +338,15 @@ Check-blocked marker (v1.7):
   - lock/bootstrap root-cause classification remains primary
   - diagnostics append deterministic suffix:
     - `...; markerWrite=failed:<message>`
+
+Invariant violation classification (marker-first):
+- if project test output contains a strict marker message:
+  - prefix: `BEAR_INVARIANT_VIOLATION|`
+  - exact keyed payload: `block=...|kind=...|field=...|observed=...|rule=...`
+  - exactly 5 keys, exact order, no extras
+- `check` returns test-failure bucket (`4`) with:
+  - `CODE=INVARIANT_VIOLATION`
+  - marker detail preserved in stderr
 
 ## No-mutation guarantee
 `bear check` does not modify project baseline files.

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -155,8 +156,11 @@ final class PrDeltaClassifier {
             return;
         }
 
-        if (!base.key().equals(head.key())) {
+        if (!Objects.equals(base.key(), head.key())) {
             deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.key"));
+        }
+        if (!Objects.equals(base.keyFromInputs(), head.keyFromInputs())) {
+            deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.keyFromInputs"));
         }
         if (!base.store().port().equals(head.store().port())) {
             deltas.add(new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.IDEMPOTENCY, PrChange.CHANGED, "idempotency.store.port"));

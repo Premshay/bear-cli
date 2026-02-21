@@ -3,7 +3,12 @@ package com.bear.generated.withdraw;
 
 import java.math.BigDecimal;
 
+import java.nio.charset.StandardCharsets;
+
+import com.bear.generated.runtime.BearInvariantViolationException;
+
 public final class Withdraw {
+    private static final String BLOCK_KEY = "withdraw";
     private final IdempotencyPort idempotencyPort;
     private final LedgerPort ledgerPort;
     private final WithdrawLogic logic;
@@ -15,19 +20,20 @@ public final class Withdraw {
     }
 
     public WithdrawResult execute(WithdrawRequest request) {
-        BearValue existing = idempotencyPort.get(BearValue.builder().put("key", toText(request.getTxId())).build());
+        String idempotencyKey = computeIdempotencyKey(request);
+        BearValue existing = idempotencyPort.get(BearValue.builder().put("key", idempotencyKey).build());
         if (existing != null && "true".equals(existing.get("hit"))) {
             WithdrawResult replayed = decodeResult(existing);
-        if (replayed.getBalance() != null && replayed.getBalance().compareTo(BigDecimal.ZERO) < 0) {
-            throw new BearInvariantViolationException("block=Withdraw, invariant=non_negative, field=balance, actual=" + replayed.getBalance());
+        if (replayed.getBalance() == null || replayed.getBalance().compareTo(BigDecimal.ZERO) < 0) {
+            throw new BearInvariantViolationException(invariantMarker("non_negative", "balance", toInvariantCanonical(replayed.getBalance()), "non_negative"));
         }
             return replayed;
         }
-        WithdrawResult result = logic.execute(request, idempotencyPort, ledgerPort);
-        if (result.getBalance() != null && result.getBalance().compareTo(BigDecimal.ZERO) < 0) {
-            throw new BearInvariantViolationException("block=Withdraw, invariant=non_negative, field=balance, actual=" + result.getBalance());
+        WithdrawResult result = logic.execute(request, ledgerPort);
+        if (result.getBalance() == null || result.getBalance().compareTo(BigDecimal.ZERO) < 0) {
+            throw new BearInvariantViolationException(invariantMarker("non_negative", "balance", toInvariantCanonical(result.getBalance()), "non_negative"));
         }
-        BearValue.Builder stored = BearValue.builder().put("hit", "true").put("key", toText(request.getTxId()));
+        BearValue.Builder stored = BearValue.builder().put("hit", "true").put("key", idempotencyKey);
         stored.put("result.balance", toText(result.getBalance()));
         idempotencyPort.put(stored.build());
         return result;
@@ -37,17 +43,66 @@ public final class Withdraw {
         if (value.get("result.balance") == null) {
             throw new IllegalStateException("idempotency replay payload missing field: result.balance");
         }
-        return new WithdrawResult(fromText(value.get("result.balance"), BigDecimal.class));
+        return new WithdrawResult(fromText(value.get("result.balance"), BigDecimal.class, "result.balance"));
     }
 
-    private static String toText(Object value) { return value == null ? null : String.valueOf(value); }
+    private String computeIdempotencyKey(WithdrawRequest request) {
+        StringBuilder key = new StringBuilder(BLOCK_KEY);
+        String raw_txId = toText(request.getTxId());
+        if (raw_txId == null) {
+            throw new IllegalArgumentException("idempotency key field is null: txId");
+        }
+        String escaped_txId = escapeDelimitedValue(raw_txId);
+        key.append("|").append(escapeDelimitedValue("txId")).append("=").append(escaped_txId.getBytes(StandardCharsets.UTF_8).length).append("#").append(escaped_txId);
+        return key.toString();
+    }
+
+    private static String toText(Object value) {
+        if (value == null) return null;
+        if (value instanceof BigDecimal decimal) return decimal.toString();
+        if (value instanceof Boolean bool) return bool ? "true" : "false";
+        if (value instanceof Integer integer) return Integer.toString(integer);
+        return String.valueOf(value);
+    }
     @SuppressWarnings("unchecked")
-    private static <T> T fromText(String text, Class<T> type) {
+    private static <T> T fromText(String text, Class<T> type, String fieldName) {
         if (text == null) return null;
-        if (type == String.class) return (T) text;
-        if (type == BigDecimal.class) return (T) new BigDecimal(text);
-        if (type == Integer.class) return (T) Integer.valueOf(text);
-        if (type == Boolean.class) return (T) Boolean.valueOf(text);
+        try {
+            if (type == String.class) return (T) text;
+            if (type == BigDecimal.class) return (T) new BigDecimal(text);
+            if (type == Integer.class) return (T) Integer.valueOf(text);
+            if (type == Boolean.class) {
+                if ("true".equals(text)) return (T) Boolean.TRUE;
+                if ("false".equals(text)) return (T) Boolean.FALSE;
+                throw new IllegalArgumentException("invalid boolean value");
+            }
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("idempotency replay payload invalid value: " + fieldName, e);
+        }
         throw new IllegalArgumentException("Unsupported type: " + type.getName());
+    }
+    private static String toInvariantCanonical(Object value) {
+        if (value == null) return "<null>";
+        if (value instanceof BigDecimal decimal) return decimal.toString();
+        if (value instanceof Boolean bool) return bool ? "true" : "false";
+        if (value instanceof Integer integer) return Integer.toString(integer);
+        return String.valueOf(value);
+    }
+    private static String escapeDelimitedValue(String value) {
+        if (value == null) return "";
+        return value.replace("\\", "\\\\")
+            .replace("|", "\\|")
+            .replace("=", "\\=")
+            .replace("#", "\\#")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r");
+    }
+    private static String invariantMarker(String kind, String field, String observed, String rule) {
+        return "BEAR_INVARIANT_VIOLATION|"
+            + "block=" + escapeDelimitedValue(BLOCK_KEY)
+            + "|kind=" + escapeDelimitedValue(kind)
+            + "|field=" + escapeDelimitedValue(field)
+            + "|observed=" + escapeDelimitedValue(observed)
+            + "|rule=" + escapeDelimitedValue(rule);
     }
 }

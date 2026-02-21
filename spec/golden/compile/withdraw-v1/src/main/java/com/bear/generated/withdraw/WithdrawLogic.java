@@ -2,5 +2,5 @@
 package com.bear.generated.withdraw;
 
 public interface WithdrawLogic {
-    WithdrawResult execute(WithdrawRequest request, IdempotencyPort idempotencyPort, LedgerPort ledgerPort);
+    WithdrawResult execute(WithdrawRequest request, LedgerPort ledgerPort);
 }

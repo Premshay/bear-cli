@@ -11,6 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -52,7 +53,7 @@ class JvmTargetTest {
         assertTrue(manifest.contains("\"capabilities\":[{\"name\":\"idempotency\",\"ops\":[\"get\",\"put\"]},{\"name\":\"ledger\",\"ops\":[\"getBalance\",\"setBalance\"]}]"));
         assertTrue(manifest.contains("\"allowedDeps\":[]"));
         assertTrue(manifest.contains("\"invariants\":[{\"kind\":\"non_negative\",\"field\":\"balance\"}]"));
-        assertTrue(manifest.contains("\"irHash\":\"e760299bd88662c50dd411c90612a0d1007a434920a7644144abc7611da2720f\""));
+        assertTrue(manifest.contains("\"irHash\":\"32e65c3c25e5d88bd16ddffdb8071b13cca68ef762a71154ca972d8a88a4ae9d\""));
         String wiring = first.get("wiring/withdraw.wiring.json");
         assertTrue(wiring.contains("\"schemaVersion\":\"v2\""));
         assertTrue(wiring.contains("\"blockKey\":\"withdraw\""));
@@ -62,8 +63,9 @@ class JvmTargetTest {
         assertTrue(wiring.contains("\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\""));
         assertTrue(wiring.contains("\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"]"));
         assertTrue(wiring.contains("\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"]"));
-        assertTrue(wiring.contains("\"logicRequiredPorts\":[\"idempotencyPort\",\"ledgerPort\"]"));
-        assertTrue(wiring.contains("\"wrapperOwnedSemanticPorts\":[]"));
+        assertTrue(wiring.contains("\"logicRequiredPorts\":[\"ledgerPort\"]"));
+        assertTrue(wiring.contains("\"wrapperOwnedSemanticPorts\":[\"idempotencyPort\"]"));
+        assertTrue(wiring.contains("\"wrapperOwnedSemanticChecks\":[\"IDEMPOTENCY\",\"INVARIANTS\"]"));
         String containmentGradle = first.get("gradle/bear-containment.gradle");
         assertFalse(containmentGradle.contains("exclude('blocks/**/impl/**')"));
     }
@@ -173,6 +175,126 @@ class JvmTargetTest {
         String entry = Files.readString(entrypoint);
         assertTrue(entry.contains("import java.math.BigDecimal;"));
         assertTrue(entry.contains("if (type == BigDecimal.class)"));
+        assertTrue(entry.contains("if (\"true\".equals(text)) return (T) Boolean.TRUE;"));
+        assertTrue(entry.contains("if (\"false\".equals(text)) return (T) Boolean.FALSE;"));
+        assertTrue(entry.contains("idempotency replay payload invalid value: \" + fieldName"));
+    }
+
+    @Test
+    void compileGeneratesProjectGlobalRuntimeExceptionOnceAndUsesWriteIfDiff(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        target.compile(normalizer.normalize(ir), tempDir, "withdraw");
+
+        Path secondaryIr = tempDir.resolve("status.bear.yaml");
+        Files.writeString(secondaryIr, ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: Status\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: requestId, type: string}]\n"
+            + "    outputs: [{name: ok, type: bool}]\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: state\n"
+            + "        ops: [get]\n");
+        BearIr second = parser.parse(secondaryIr);
+        validator.validate(second);
+        target.compile(normalizer.normalize(second), tempDir, "status");
+
+        Path runtimeException = tempDir.resolve(
+            "build/generated/bear/runtime/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java"
+        );
+        assertTrue(Files.exists(runtimeException));
+        long exceptionCount;
+        try (var stream = Files.walk(tempDir.resolve("build/generated/bear"))) {
+            exceptionCount = stream
+                .filter(Files::isRegularFile)
+                .filter(path -> "BearInvariantViolationException.java".equals(path.getFileName().toString()))
+                .count();
+        }
+        assertEquals(1L, exceptionCount);
+
+        FileTime forced = FileTime.fromMillis(1234L);
+        Files.setLastModifiedTime(runtimeException, forced);
+        target.compile(normalizer.normalize(second), tempDir, "status");
+        assertEquals(forced, Files.getLastModifiedTime(runtimeException));
+    }
+
+    @Test
+    void compileInvariantRuleCanonicalizationIsDeterministic(@TempDir Path tempDir) throws Exception {
+        Path irFile = tempDir.resolve("rules.bear.yaml");
+        Files.writeString(irFile, ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: Rules\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs:\n"
+            + "      - name: requestId\n"
+            + "        type: string\n"
+            + "      - name: tenantId\n"
+            + "        type: string\n"
+            + "    outputs:\n"
+            + "      - name: balance\n"
+            + "        type: int\n"
+            + "      - name: status\n"
+            + "        type: string\n"
+            + "      - name: mode\n"
+            + "        type: string\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: idempotency\n"
+            + "        ops: [get, put]\n"
+            + "      - port: ledger\n"
+            + "        ops: [apply]\n"
+            + "  idempotency:\n"
+            + "    keyFromInputs: [tenantId, requestId]\n"
+            + "    store:\n"
+            + "      port: idempotency\n"
+            + "      getOp: get\n"
+            + "      putOp: put\n"
+            + "  invariants:\n"
+            + "    - kind: non_negative\n"
+            + "      scope: result\n"
+            + "      field: balance\n"
+            + "    - kind: non_empty\n"
+            + "      scope: result\n"
+            + "      field: status\n"
+            + "    - kind: equals\n"
+            + "      scope: result\n"
+            + "      field: mode\n"
+            + "      params:\n"
+            + "        value: A|B\n"
+            + "    - kind: one_of\n"
+            + "      scope: result\n"
+            + "      field: mode\n"
+            + "      params:\n"
+            + "        values: [A, B#C]\n");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+        BearIr ir = parser.parse(irFile);
+        validator.validate(ir);
+        target.compile(normalizer.normalize(ir), tempDir, "rules");
+
+        Path entrypoint = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/rules/Rules.java");
+        String entry = Files.readString(entrypoint);
+        assertTrue(entry.contains("return \"BEAR_INVARIANT_VIOLATION|\""));
+        assertTrue(entry.contains("\"non_negative\""));
+        assertTrue(entry.contains("\"non_empty\""));
+        assertTrue(entry.contains("\"equals:A\\\\|B\""));
+        assertTrue(entry.contains("\"one_of:2|1#A|4#B\\\\#C\""));
     }
 
     @Test
@@ -271,7 +393,7 @@ class JvmTargetTest {
         String previousNeedle = System.getProperty("bear.compile.test.lockPathContains");
         String previousAction = System.getProperty("bear.compile.test.lockAction");
         try {
-            System.setProperty("bear.compile.test.lockPathContains", "BearInvariantViolationException.java");
+            System.setProperty("bear.compile.test.lockPathContains", "Withdraw.java");
             System.setProperty("bear.compile.test.lockAction", "replace");
 
             target.compile(normalized, tempDir, "withdraw");
@@ -288,12 +410,12 @@ class JvmTargetTest {
             }
         }
 
-        Path invariantException = tempDir.resolve(
-            "build/generated/bear/src/main/java/com/bear/generated/withdraw/BearInvariantViolationException.java"
+        Path generatedEntrypoint = tempDir.resolve(
+            "build/generated/bear/src/main/java/com/bear/generated/withdraw/Withdraw.java"
         );
-        assertTrue(Files.exists(invariantException));
-        String generated = Files.readString(invariantException);
-        assertTrue(generated.contains("class BearInvariantViolationException"));
+        assertTrue(Files.exists(generatedEntrypoint));
+        String generated = Files.readString(generatedEntrypoint);
+        assertTrue(generated.contains("class Withdraw"));
     }
 
     private static Map<String, String> readTree(Path root) throws IOException {

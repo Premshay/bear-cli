@@ -250,7 +250,8 @@ record WiringManifest(
     List<String> requiredEffectPorts,
     List<String> constructorPortParams,
     List<String> logicRequiredPorts,
-    List<String> wrapperOwnedSemanticPorts
+    List<String> wrapperOwnedSemanticPorts,
+    List<String> wrapperOwnedSemanticChecks
 ) {
 }
 
@@ -270,6 +271,7 @@ final class ManifestParseException extends Exception {
 enum ProjectTestStatus {
     PASSED,
     FAILED,
+    INVARIANT_VIOLATION,
     TIMEOUT,
     LOCKED,
     BOOTSTRAP_IO

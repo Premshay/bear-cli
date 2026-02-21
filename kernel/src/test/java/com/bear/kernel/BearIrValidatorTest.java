@@ -371,6 +371,139 @@ class BearIrValidatorTest {
     }
 
     @Test
+    void acceptIdempotencyKeyFromInputsOnly(@TempDir Path tempDir) throws IOException {
+        String yaml = ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: accountId, type: string}, {name: requestId, type: string}]\n"
+            + "    outputs: [{name: o, type: string}]\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: idempotency\n"
+            + "        ops: [get, put]\n"
+            + "  idempotency:\n"
+            + "    keyFromInputs: [accountId, requestId]\n"
+            + "    store:\n"
+            + "      port: idempotency\n"
+            + "      getOp: get\n"
+            + "      putOp: put\n";
+
+        Path file = tempDir.resolve("input.yaml");
+        Files.writeString(file, yaml);
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIr ir = parser.parse(file);
+        validator.validate(ir);
+    }
+
+    @Test
+    void rejectIdempotencyWithBothKeyAndKeyFromInputs(@TempDir Path tempDir) throws IOException {
+        String yaml = ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: accountId, type: string}, {name: requestId, type: string}]\n"
+            + "    outputs: [{name: o, type: string}]\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: idempotency\n"
+            + "        ops: [get, put]\n"
+            + "  idempotency:\n"
+            + "    key: requestId\n"
+            + "    keyFromInputs: [accountId, requestId]\n"
+            + "    store:\n"
+            + "      port: idempotency\n"
+            + "      getOp: get\n"
+            + "      putOp: put\n";
+
+        BearIrValidationException ex = assertSemanticError(tempDir, yaml);
+        assertEquals(BearIrValidationException.Code.INVALID_VALUE, ex.code());
+        assertEquals("block.idempotency", ex.path());
+    }
+
+    @Test
+    void rejectIdempotencyWithNeitherKeyNorKeyFromInputs(@TempDir Path tempDir) throws IOException {
+        String yaml = ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: requestId, type: string}]\n"
+            + "    outputs: [{name: o, type: string}]\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: idempotency\n"
+            + "        ops: [get, put]\n"
+            + "  idempotency:\n"
+            + "    store:\n"
+            + "      port: idempotency\n"
+            + "      getOp: get\n"
+            + "      putOp: put\n";
+
+        BearIrValidationException ex = assertSemanticError(tempDir, yaml);
+        assertEquals(BearIrValidationException.Code.INVALID_VALUE, ex.code());
+        assertEquals("block.idempotency", ex.path());
+    }
+
+    @Test
+    void rejectIdempotencyUnknownKeyFromInputsReference(@TempDir Path tempDir) throws IOException {
+        String yaml = ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: accountId, type: string}]\n"
+            + "    outputs: [{name: o, type: string}]\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: idempotency\n"
+            + "        ops: [get, put]\n"
+            + "  idempotency:\n"
+            + "    keyFromInputs: [accountId, requestId]\n"
+            + "    store:\n"
+            + "      port: idempotency\n"
+            + "      getOp: get\n"
+            + "      putOp: put\n";
+
+        BearIrValidationException ex = assertSemanticError(tempDir, yaml);
+        assertEquals(BearIrValidationException.Code.UNKNOWN_REFERENCE, ex.code());
+        assertEquals("block.idempotency.keyFromInputs[1]", ex.path());
+    }
+
+    @Test
+    void rejectIdempotencyDuplicateKeyFromInputs(@TempDir Path tempDir) throws IOException {
+        String yaml = ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: requestId, type: string}]\n"
+            + "    outputs: [{name: o, type: string}]\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: idempotency\n"
+            + "        ops: [get, put]\n"
+            + "  idempotency:\n"
+            + "    keyFromInputs: [requestId, requestId]\n"
+            + "    store:\n"
+            + "      port: idempotency\n"
+            + "      getOp: get\n"
+            + "      putOp: put\n";
+
+        BearIrValidationException ex = assertSemanticError(tempDir, yaml);
+        assertEquals(BearIrValidationException.Code.DUPLICATE, ex.code());
+        assertEquals("block.idempotency.keyFromInputs[1]", ex.path());
+    }
+
+    @Test
     void rejectUnknownInvariantFieldReference(@TempDir Path tempDir) throws IOException {
         String yaml = ""
             + "version: v1\n"
@@ -389,6 +522,48 @@ class BearIrValidatorTest {
         BearIrValidationException ex = assertSemanticError(tempDir, yaml);
         assertEquals(BearIrValidationException.Code.UNKNOWN_REFERENCE, ex.code());
         assertEquals("block.invariants[0].field", ex.path());
+    }
+
+    @Test
+    void rejectInvariantTypeMismatchForNonEmpty(@TempDir Path tempDir) throws IOException {
+        String yaml = ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: i, type: string}]\n"
+            + "    outputs: [{name: count, type: int}]\n"
+            + "  effects:\n"
+            + "    allow: []\n"
+            + "  invariants:\n"
+            + "    - kind: non_empty\n"
+            + "      field: count\n";
+
+        BearIrValidationException ex = assertSemanticError(tempDir, yaml);
+        assertEquals(BearIrValidationException.Code.INVALID_VALUE, ex.code());
+        assertEquals("block.invariants[0].kind", ex.path());
+    }
+
+    @Test
+    void rejectUnknownInvariantKind(@TempDir Path tempDir) throws IOException {
+        String yaml = ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: A\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs: [{name: i, type: string}]\n"
+            + "    outputs: [{name: o, type: string}]\n"
+            + "  effects:\n"
+            + "    allow: []\n"
+            + "  invariants:\n"
+            + "    - kind: unknown_kind\n"
+            + "      field: o\n";
+
+        BearIrValidationException ex = assertSchemaError(tempDir, yaml);
+        assertEquals(BearIrValidationException.Code.INVALID_ENUM, ex.code());
+        assertEquals("block.invariants[0].kind", ex.path());
     }
 
     @Test

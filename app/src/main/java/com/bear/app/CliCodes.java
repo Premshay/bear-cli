@@ -31,4 +31,6 @@ final class CliCodes {
     static final String CONTAINMENT_UNSUPPORTED_TARGET = "CONTAINMENT_UNSUPPORTED_TARGET";
     static final String REPO_MULTI_BLOCK_FAILED = "REPO_MULTI_BLOCK_FAILED";
     static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+    static final String MANIFEST_INVALID = "MANIFEST_INVALID";
+    static final String INVARIANT_VIOLATION = "INVARIANT_VIOLATION";
 }

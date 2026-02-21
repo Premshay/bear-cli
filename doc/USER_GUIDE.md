@@ -82,6 +82,9 @@ Behavior:
   - index-authoritative when exactly one `(ir, projectRoot)` tuple matches in `bear.blocks.yaml`
   - IR fallback when no tuple match exists
   - deterministic validation failure on canonical identity mismatch or ambiguous tuple matches
+- semantics are wrapper-owned by generation:
+  - idempotent wrappers compute/replay/persist idempotency payloads
+  - invariant checks run in wrappers on fresh and replay paths
 
 ### 3. Repair generated artifacts
 
@@ -127,7 +130,12 @@ Behavior:
   - direct impl usage in `src/main/**`
   - top-level `null` port args in governed entrypoint constructors
   - governed impl missing required effect-port usage (unless exact suppression comment is present)
+- fails with validation (`MANIFEST_INVALID`) when wiring semantics are inconsistent
+  - wrapper-owned semantic ports must not overlap logic-required ports
 - runs project tests only after no-drift result
+- invariant marker-first classification:
+  - test output marker `BEAR_INVARIANT_VIOLATION|block=...|kind=...|field=...|observed=...|rule=...`
+  - deterministic `CODE=INVARIANT_VIOLATION` in test-failure bucket
 - when IR declares `block.impl.allowedDeps`, also enforces containment handshake (script/index/marker hash) before tests
 - uses the same frozen block-key canonicalizer as `compile` for single-command index matching and identity checks
 

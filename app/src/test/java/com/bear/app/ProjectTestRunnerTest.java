@@ -38,6 +38,23 @@ class ProjectTestRunnerTest {
     }
 
     @Test
+    void invariantMarkerParsingIsStrictAndDeterministic() {
+        String valid = "BEAR_INVARIANT_VIOLATION|block=withdraw|kind=non_negative|field=balance|observed=\\<null\\>|rule=non_negative";
+        assertTrue(ProjectTestRunner.isInvariantViolationOutput("line\n" + valid + "\nline2"));
+        assertEquals(valid, ProjectTestRunner.firstInvariantViolationLine("prefix: " + valid));
+
+        String missingField = "BEAR_INVARIANT_VIOLATION|block=withdraw|kind=non_negative|observed=1|rule=non_negative";
+        assertFalse(ProjectTestRunner.isInvariantViolationOutput(missingField));
+        assertNull(ProjectTestRunner.firstInvariantViolationLine(missingField));
+
+        String wrongOrder = "BEAR_INVARIANT_VIOLATION|kind=non_negative|block=withdraw|field=balance|observed=1|rule=non_negative";
+        assertFalse(ProjectTestRunner.isInvariantViolationOutput(wrongOrder));
+
+        String extraField = valid + "|x=1";
+        assertFalse(ProjectTestRunner.isInvariantViolationOutput(extraField));
+    }
+
+    @Test
     void timeoutSecondsUsesPropertyWithSafeFallbacks() {
         String key = "bear.check.testTimeoutSeconds";
         String previous = System.getProperty(key);

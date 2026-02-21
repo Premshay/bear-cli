@@ -16,7 +16,14 @@ public record BearIr(String version, BearIr.Block block) {
     }
 
     public enum InvariantKind {
-        NON_NEGATIVE
+        NON_NEGATIVE,
+        NON_EMPTY,
+        EQUALS,
+        ONE_OF
+    }
+
+    public enum InvariantScope {
+        RESULT
     }
 
     public record Block(
@@ -42,13 +49,16 @@ public record BearIr(String version, BearIr.Block block) {
     public record EffectPort(String port, List<String> ops) {
     }
 
-    public record Idempotency(String key, IdempotencyStore store) {
+    public record Idempotency(String key, List<String> keyFromInputs, IdempotencyStore store) {
     }
 
     public record IdempotencyStore(String port, String getOp, String putOp) {
     }
 
-    public record Invariant(InvariantKind kind, String field) {
+    public record Invariant(InvariantKind kind, InvariantScope scope, String field, InvariantParams params) {
+    }
+
+    public record InvariantParams(String value, List<String> values) {
     }
 
     public record Impl(List<AllowedDep> allowedDeps) {
