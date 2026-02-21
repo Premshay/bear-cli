@@ -73,10 +73,47 @@ class JvmTargetTest {
 
         Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
         Files.createDirectories(impl.getParent());
-        Files.writeString(impl, "package com.bear.generated.withdraw;\nclass KeepMe {}\n");
+        Files.writeString(impl, "package blocks.withdraw.impl;\nclass KeepMe {}\n");
 
         target.compile(normalized, tempDir);
-        assertEquals("package com.bear.generated.withdraw;\nclass KeepMe {}\n", Files.readString(impl));
+        assertEquals("package blocks.withdraw.impl;\nclass KeepMe {}\n", Files.readString(impl));
+    }
+
+    @Test
+    void compileUsesSanitizedImplPackagePathForMultiTokenBlockName(@TempDir Path tempDir) throws Exception {
+        Path irFile = tempDir.resolve("create-wallet.bear.yaml");
+        Files.writeString(irFile, ""
+            + "version: v1\n"
+            + "block:\n"
+            + "  name: CreateWallet\n"
+            + "  kind: logic\n"
+            + "  contract:\n"
+            + "    inputs:\n"
+            + "      - name: ownerId\n"
+            + "        type: string\n"
+            + "    outputs:\n"
+            + "      - name: walletId\n"
+            + "        type: string\n"
+            + "  effects:\n"
+            + "    allow:\n"
+            + "      - port: walletStore\n"
+            + "        ops: [put]\n");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(irFile);
+        validator.validate(ir);
+        BearIr normalized = normalizer.normalize(ir);
+        target.compile(normalized, tempDir);
+
+        Path impl = tempDir.resolve("src/main/java/blocks/create/wallet/impl/CreateWalletImpl.java");
+        assertTrue(Files.exists(impl));
+        String content = Files.readString(impl);
+        assertTrue(content.contains("package blocks.create.wallet.impl;"));
+        assertFalse(Files.exists(tempDir.resolve("src/main/java/blocks/create-wallet/impl/CreateWalletImpl.java")));
     }
 
     @Test

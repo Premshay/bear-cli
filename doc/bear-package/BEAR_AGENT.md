@@ -22,7 +22,7 @@ Purpose:
 6. Do not remove `bear.blocks.yaml` to bypass `--all` governance.
 7. In greenfield (no `spec/*.bear.yaml`), create IR and run `bear validate` + `bear compile` before writing implementation source files.
 8. Do not invent replacement contracts/ports to bypass BEAR generation; implement against generated BEAR request/result/port interfaces.
-9. Do not create domain logic classes under `com.bear.generated.*` except user-owned `*Impl.java` files created by BEAR compile.
+9. Do not create domain logic classes under `com.bear.generated.*`; generated runtime types live there, while user-owned `*Impl.java` files are created under `blocks.<pkg-segment>.impl`.
 10. If expected feature files/paths are missing, treat repository state as greenfield or extension based on actual `spec/*.bear.yaml` presence; do not switch to ad-hoc implementation-first mode.
 11. If `bear validate`/`bear compile`/`bear check` fails, fix the actual failing cause and rerun; do not bypass by writing non-BEAR replacement architecture.
 12. Prefer the smallest design that satisfies requirements and BEAR constraints.
@@ -30,11 +30,11 @@ Purpose:
 14. If BEAR tooling fails with IO/lock/environment defects, stop and report the tooling failure; do not mutate unrelated IR to fit stale generated outputs.
 15. On `IO_ERROR`/`WINDOWS_FILE_LOCK`, do not rename blocks/IR files, do not alter filesystem ACL/permissions, and do not perform manual generated-file surgery as a workaround.
 16. Retry budget for tooling/lock defects: one deterministic retry after setting repo-local `GRADLE_USER_HOME`; if failure persists, stop and report blocker details.
-17. Never add workaround type stubs/classes under `src/main/java/com/bear/generated/**` (for example fake `BigDecimal`); only generated files and user-owned `*Impl.java` are allowed there.
+17. Never add workaround type stubs/classes under `src/main/java/com/bear/generated/**` (for example fake `BigDecimal`); generated classes there are BEAR-owned.
 18. If implementation needs a new library, declare it in `block.impl.allowedDeps` (IR-first); do not silently add impl classpath reach.
 19. For IR with `impl.allowedDeps` on Java+Gradle projects, ensure the project applies generated containment entrypoint and run Gradle once before relying on `bear check`.
 20. For generated `*Impl.java`, replace the generated stub method body; do not keep the placeholder return/throw and append logic below it.
-21. Canonical user-owned implementation path is `src/main/java/blocks/<block-key>/impl/<BlockName>Impl.java`; do not relocate `*Impl.java` to `src/main/java/com/bear/generated/**` unless BEAR compile explicitly regenerates there.
+21. Canonical user-owned implementation path is `src/main/java/blocks/<pkg-segment>/impl/<BlockName>Impl.java` and package `blocks.<pkg-segment>.impl`; do not relocate `*Impl.java` to `src/main/java/com/bear/generated/**`.
 22. In greenfield, default to exactly one block; creating block #2 requires `Decomposition Evidence` with direct spec quotes before generation.
 23. `bear fix` is drift-repair only; do not run `bear fix` for `TEST_FAILURE` or `IO_ERROR`.
 
@@ -128,7 +128,7 @@ Edit:
 - repo-owned IR/docs/scripts
 
 Preferred user-owned impl location:
-- `src/main/java/blocks/<block-key>/impl/<BlockName>Impl.java`
+- `src/main/java/blocks/<pkg-segment>/impl/<BlockName>Impl.java` (package `blocks.<pkg-segment>.impl`)
 
 ## Canonical Gates
 

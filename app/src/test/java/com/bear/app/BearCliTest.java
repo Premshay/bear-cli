@@ -794,7 +794,7 @@ class BearCliTest {
         Files.writeString(usesImpl, ""
             + "package com.example;\n"
             + "\n"
-            + "import com.bear.generated.withdraw.WithdrawImpl;\n"
+            + "import blocks.withdraw.impl.WithdrawImpl;\n"
             + "\n"
             + "public final class UsesWithdrawImpl {\n"
             + "    private final WithdrawImpl impl = new WithdrawImpl();\n"

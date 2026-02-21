@@ -37,7 +37,10 @@ Rules:
 
 ## Package Model
 - Generated package: `com.bear.generated.<blockname-lowercase-sanitized>`
-- Impl stub uses the same package but lives under user-owned `src/main/java`.
+- User impl package: `blocks.<package-segment>.impl`
+- User impl path: `src/main/java/blocks/<package-segment-path>/impl/<BlockName>Impl.java`
+
+`<package-segment>` uses the same Java-safe sanitizer as generated package segments.
 
 Name normalization rules:
 - Split on non-alphanumeric boundaries and camel-case transitions.
@@ -58,7 +61,7 @@ Main sources:
 - `BearInvariantViolationException.java` runtime invariant failure type
 
 User source:
-- `<BlockName>Impl.java` in `src/main/java` (create once)
+- `<BlockName>Impl.java` in `src/main/java/blocks/<package-segment-path>/impl` (create once)
 
 Generated tests (conditional):
 - `<BlockName>IdempotencyTest.java` when idempotency is declared

@@ -30,13 +30,22 @@ blocks.each { block ->
     def markTaskName = "markBearContainment_${safeName}"
     def outputDir = file("$buildDir/bear/impl-classes/${blockKey}")
 
-    def legacyImplDir = String.valueOf(block.legacyImplDir)
+    def implDir = String.valueOf(block.implDir)
+    def legacyImplDir = block.containsKey('legacyImplDir') && block.legacyImplDir != null
+        ? String.valueOf(block.legacyImplDir)
+        : null
 
-    def legacyImplPattern = legacyImplDir.startsWith('src/main/java/')
-        ? legacyImplDir.substring('src/main/java/'.length()) + '/**/*Impl.java'
-        : legacyImplDir + '/**/*Impl.java'
+    def implPattern = implDir.startsWith('src/main/java/')
+        ? implDir.substring('src/main/java/'.length()) + '/**/*Impl.java'
+        : implDir + '/**/*Impl.java'
     compileJavaTask.configure {
-        exclude(legacyImplPattern)
+        exclude(implPattern)
+        if (legacyImplDir != null && !legacyImplDir.isBlank()) {
+            def legacyImplPattern = legacyImplDir.startsWith('src/main/java/')
+                ? legacyImplDir.substring('src/main/java/'.length()) + '/**/*Impl.java'
+                : legacyImplDir + '/**/*Impl.java'
+            exclude(legacyImplPattern)
+        }
     }
 
     def pureConfig = configurations.findByName(configName) ?: configurations.create(configName)
@@ -49,10 +58,11 @@ blocks.each { block ->
 
     tasks.register(compileTaskName, JavaCompile) {
         dependsOn(compileJavaTask)
-        source = files(
-            fileTree("$rootDir/src/main/java/blocks/${blockKey}/impl") { include '**/*.java' },
-            fileTree("$rootDir/${legacyImplDir}") { include '*Impl.java' }
-        )
+        def sourceTrees = [fileTree("$rootDir/${implDir}") { include '**/*.java' }]
+        if (legacyImplDir != null && !legacyImplDir.isBlank()) {
+            sourceTrees.add(fileTree("$rootDir/${legacyImplDir}") { include '*Impl.java' })
+        }
+        source = files(sourceTrees)
         classpath = files("$buildDir/classes/java/main") + pureConfig
         destinationDirectory.set(outputDir)
         options.encoding = 'UTF-8'

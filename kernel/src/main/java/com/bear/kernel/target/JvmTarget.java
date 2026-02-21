@@ -45,13 +45,22 @@ public final class JvmTarget implements Target {
         String packageSegment = sanitizePackageSegment(ir.block().name());
         String packageName = "com.bear.generated." + packageSegment;
         String packagePath = packageName.replace('.', '/');
+        String implPackageName = "blocks." + packageSegment + ".impl";
+        String implPackagePath = implPackageName.replace('.', '/');
 
         Path generatedRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
         Path generatedMain = generatedRoot.resolve("src").resolve("main").resolve("java").resolve(packagePath);
         Path generatedTest = generatedRoot.resolve("src").resolve("test").resolve("java").resolve(packagePath);
         Path generatedSurfaces = generatedRoot.resolve("surfaces");
         Path surfaceMarker = generatedSurfaces.resolve(blockKey + ".surface.json");
-        Path userMain = projectRoot.resolve("src").resolve("main").resolve("java").resolve("blocks").resolve(blockKey).resolve("impl");
+        Path userMain = projectRoot.resolve("src").resolve("main").resolve("java").resolve(implPackagePath);
+        Path userMainLegacyByBlockKey = projectRoot
+            .resolve("src")
+            .resolve("main")
+            .resolve("java")
+            .resolve("blocks")
+            .resolve(blockKey)
+            .resolve("impl");
         Path userMainLegacy = projectRoot.resolve("src").resolve("main").resolve("java").resolve(packagePath);
         Path generatedConfig = generatedRoot.resolve("config");
         Path generatedAllowedDeps = generatedConfig.resolve("allowed-deps");
@@ -96,7 +105,13 @@ public final class JvmTarget implements Target {
             syncDirectory(stagingMain, generatedMain);
             syncDirectory(stagingTest, generatedTest);
             syncFile(stagingSurfaceMarker, surfaceMarker);
-            writeContainmentArtifacts(projectRoot, generatedAllowedDeps, generatedGradle, blockKey, packageSegment, ir.block().impl());
+            writeContainmentArtifacts(
+                generatedAllowedDeps,
+                generatedGradle,
+                blockKey,
+                "src/main/java/" + implPackagePath,
+                ir.block().impl()
+            );
         } finally {
             try {
                 deleteDirectoryIfExists(stagingRoot);
@@ -107,8 +122,9 @@ public final class JvmTarget implements Target {
 
         Path userImpl = userMain.resolve(blockName + "Impl.java");
         Path legacyImpl = userMainLegacy.resolve(blockName + "Impl.java");
-        if (!Files.exists(userImpl) && !Files.exists(legacyImpl)) {
-            write(userImpl, renderImplStub(packageName, blockName, ports, outputs));
+        Path legacyByBlockKeyImpl = userMainLegacyByBlockKey.resolve(blockName + "Impl.java");
+        if (!Files.exists(userImpl) && !Files.exists(legacyImpl) && !Files.exists(legacyByBlockKeyImpl)) {
+            write(userImpl, renderImplStub(implPackageName, packageName, blockName, ports, outputs));
         }
     }
 
@@ -329,11 +345,32 @@ public final class JvmTarget implements Target {
         }
     }
 
-    private String renderImplStub(String packageName, String blockName, List<PortModel> ports, List<FieldModel> outputs) {
+    private String renderImplStub(
+        String implPackageName,
+        String generatedPackageName,
+        String blockName,
+        List<PortModel> ports,
+        List<FieldModel> outputs
+    ) {
+        List<String> imports = new ArrayList<>();
+        imports.add(generatedPackageName + "." + blockName + "Logic");
+        imports.add(generatedPackageName + "." + blockName + "Request");
+        imports.add(generatedPackageName + "." + blockName + "Result");
+        for (PortModel port : ports) {
+            imports.add(generatedPackageName + "." + port.interfaceName);
+        }
+        imports.sort(String::compareTo);
+
         StringBuilder s = new StringBuilder();
-        s.append("package ").append(packageName).append(";\n\n");
+        s.append("package ").append(implPackageName).append(";\n\n");
+        for (String importType : imports) {
+            s.append("import ").append(importType).append(";\n");
+        }
         if (usesBigDecimal(outputs)) {
-            s.append("import java.math.BigDecimal;\n\n");
+            s.append("import java.math.BigDecimal;\n");
+        }
+        if (!imports.isEmpty() || usesBigDecimal(outputs)) {
+            s.append("\n");
         }
         s.append("public final class ").append(blockName).append("Impl implements ").append(blockName).append("Logic {\n");
         s.append("    @Override\n");
@@ -463,11 +500,10 @@ public final class JvmTarget implements Target {
     }
 
     private void writeContainmentArtifacts(
-        Path projectRoot,
         Path allowedDepsDir,
         Path generatedGradleDir,
         String blockKey,
-        String packageSegment,
+        String implDir,
         BearIr.Impl impl
     ) throws IOException {
         Files.createDirectories(allowedDepsDir);
@@ -489,8 +525,7 @@ public final class JvmTarget implements Target {
             index.remove(blockKey);
             deletePath(blockConfig);
         } else {
-            String legacyImplDir = "src/main/java/com/bear/generated/" + packageSegment.replace('.', '/');
-            ContainmentBlockSpec spec = new ContainmentBlockSpec(blockKey, legacyImplDir, deps);
+            ContainmentBlockSpec spec = new ContainmentBlockSpec(blockKey, implDir, null, deps);
             index.put(blockKey, spec);
             write(blockConfig, renderAllowedDepsConfig(spec));
         }
@@ -517,25 +552,53 @@ public final class JvmTarget implements Target {
 
         Matcher blockMatcher = Pattern
             .compile(
-                "\\{\\\"blockKey\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"legacyImplDir\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"allowedDeps\\\":\\[(.*?)\\]\\}",
+                "\\{\\\"blockKey\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"implDir\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",(?:\\\"legacyImplDir\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",)?\\\"allowedDeps\\\":\\[(.*?)\\]\\}",
                 Pattern.DOTALL
             )
             .matcher(blocksPayload);
+        boolean matchedAny = false;
         while (blockMatcher.find()) {
+            matchedAny = true;
             String key = jsonUnescape(blockMatcher.group(1));
-            String legacyImplDir = jsonUnescape(blockMatcher.group(2));
-            String depsPayload = blockMatcher.group(3);
-            ArrayList<ContainmentDep> deps = new ArrayList<>();
-            Matcher depMatcher = Pattern
-                .compile("\\{\\\"ga\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"version\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\"\\}")
-                .matcher(depsPayload);
-            while (depMatcher.find()) {
-                deps.add(new ContainmentDep(jsonUnescape(depMatcher.group(1)), jsonUnescape(depMatcher.group(2))));
+            String implDir = jsonUnescape(blockMatcher.group(2));
+            String legacyImplDir = blockMatcher.group(3) == null ? null : jsonUnescape(blockMatcher.group(3));
+            String depsPayload = blockMatcher.group(4);
+            index.put(key, parseContainmentBlock(key, implDir, legacyImplDir, depsPayload));
+        }
+
+        if (!matchedAny) {
+            Matcher legacyMatcher = Pattern
+                .compile(
+                    "\\{\\\"blockKey\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"legacyImplDir\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"allowedDeps\\\":\\[(.*?)\\]\\}",
+                    Pattern.DOTALL
+                )
+                .matcher(blocksPayload);
+            while (legacyMatcher.find()) {
+                String key = jsonUnescape(legacyMatcher.group(1));
+                String legacyImplDir = jsonUnescape(legacyMatcher.group(2));
+                String depsPayload = legacyMatcher.group(3);
+                String implDir = "src/main/java/blocks/" + key.replace('.', '/') + "/impl";
+                index.put(key, parseContainmentBlock(key, implDir, legacyImplDir, depsPayload));
             }
-            deps.sort(Comparator.comparing(ContainmentDep::ga));
-            index.put(key, new ContainmentBlockSpec(key, legacyImplDir, deps));
         }
         return index;
+    }
+
+    private ContainmentBlockSpec parseContainmentBlock(
+        String blockKey,
+        String implDir,
+        String legacyImplDir,
+        String depsPayload
+    ) {
+        ArrayList<ContainmentDep> deps = new ArrayList<>();
+        Matcher depMatcher = Pattern
+            .compile("\\{\\\"ga\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\",\\\"version\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\"\\}")
+            .matcher(depsPayload);
+        while (depMatcher.find()) {
+            deps.add(new ContainmentDep(jsonUnescape(depMatcher.group(1)), jsonUnescape(depMatcher.group(2))));
+        }
+        deps.sort(Comparator.comparing(ContainmentDep::ga));
+        return new ContainmentBlockSpec(blockKey, implDir, legacyImplDir, deps);
     }
 
     private String renderContainmentRequired(Map<String, ContainmentBlockSpec> index) {
@@ -551,7 +614,7 @@ public final class JvmTarget implements Target {
             }
             firstBlock = false;
             out.append("{\"blockKey\":\"").append(jsonEscape(block.blockKey())).append("\",");
-            out.append("\"legacyImplDir\":\"").append(jsonEscape(block.legacyImplDir())).append("\",");
+            out.append("\"implDir\":\"").append(jsonEscape(block.implDir())).append("\",");
             out.append("\"allowedDeps\":[");
             for (int i = 0; i < block.allowedDeps().size(); i++) {
                 if (i > 0) {
@@ -572,7 +635,7 @@ public final class JvmTarget implements Target {
         StringBuilder out = new StringBuilder();
         out.append("{");
         out.append("\"blockKey\":\"").append(jsonEscape(block.blockKey())).append("\",");
-        out.append("\"legacyImplDir\":\"").append(jsonEscape(block.legacyImplDir())).append("\",");
+        out.append("\"implDir\":\"").append(jsonEscape(block.implDir())).append("\",");
         out.append("\"allowedDeps\":[");
         for (int i = 0; i < block.allowedDeps().size(); i++) {
             if (i > 0) {
@@ -614,12 +677,21 @@ public final class JvmTarget implements Target {
             + "    def compileTaskName = \"compileBearImpl_${safeName}\"\n"
             + "    def markTaskName = \"markBearContainment_${safeName}\"\n"
             + "    def outputDir = file(\"$buildDir/bear/impl-classes/${blockKey}\")\n\n"
-            + "    def legacyImplDir = String.valueOf(block.legacyImplDir)\n\n"
-            + "    def legacyImplPattern = legacyImplDir.startsWith('src/main/java/')\n"
-            + "        ? legacyImplDir.substring('src/main/java/'.length()) + '/**/*Impl.java'\n"
-            + "        : legacyImplDir + '/**/*Impl.java'\n"
+            + "    def implDir = String.valueOf(block.implDir)\n"
+            + "    def legacyImplDir = block.containsKey('legacyImplDir') && block.legacyImplDir != null\n"
+            + "        ? String.valueOf(block.legacyImplDir)\n"
+            + "        : null\n\n"
+            + "    def implPattern = implDir.startsWith('src/main/java/')\n"
+            + "        ? implDir.substring('src/main/java/'.length()) + '/**/*Impl.java'\n"
+            + "        : implDir + '/**/*Impl.java'\n"
             + "    compileJavaTask.configure {\n"
-            + "        exclude(legacyImplPattern)\n"
+            + "        exclude(implPattern)\n"
+            + "        if (legacyImplDir != null && !legacyImplDir.isBlank()) {\n"
+            + "            def legacyImplPattern = legacyImplDir.startsWith('src/main/java/')\n"
+            + "                ? legacyImplDir.substring('src/main/java/'.length()) + '/**/*Impl.java'\n"
+            + "                : legacyImplDir + '/**/*Impl.java'\n"
+            + "            exclude(legacyImplPattern)\n"
+            + "        }\n"
             + "    }\n\n"
             + "    def pureConfig = configurations.findByName(configName) ?: configurations.create(configName)\n"
             + "    pureConfig.canBeConsumed = false\n"
@@ -630,10 +702,11 @@ public final class JvmTarget implements Target {
             + "    }\n\n"
             + "    tasks.register(compileTaskName, JavaCompile) {\n"
             + "        dependsOn(compileJavaTask)\n"
-            + "        source = files(\n"
-            + "            fileTree(\"$rootDir/src/main/java/blocks/${blockKey}/impl\") { include '**/*.java' },\n"
-            + "            fileTree(\"$rootDir/${legacyImplDir}\") { include '*Impl.java' }\n"
-            + "        )\n"
+            + "        def sourceTrees = [fileTree(\"$rootDir/${implDir}\") { include '**/*.java' }]\n"
+            + "        if (legacyImplDir != null && !legacyImplDir.isBlank()) {\n"
+            + "            sourceTrees.add(fileTree(\"$rootDir/${legacyImplDir}\") { include '*Impl.java' })\n"
+            + "        }\n"
+            + "        source = files(sourceTrees)\n"
             + "        classpath = files(\"$buildDir/classes/java/main\") + pureConfig\n"
             + "        destinationDirectory.set(outputDir)\n"
             + "        options.encoding = 'UTF-8'\n"
@@ -800,17 +873,16 @@ public final class JvmTarget implements Target {
     }
 
     private String sanitizePackageSegment(String raw) {
-        String normalized = raw.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", " ").trim();
-        if (normalized.isEmpty()) {
+        List<String> tokens = splitTokens(raw);
+        if (tokens.isEmpty()) {
             return "block";
         }
         StringBuilder out = new StringBuilder();
-        String[] parts = normalized.split("\\s+");
-        for (int i = 0; i < parts.length; i++) {
+        for (int i = 0; i < tokens.size(); i++) {
             if (i > 0) {
                 out.append('.');
             }
-            String segment = parts[i];
+            String segment = tokens.get(i);
             if (Character.isDigit(segment.charAt(0))) {
                 segment = "_" + segment;
             }
@@ -1096,7 +1168,12 @@ public final class JvmTarget implements Target {
     private record ContainmentDep(String ga, String version) {
     }
 
-    private record ContainmentBlockSpec(String blockKey, String legacyImplDir, List<ContainmentDep> allowedDeps) {
+    private record ContainmentBlockSpec(
+        String blockKey,
+        String implDir,
+        String legacyImplDir,
+        List<ContainmentDep> allowedDeps
+    ) {
     }
 
     @FunctionalInterface

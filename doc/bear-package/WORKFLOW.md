@@ -113,7 +113,7 @@ Do not assume `bin/bear-all.*` or `bin/pr-gate.*` exists.
 5. `4` project tests failed:
 - fix implementation/tests
 - if compiler reports unreachable code in `*Impl.java`, replace the generated stub body entirely (do not append logic below placeholder return/throw)
-- verify `*Impl.java` stays in `src/main/java/blocks/<block-key>/impl/` unless BEAR compile regenerated a different path
+- verify `*Impl.java` stays in `src/main/java/blocks/<pkg-segment>/impl/` (package `blocks.<pkg-segment>.impl`) unless BEAR compile regenerated a different path
 
 6. `5` boundary expansion (`pr-check`):
 - confirm expansion is intentional and reviewable
