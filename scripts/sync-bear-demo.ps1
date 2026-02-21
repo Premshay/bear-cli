@@ -80,6 +80,44 @@ function Confirm-OrThrow([switch]$WhatIf, [switch]$Yes) {
     }
 }
 
+function Ensure-GitIgnoreEntry([string]$gitIgnorePath, [string]$entry, [switch]$WhatIf) {
+    $normalizedEntry = $entry.Trim()
+    if ($normalizedEntry.Length -eq 0) {
+        return $false
+    }
+
+    if (-not (Test-Path -LiteralPath $gitIgnorePath)) {
+        if ($WhatIf) {
+            Write-Output ("WhatIf: would create {0} with entry: {1}" -f $gitIgnorePath, $normalizedEntry)
+            return $true
+        }
+        Set-Content -LiteralPath $gitIgnorePath -Value ($normalizedEntry + [Environment]::NewLine)
+        return $true
+    }
+
+    $existingRaw = Get-Content -LiteralPath $gitIgnorePath -Raw
+    $normalizedRaw = $existingRaw -replace "`r`n", "`n"
+    $lines = $normalizedRaw -split "`n"
+    foreach ($line in $lines) {
+        if ($line.Trim() -eq $normalizedEntry) {
+            return $false
+        }
+    }
+
+    if ($WhatIf) {
+        Write-Output ("WhatIf: would append {0} to {1}" -f $normalizedEntry, $gitIgnorePath)
+        return $true
+    }
+
+    if (($normalizedRaw.Length -gt 0) -and (-not $normalizedRaw.EndsWith("`n"))) {
+        $normalizedRaw += "`n"
+    }
+    $normalizedRaw += $normalizedEntry + "`n"
+    $finalRaw = $normalizedRaw -replace "`n", [Environment]::NewLine
+    Set-Content -LiteralPath $gitIgnorePath -Value $finalRaw
+    return $true
+}
+
 $repoRoot = Resolve-RepoRoot
 $demoRoot = Resolve-Absolute $DemoRepoPath
 if (-not (Test-Path (Join-Path $demoRoot ".git"))) {
@@ -168,6 +206,15 @@ foreach ($map in $docMappings) {
     }
     Copy-Item -LiteralPath $src -Destination $dst -Force
     Write-Output ("Synced package file: {0}" -f $dst)
+}
+
+$demoGitIgnore = Assert-Inside $demoRoot (Join-Path $demoRoot ".gitignore")
+if (Ensure-GitIgnoreEntry -gitIgnorePath $demoGitIgnore -entry ".bear-gradle-user-home/" -WhatIf:$WhatIf) {
+    if ($WhatIf) {
+        Write-Output "WhatIf: demo .gitignore would be updated with .bear-gradle-user-home/"
+    } else {
+        Write-Output "Ensured demo .gitignore contains .bear-gradle-user-home/"
+    }
 }
 
 $srcAppJar = Join-Path $installRoot "lib\app-0.1.0-SNAPSHOT.jar"

@@ -1,6 +1,7 @@
 param(
     [switch]$WhatIf,
     [switch]$IncludeGreenfieldReset,
+    [switch]$IncludeGradleCache,
     [switch]$Yes
 )
 
@@ -44,7 +45,6 @@ $repoRoot = Resolve-RepoRoot
 
 # Paths that are BEAR-generated or deterministic temporary outputs.
 $generatedRelativeTargets = @(
-    ".bear-gradle-user-home",
     ".gradle-user",
     ".bear-test-results",
     ".tmp-compile-work",
@@ -59,6 +59,10 @@ $generatedRelativeTargets = @(
     "src/main/java/com/bear/generated",
     "src/test/java/com/bear/generated"
 )
+
+if ($IncludeGradleCache) {
+    $generatedRelativeTargets = @(".bear-gradle-user-home") + $generatedRelativeTargets
+}
 
 # Optional reset paths for fresh greenfield re-runs.
 $greenfieldResetTargets = @(
@@ -90,6 +94,9 @@ $targets = @($targets | Sort-Object -Unique)
 
 if ($targets.Count -eq 0) {
     Write-Output "No BEAR cleanup targets found."
+    if ((-not $IncludeGradleCache) -and (Test-Path -LiteralPath (Join-Path $repoRoot ".bear-gradle-user-home"))) {
+        Write-Output "Note: .bear-gradle-user-home was retained (use -IncludeGradleCache to remove it)."
+    }
     exit 0
 }
 
@@ -97,6 +104,9 @@ Write-Output "BEAR cleanup targets:"
 foreach ($t in $targets) {
     $full = Assert-InRepo $repoRoot $t
     Write-Output " - $full"
+}
+if ((-not $IncludeGradleCache) -and (Test-Path -LiteralPath (Join-Path $repoRoot ".bear-gradle-user-home"))) {
+    Write-Output "Note: retaining $(Join-Path $repoRoot ".bear-gradle-user-home") (use -IncludeGradleCache to remove it)."
 }
 
 if ($WhatIf) {
