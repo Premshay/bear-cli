@@ -325,7 +325,7 @@ class BearCliTest {
             run.stderr,
             "USAGE_INVALID_ARGS",
             "cli.args",
-            "Run `bear check <ir-file> --project <path>` with the expected arguments."
+            "Run `bear check <ir-file> --project <path> [--strict-hygiene]` with the expected arguments."
         );
     }
 
@@ -409,6 +409,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path baselineFile = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/withdraw/Withdraw.java");
         byte[] before = Files.readAllBytes(baselineFile);
@@ -463,6 +464,70 @@ class BearCliTest {
         assertFalse(Files.exists(removedFile));
         assertTrue(Files.exists(addedFile));
         assertEquals(changedBefore + "\n// drift\n", Files.readString(changedFile));
+    }
+
+    @Test
+    void checkLegacyRuntimePathPresenceFailsDrift(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+                "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path legacy = tempDir.resolve("build/generated/bear/runtime/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java");
+        Files.createDirectories(legacy.getParent());
+        Files.writeString(legacy, "// legacy runtime should not exist\n");
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(3, check.exitCode);
+        assertTrue(
+            normalizeLf(check.stderr).contains(
+                "runtime/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java"
+            )
+        );
+    }
+
+    @Test
+    void checkMissingCanonicalRuntimeFailsDrift(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+                "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Files.delete(tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java"));
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(3, check.exitCode);
+        assertTrue(
+            normalizeLf(check.stderr).contains(
+                "src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java"
+            )
+        );
+    }
+
+    @Test
+    void checkCanonicalRuntimeOnlyPasses(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+                "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        assertFalse(Files.exists(tempDir.resolve("build/generated/bear/runtime/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java")));
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
     }
 
     @Test
@@ -675,6 +740,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(74, check.exitCode);
@@ -694,6 +760,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
         assertEquals(74, check.exitCode);
@@ -713,6 +780,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -738,6 +806,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -766,6 +835,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -789,6 +859,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path usesImpl = tempDir.resolve("src/test/java/com/example/UsesWithdrawImpl.java");
         Files.createDirectories(usesImpl.getParent());
@@ -815,7 +886,7 @@ class BearCliTest {
                 + "if not exist src\\test\\java\\com\\example\\UsesWithdrawImpl.java exit /b 1\r\n"
                 + "if not exist src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java exit /b 1\r\n"
                 + "if not exist build\\project-test-classes mkdir build\\project-test-classes\r\n"
-                + "javac -d build\\project-test-classes build\\generated\\bear\\src\\main\\java\\com\\bear\\generated\\withdraw\\*.java build\\generated\\bear\\runtime\\src\\main\\java\\com\\bear\\generated\\runtime\\*.java src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java src\\test\\java\\com\\example\\UsesWithdrawImpl.java\r\n"
+                + "javac -d build\\project-test-classes build\\generated\\bear\\src\\main\\java\\com\\bear\\generated\\withdraw\\*.java build\\generated\\bear\\src\\main\\java\\com\\bear\\generated\\runtime\\*.java src\\main\\java\\blocks\\withdraw\\impl\\WithdrawImpl.java src\\test\\java\\com\\example\\UsesWithdrawImpl.java\r\n"
                 + "if errorlevel 1 exit /b 1\r\n"
                 + "echo TEST_OK\r\n"
                 + "exit /b 0\r\n",
@@ -828,7 +899,7 @@ class BearCliTest {
                 + "test -f src/test/java/com/example/UsesWithdrawImpl.java\n"
                 + "test -f src/main/java/blocks/withdraw/impl/WithdrawImpl.java\n"
                 + "mkdir -p build/project-test-classes\n"
-                + "javac -d build/project-test-classes build/generated/bear/src/main/java/com/bear/generated/withdraw/*.java build/generated/bear/runtime/src/main/java/com/bear/generated/runtime/*.java src/main/java/blocks/withdraw/impl/WithdrawImpl.java src/test/java/com/example/UsesWithdrawImpl.java\n"
+                + "javac -d build/project-test-classes build/generated/bear/src/main/java/com/bear/generated/withdraw/*.java build/generated/bear/src/main/java/com/bear/generated/runtime/*.java src/main/java/blocks/withdraw/impl/WithdrawImpl.java src/test/java/com/example/UsesWithdrawImpl.java\n"
                 + "echo TEST_OK\n"
                 + "exit 0\n"
         );
@@ -845,6 +916,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -862,6 +934,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path marker = tempDir.resolve("gradle-user-home.txt");
         String markerPath = marker.toString();
@@ -886,6 +959,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -908,7 +982,7 @@ class BearCliTest {
                 check.stderr,
                 "IO_ERROR",
                 "project.tests",
-                "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check <ir-file> --project <path>`."
+                "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check <ir-file> --project <path>`."
             );
         } finally {
             restoreSystemProperty(key, previous);
@@ -920,6 +994,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -942,7 +1017,7 @@ class BearCliTest {
                 check.stderr,
                 "IO_ERROR",
                 "project.tests",
-                "Fix Gradle wrapper bootstrap/cache (distribution zip/unzip) and rerun `bear check <ir-file> --project <path>`."
+                "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check <ir-file> --project <path>`."
             );
         } finally {
             restoreSystemProperty(key, previous);
@@ -956,6 +1031,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -985,6 +1061,7 @@ class BearCliTest {
 
         CliRunResult compile = runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(0, compile.exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -1048,6 +1125,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path marker = tempDir.resolve("wrapper-ran.txt");
         String markerPath = marker.toString();
@@ -1078,14 +1156,15 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path srcRoot = tempDir.resolve("src/main/java/example");
         Files.createDirectories(srcRoot);
-        Files.writeString(srcRoot.resolve("A.java"), "class A { String s = \"java.net.http.HttpClient\"; }");
-        Files.writeString(srcRoot.resolve("B.java"), "class B { String s = \"java.net.URL\"; String t = \"openConnection(\"; }");
-        Files.writeString(srcRoot.resolve("C.java"), "class C { String s = \"okhttp3.OkHttpClient\"; }");
-        Files.writeString(srcRoot.resolve("D.java"), "class D { String s = \"org.springframework.web.client.RestTemplate\"; }");
-        Files.writeString(srcRoot.resolve("E.java"), "class E { String s = \"java.net.HttpURLConnection\"; }");
+        Files.writeString(srcRoot.resolve("A.java"), "package example;\nimport java.net.http.HttpClient;\nclass A { HttpClient client; }\n");
+        Files.writeString(srcRoot.resolve("B.java"), "package example;\nimport java.net.URL;\nclass B { void x(URL url) throws Exception { url.openConnection(); } }\n");
+        Files.writeString(srcRoot.resolve("C.java"), "package example;\nimport okhttp3.OkHttpClient;\nclass C { OkHttpClient client; }\n");
+        Files.writeString(srcRoot.resolve("D.java"), "package example;\nimport org.springframework.web.client.RestTemplate;\nclass D { RestTemplate template; }\n");
+        Files.writeString(srcRoot.resolve("E.java"), "package example;\nimport java.net.HttpURLConnection;\nclass E { HttpURLConnection connection; }\n");
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(6, check.exitCode);
@@ -1106,6 +1185,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Files.createDirectories(tempDir.resolve("src/test/java/example"));
         Files.writeString(tempDir.resolve("src/test/java/example/TestOnly.java"), "class T { String s = \"java.net.http.HttpClient\"; }");
@@ -1131,12 +1211,13 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path a = tempDir.resolve("src/main/java/example/A.java");
         Path b = tempDir.resolve("src/main/java/example/B.java");
         Files.createDirectories(a.getParent());
-        Files.writeString(a, "class A { String s = \"org.springframework.web.client.RestTemplate\"; String t = \"okhttp3.OkHttpClient\"; }");
-        Files.writeString(b, "class B { String s = \"java.net.http.HttpClient\"; }");
+        Files.writeString(a, "package example;\nimport okhttp3.OkHttpClient;\nimport org.springframework.web.client.RestTemplate;\nclass A { OkHttpClient c; RestTemplate t; }\n");
+        Files.writeString(b, "package example;\nimport java.net.http.HttpClient;\nclass B { HttpClient c; }\n");
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(6, check.exitCode);
@@ -1148,6 +1229,110 @@ class BearCliTest {
             "check: UNDECLARED_REACH: src/main/java/example/A.java: org.springframework.web.client.RestTemplate",
             "check: UNDECLARED_REACH: src/main/java/example/B.java: java.net.http.HttpClient"
         ), lines);
+    }
+
+    @Test
+    void checkDefaultModeIgnoresHygieneSeedPaths(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        Files.createDirectories(tempDir.resolve(".g"));
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+    }
+
+    @Test
+    void checkStrictHygieneFailsOnUnexpectedSeedPath(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        Files.createDirectories(tempDir.resolve(".g"));
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--strict-hygiene" });
+        assertEquals(6, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: HYGIENE_UNEXPECTED_PATHS: .g"));
+        assertFailureEnvelope(
+            check.stderr,
+            "HYGIENE_UNEXPECTED_PATHS",
+            ".g",
+            "Remove unexpected tool directories or allowlist them in `.bear/policy/hygiene-allowlist.txt`, then rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkStrictHygieneRespectsAllowlist(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        Files.createDirectories(tempDir.resolve(".g"));
+        Path allowlist = tempDir.resolve(".bear/policy/hygiene-allowlist.txt");
+        Files.createDirectories(allowlist.getParent());
+        Files.writeString(allowlist, ".g\n", StandardCharsets.UTF_8);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--strict-hygiene" });
+        assertEquals(0, check.exitCode);
+    }
+
+    @Test
+    void checkStrictHygieneNeverFlagsBearGradleUserHome(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        Files.createDirectories(tempDir.resolve(".bear-gradle-user-home"));
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--strict-hygiene" });
+        assertEquals(0, check.exitCode);
+    }
+
+    @Test
+    void checkInvalidPolicyAllowlistReturnsPolicyInvalid(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Path policy = tempDir.resolve(".bear/policy/reflection-allowlist.txt");
+        Files.createDirectories(policy.getParent());
+        Files.writeString(policy, "z/path.java\na/path.java\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(2, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("policy: VALIDATION_ERROR: entries must be sorted lexicographically"));
+        assertFailureEnvelope(
+            check.stderr,
+            "POLICY_INVALID",
+            ".bear/policy/reflection-allowlist.txt",
+            "Fix the policy contract file and rerun `bear check`."
+        );
     }
 
     @Test
@@ -1180,6 +1365,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
         writeProjectWrapper(
             tempDir,
             "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
@@ -1210,10 +1396,72 @@ class BearCliTest {
     }
 
     @Test
+    void checkBoundaryBypassReflectionClassloadingFails(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path bypass = tempDir.resolve("src/main/java/com/example/Bypass.java");
+        Files.createDirectories(bypass.getParent());
+        Files.writeString(bypass, ""
+            + "package com.example;\n"
+            + "public final class Bypass {\n"
+            + "  Object load(String implClass) throws Exception {\n"
+            + "    return Class.forName(implClass);\n"
+            + "  }\n"
+            + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(6, check.exitCode);
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=DIRECT_IMPL_USAGE: src/main/java/com/example/Bypass.java: KIND=REFLECTION_CLASSLOADING: Class.forName(...)"));
+    }
+
+    @Test
+    void checkBoundaryBypassReflectionClassloadingAllowlistPasses(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path bypass = tempDir.resolve("src/main/java/com/example/Bypass.java");
+        Files.createDirectories(bypass.getParent());
+        Files.writeString(bypass, ""
+            + "package com.example;\n"
+            + "public final class Bypass {\n"
+            + "  Object load(String implClass) throws Exception {\n"
+            + "    return Class.forName(implClass);\n"
+            + "  }\n"
+            + "}\n",
+            StandardCharsets.UTF_8
+        );
+        Path allowlist = tempDir.resolve(".bear/policy/reflection-allowlist.txt");
+        Files.createDirectories(allowlist.getParent());
+        Files.writeString(allowlist, "src/main/java/com/example/Bypass.java\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+    }
+
+    @Test
     void checkBoundaryBypassIgnoresImplTextInCommentsAndStrings(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
         writeProjectWrapper(
             tempDir,
             "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
@@ -1242,6 +1490,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
         writeProjectWrapper(
             tempDir,
             "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
@@ -1277,6 +1526,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
         writeProjectWrapper(
             tempDir,
             "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
@@ -1416,6 +1666,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         writeProjectWrapper(
             tempDir,
@@ -1643,6 +1894,38 @@ class BearCliTest {
     }
 
     @Test
+    void checkAllStrictHygieneFailsOnRepoSeedPath(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Files.createDirectories(fixture.repoRoot().resolve(".g"));
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString(), "--strict-hygiene"
+        });
+        assertEquals(6, run.exitCode);
+        assertTrue(run.stderr.startsWith("check: HYGIENE_UNEXPECTED_PATHS: .g"));
+        assertFailureEnvelope(
+            run.stderr,
+            "HYGIENE_UNEXPECTED_PATHS",
+            ".g",
+            "Remove unexpected tool directories or allowlist them in `.bear/policy/hygiene-allowlist.txt`, then rerun `bear check --all`."
+        );
+    }
+
+    @Test
+    void checkAllStrictHygieneAllowlistPasses(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Files.createDirectories(fixture.repoRoot().resolve(".g"));
+        Path allowlist = fixture.repoRoot().resolve(".bear/policy/hygiene-allowlist.txt");
+        Files.createDirectories(allowlist.getParent());
+        Files.writeString(allowlist, ".g\n", StandardCharsets.UTF_8);
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString(), "--strict-hygiene"
+        });
+        assertEquals(0, run.exitCode);
+    }
+
+    @Test
     void checkAllClassifiesGradleLockAsIoError(@TempDir Path tempDir) throws Exception {
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
@@ -1712,10 +1995,36 @@ class BearCliTest {
     }
 
     @Test
+    void checkAllClassifiesInvariantViolationAsExit4(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path alphaRoot = fixture.projectRoots().get(0);
+        String marker = "BEAR_INVARIANT_VIOLATION|block=alpha|kind=non_negative|field=balance|observed=-1|rule=non_negative";
+        writeProjectWrapper(
+            alphaRoot,
+            "@echo off\r\n"
+                + "echo " + marker.replace("|", "^|") + "\r\n"
+                + "exit /b 1\r\n",
+            "#!/usr/bin/env sh\n"
+                + "echo \"" + marker + "\"\n"
+                + "exit 1\n"
+        );
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", fixture.repoRoot().toString()
+        });
+        assertEquals(4, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("CATEGORY: TEST_FAILURE"));
+        assertTrue(stderr.contains("CODE: INVARIANT_VIOLATION"));
+        assertTrue(stderr.contains(marker));
+    }
+
+    @Test
     void checkPreservesRootCauseWhenBlockedMarkerWriteFails(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path markerParentAsFile = tempDir.resolve("build/bear");
         Files.createDirectories(markerParentAsFile.getParent());
@@ -1736,7 +2045,7 @@ class BearCliTest {
             run.stderr,
             "IO_ERROR",
             "project.tests",
-            "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check <ir-file> --project <path>`."
+            "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check <ir-file> --project <path>`."
         );
     }
 
@@ -2269,6 +2578,9 @@ class BearCliTest {
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", alphaProject.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", betaProject.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", gammaIr.toString(), "--project", gammaProject.toString() }).exitCode);
+        writeWorkingBlockImpl(alphaProject, "alpha");
+        writeWorkingBlockImpl(betaProject, "beta");
+        writeWorkingBlockImpl(gammaProject, "gamma");
 
         writeProjectWrapper(
             alphaProject,
@@ -2569,6 +2881,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         Path wiring = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
         String content = Files.readString(wiring, StandardCharsets.UTF_8);
@@ -2618,6 +2931,7 @@ class BearCliTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
 
         String marker = "BEAR_INVARIANT_VIOLATION|block=withdraw|kind=non_negative|field=balance|observed=-1|rule=non_negative";
         writeProjectWrapper(
@@ -2656,6 +2970,33 @@ class BearCliTest {
     private static void writeFixtureIr(Path path) throws Exception {
         Files.createDirectories(path.getParent());
         Files.writeString(path, fixtureIrContent(), StandardCharsets.UTF_8);
+    }
+
+    private static void writeWorkingWithdrawImpl(Path projectRoot) throws Exception {
+        writeWorkingBlockImpl(projectRoot, "withdraw");
+    }
+
+    private static void writeWorkingBlockImpl(Path projectRoot, String blockName) throws Exception {
+        String className = Character.toUpperCase(blockName.charAt(0)) + blockName.substring(1);
+        Path impl = projectRoot.resolve("src/main/java/blocks/" + blockName + "/impl/" + className + "Impl.java");
+        Files.createDirectories(impl.getParent());
+        String generatedPackage = "com.bear.generated." + blockName;
+        String source = ""
+            + "package blocks." + blockName + ".impl;\n"
+            + "\n"
+            + "import " + generatedPackage + ".BearValue;\n"
+            + "import " + generatedPackage + ".LedgerPort;\n"
+            + "import " + generatedPackage + "." + className + "Logic;\n"
+            + "import " + generatedPackage + "." + className + "Request;\n"
+            + "import " + generatedPackage + "." + className + "Result;\n"
+            + "\n"
+            + "public final class " + className + "Impl implements " + className + "Logic {\n"
+            + "  public " + className + "Result execute(" + className + "Request request, LedgerPort ledgerPort) {\n"
+            + "    ledgerPort.getBalance(BearValue.empty());\n"
+            + "    return new " + className + "Result(java.math.BigDecimal.ZERO);\n"
+            + "  }\n"
+            + "}\n";
+        Files.writeString(impl, source, StandardCharsets.UTF_8);
     }
 
     private static CliRunResult runCli(String[] args) {

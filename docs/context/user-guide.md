@@ -103,6 +103,7 @@ Use when:
 
 Behavior:
 - regenerates BEAR-owned artifacts under `<project>/build/generated/bear`
+- runtime support classes are emitted only under `<project>/build/generated/bear/src/main/java/com/bear/generated/runtime`
 - does not overwrite user-owned impl files under `<project>/src/main/java`
 - resolves block identity (`blockKey`) deterministically:
   - index-authoritative when exactly one `(ir, projectRoot)` tuple matches in `bear.blocks.yaml`
@@ -142,7 +143,7 @@ Optional flags:
 ### 4. Local gate (drift + tests)
 
 ```text
-bear check <ir-file> --project <path>
+bear check <ir-file> --project <path> [--strict-hygiene]
 ```
 
 Use when:
@@ -154,8 +155,14 @@ Behavior:
 - fails with undeclared-reach exit code when covered direct HTTP client usage bypasses declared ports
 - fails with boundary-bypass exit code when BEAR seam rules are violated:
   - direct impl usage in `src/main/**`
+  - classloading reflection APIs in `src/main/**` (`Class.forName`, `loadClass`) unless allowlisted
   - top-level `null` port args in governed entrypoint constructors
   - governed impl missing required effect-port usage (unless exact suppression comment is present)
+  - governed impl placeholder stubs left unimplemented (`RULE=IMPL_PLACEHOLDER`)
+- optional strict hygiene mode (`--strict-hygiene`) fails on unexpected seed paths (`.g`, `.gradle-user`) unless allowlisted
+- policy allowlist files (optional, exact-path deterministic parser):
+  - `.bear/policy/reflection-allowlist.txt`
+  - `.bear/policy/hygiene-allowlist.txt`
 - fails with validation (`MANIFEST_INVALID`) when wiring semantics are inconsistent
   - wrapper-owned semantic ports must not overlap logic-required ports
 - runs project tests only after no-drift result
@@ -168,7 +175,7 @@ Behavior:
 ### 4b. Repo gate (multi-block)
 
 ```text
-bear check --all --project <repoRoot>
+bear check --all --project <repoRoot> [--strict-hygiene]
 ```
 
 Optional flags:
@@ -176,6 +183,7 @@ Optional flags:
 - `--only <name1,name2,...>`
 - `--fail-fast`
 - `--strict-orphans`
+- `--strict-hygiene`
 
 Use when:
 - a repo has multiple BEAR-managed blocks declared in `bear.blocks.yaml`

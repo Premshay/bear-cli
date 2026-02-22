@@ -18,6 +18,7 @@ final class CliCodes {
     static final String USAGE_INVALID_ARGS = "USAGE_INVALID_ARGS";
     static final String USAGE_UNKNOWN_COMMAND = "USAGE_UNKNOWN_COMMAND";
     static final String IR_VALIDATION = "IR_VALIDATION";
+    static final String POLICY_INVALID = "POLICY_INVALID";
     static final String IO_ERROR = "IO_ERROR";
     static final String IO_GIT = "IO_GIT";
     static final String DRIFT_MISSING_BASELINE = "DRIFT_MISSING_BASELINE";
@@ -27,6 +28,7 @@ final class CliCodes {
     static final String BOUNDARY_EXPANSION = "BOUNDARY_EXPANSION";
     static final String UNDECLARED_REACH = "UNDECLARED_REACH";
     static final String BOUNDARY_BYPASS = "BOUNDARY_BYPASS";
+    static final String HYGIENE_UNEXPECTED_PATHS = "HYGIENE_UNEXPECTED_PATHS";
     static final String CONTAINMENT_NOT_VERIFIED = "CONTAINMENT_NOT_VERIFIED";
     static final String CONTAINMENT_UNSUPPORTED_TARGET = "CONTAINMENT_UNSUPPORTED_TARGET";
     static final String REPO_MULTI_BLOCK_FAILED = "REPO_MULTI_BLOCK_FAILED";

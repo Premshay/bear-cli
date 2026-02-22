@@ -38,11 +38,18 @@ final class BoundaryBypassScanner {
     private static final Pattern DIRECT_IMPL_IMPLEMENTS_IMPL_PATTERN = Pattern.compile(
         "\\bimplements\\s+(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\.\\s*)*[A-Za-z_][A-Za-z0-9_]*Impl\\b"
     );
+    private static final Pattern REFLECTION_CLASS_FORNAME_PATTERN = Pattern.compile("\\bClass\\s*\\.\\s*forName\\s*\\(");
+    private static final Pattern REFLECTION_LOAD_CLASS_PATTERN = Pattern.compile("\\bloadClass\\s*\\(");
     private static final Pattern REFLECT_FORNAME_PATTERN = Pattern.compile(
         "\\bClass\\s*\\.\\s*forName\\s*\\(\\s*\"blocks\\.[A-Za-z0-9_$.]+\\.impl\\.[A-Za-z0-9_]+Impl\"\\s*\\)"
     );
     private static final Pattern REFLECT_LOADCLASS_PATTERN = Pattern.compile(
         "\\bloadClass\\s*\\(\\s*\"blocks\\.[A-Za-z0-9_$.]+\\.impl\\.[A-Za-z0-9_]+Impl\"\\s*\\)"
+    );
+    private static final String PLACEHOLDER_MARKER_TODO = "TODO: replace this entire method body with business logic.";
+    private static final String PLACEHOLDER_MARKER_RETURN = "Do not append logic below this placeholder return.";
+    private static final Pattern PLACEHOLDER_RESULT_RETURN_PATTERN = Pattern.compile(
+        "\\breturn\\s+new\\s+[A-Za-z_][A-Za-z0-9_]*Result\\s*\\("
     );
     private static final Pattern SUPPRESSION_PATTERN = Pattern.compile("(?m)^\\s*//\\s*BEAR:PORT_USED\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*$");
     private static final Pattern IDENTIFIER_TOKEN_PATTERN = Pattern.compile("\\b[A-Za-z_][A-Za-z0-9_]*\\b");
@@ -51,6 +58,14 @@ final class BoundaryBypassScanner {
     }
 
     static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests) throws IOException {
+        return scanBoundaryBypass(projectRoot, manifests, Set.of());
+    }
+
+    static List<BoundaryBypassFinding> scanBoundaryBypass(
+        Path projectRoot,
+        List<WiringManifest> manifests,
+        Set<String> reflectionAllowlist
+    ) throws IOException {
         if (manifests.isEmpty()) {
             return List.of();
         }
@@ -89,6 +104,16 @@ final class BoundaryBypassScanner {
                     if (reflectiveToken != null) {
                         findings.add(new BoundaryBypassFinding("DIRECT_IMPL_USAGE", rel, reflectiveToken));
                     }
+                    if (!reflectionAllowlist.contains(rel)) {
+                        String classloadingToken = firstReflectionClassloadingToken(sanitized);
+                        if (classloadingToken != null) {
+                            findings.add(new BoundaryBypassFinding(
+                                "DIRECT_IMPL_USAGE",
+                                rel,
+                                "KIND=REFLECTION_CLASSLOADING: " + classloadingToken
+                            ));
+                        }
+                    }
 
                     String nullWiringToken = firstTopLevelNullPortWiringToken(sanitized, governedEntrypointFqcns, governedSimpleNameCounts);
                     if (nullWiringToken != null) {
@@ -113,6 +138,14 @@ final class BoundaryBypassScanner {
             }
             String source = Files.readString(implPath, StandardCharsets.UTF_8);
             String sanitized = stripJavaCommentsStringsAndChars(source);
+            if (hasPlaceholderStub(source, sanitized)) {
+                findings.add(new BoundaryBypassFinding(
+                    "IMPL_PLACEHOLDER",
+                    rel,
+                    "generated placeholder implementation stub remains"
+                ));
+                continue;
+            }
             Set<String> suppressions = parsePortSuppressions(source);
             List<String> semanticPorts = new ArrayList<>(manifest.wrapperOwnedSemanticPorts());
             semanticPorts.sort(String::compareTo);
@@ -197,6 +230,28 @@ final class BoundaryBypassScanner {
             return normalizeToken(implementsMatcher.group());
         }
         return null;
+    }
+
+    static String firstReflectionClassloadingToken(String source) {
+        Matcher forNameMatcher = REFLECTION_CLASS_FORNAME_PATTERN.matcher(source);
+        if (forNameMatcher.find()) {
+            return "Class.forName(...)";
+        }
+        Matcher loadClassMatcher = REFLECTION_LOAD_CLASS_PATTERN.matcher(source);
+        if (loadClassMatcher.find()) {
+            return "loadClass(...)";
+        }
+        return null;
+    }
+
+    static boolean hasPlaceholderStub(String source, String sanitized) {
+        if (source.contains(PLACEHOLDER_MARKER_TODO) && source.contains(PLACEHOLDER_MARKER_RETURN)) {
+            return true;
+        }
+        if (source.contains("BEAR:PORT_USED") && PLACEHOLDER_RESULT_RETURN_PATTERN.matcher(sanitized).find()) {
+            return true;
+        }
+        return false;
     }
 
     static String firstReflectiveImplUsageToken(String source) {

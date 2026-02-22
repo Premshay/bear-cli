@@ -1,0 +1,2 @@
+# Exact repo-relative paths allowed to use classloading reflection APIs in src/main/**.
+# Keep entries sorted lexicographically.

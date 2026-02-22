@@ -56,7 +56,8 @@ public final class JvmTarget implements Target {
         Path generatedRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
         Path generatedMain = generatedRoot.resolve("src").resolve("main").resolve("java").resolve(packagePath);
         Path generatedTest = generatedRoot.resolve("src").resolve("test").resolve("java").resolve(packagePath);
-        Path generatedRuntimeMain = generatedRoot.resolve("runtime").resolve("src").resolve("main").resolve("java").resolve("com/bear/generated/runtime");
+        Path generatedCanonicalRuntimeMain = generatedRoot.resolve("src").resolve("main").resolve("java").resolve("com/bear/generated/runtime");
+        Path generatedLegacyRuntimeRoot = generatedRoot.resolve("runtime");
         Path generatedSurfaces = generatedRoot.resolve("surfaces");
         Path generatedWiring = generatedRoot.resolve("wiring");
         Path surfaceMarker = generatedSurfaces.resolve(effectiveBlockKey + ".surface.json");
@@ -93,10 +94,12 @@ public final class JvmTarget implements Target {
         List<FieldModel> outputs = mapFields(ir.block().contract().outputs());
         List<PortModel> logicPorts = logicPorts(ports, ir.block());
 
+        String runtimeExceptionContent = renderInvariantException();
         writeIfDifferent(
-            generatedRuntimeMain.resolve("BearInvariantViolationException.java"),
-            renderInvariantException()
+            generatedCanonicalRuntimeMain.resolve("BearInvariantViolationException.java"),
+            runtimeExceptionContent
         );
+        deleteDirectoryIfExists(generatedLegacyRuntimeRoot);
 
         write(stagingMain.resolve("BearValue.java"), renderBearValue(packageName));
         write(stagingMain.resolve(blockName + "Request.java"), renderModel(packageName, blockName + "Request", inputs));

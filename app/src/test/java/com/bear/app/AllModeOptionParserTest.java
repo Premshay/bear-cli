@@ -67,4 +67,19 @@ class AllModeOptionParserTest {
         assertEquals(Set.of("alpha", "beta"), options.onlyNames());
         assertEquals("", errBytes.toString());
     }
+
+    @Test
+    void parseAllCheckOptionsParsesStrictHygiene(@TempDir Path repoRoot) {
+        ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+        PrintStream err = new PrintStream(errBytes);
+
+        AllCheckOptions options = AllModeOptionParser.parseAllCheckOptions(
+            new String[] { "check", "--all", "--project", repoRoot.toString(), "--strict-hygiene" },
+            err
+        );
+
+        assertNotNull(options);
+        assertTrue(options.strictHygiene());
+        assertEquals("", errBytes.toString());
+    }
 }

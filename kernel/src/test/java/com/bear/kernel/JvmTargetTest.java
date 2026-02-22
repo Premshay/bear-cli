@@ -210,10 +210,12 @@ class JvmTargetTest {
         validator.validate(second);
         target.compile(normalizer.normalize(second), tempDir, "status");
 
-        Path runtimeException = tempDir.resolve(
-            "build/generated/bear/runtime/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java"
+        Path runtimeExceptionCanonical = tempDir.resolve(
+            "build/generated/bear/src/main/java/com/bear/generated/runtime/BearInvariantViolationException.java"
         );
-        assertTrue(Files.exists(runtimeException));
+        Path runtimeExceptionLegacy = tempDir.resolve("build/generated/bear/runtime");
+        assertTrue(Files.exists(runtimeExceptionCanonical));
+        assertFalse(Files.exists(runtimeExceptionLegacy));
         long exceptionCount;
         try (var stream = Files.walk(tempDir.resolve("build/generated/bear"))) {
             exceptionCount = stream
@@ -224,9 +226,10 @@ class JvmTargetTest {
         assertEquals(1L, exceptionCount);
 
         FileTime forced = FileTime.fromMillis(1234L);
-        Files.setLastModifiedTime(runtimeException, forced);
+        Files.setLastModifiedTime(runtimeExceptionCanonical, forced);
         target.compile(normalizer.normalize(second), tempDir, "status");
-        assertEquals(forced, Files.getLastModifiedTime(runtimeException));
+        assertEquals(forced, Files.getLastModifiedTime(runtimeExceptionCanonical));
+        assertFalse(Files.exists(runtimeExceptionLegacy));
     }
 
     @Test

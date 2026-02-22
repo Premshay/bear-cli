@@ -7,8 +7,8 @@ Run deterministic enforcement for one block or all indexed blocks: drift, static
 ## Invocation forms
 
 ```text
-bear check <ir-file> --project <path>
-bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]
+bear check <ir-file> --project <path> [--strict-hygiene]
+bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene]
 ```
 
 ## Inputs and flags
@@ -19,6 +19,10 @@ bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-f
 - `--only` restricts block set.
 - `--fail-fast` stops block execution after first failure.
 - `--strict-orphans` enables strict marker-orphan checks.
+- `--strict-hygiene` enables opt-in unexpected-path hygiene checks (`.g`, `.gradle-user`) with exact-path allowlist support.
+- Optional policy files:
+  - `.bear/policy/reflection-allowlist.txt`
+  - `.bear/policy/hygiene-allowlist.txt`
 
 ## Output schema and ordering guarantees
 
@@ -39,6 +43,7 @@ Key line formats:
 - `drift: MISSING_BASELINE: build/generated/bear (...)`
 - `check: UNDECLARED_REACH: <relative/path>: <surface>`
 - `check: BOUNDARY_BYPASS: RULE=<rule>: <relative/path>: <detail>`
+- `check: HYGIENE_UNEXPECTED_PATHS: <relative/path>`
 
 For lock/bootstrap test-runner failures, detail lines append deterministic diagnostics:
 
@@ -56,10 +61,10 @@ Troubleshooting guardrail:
 ## Exit codes emitted
 
 - `0` pass
-- `2` validation/config failure
+- `2` validation/config failure (`IR_VALIDATION`, `POLICY_INVALID`, `MANIFEST_INVALID`)
 - `3` drift failure
 - `4` project test failure or timeout
-- `6` boundary policy failure (`UNDECLARED_REACH` or `BOUNDARY_BYPASS`)
+- `6` boundary policy failure (`UNDECLARED_REACH`, `BOUNDARY_BYPASS`, or `HYGIENE_UNEXPECTED_PATHS`)
 - `64` usage failure
 - `70` internal failure
 - `74` IO failure

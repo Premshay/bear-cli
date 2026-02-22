@@ -15,13 +15,14 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 final class CheckCommandService {
     private static final String CHECK_BLOCKED_MARKER_RELATIVE = "build/bear/check.blocked.marker";
     private static final String CHECK_BLOCKED_REASON_LOCK = "LOCK";
     private static final String CHECK_BLOCKED_REASON_BOOTSTRAP = "BOOTSTRAP_IO";
+    private static final String RUNTIME_LEGACY_PREFIX = "runtime/src/main/java/com/bear/generated/runtime/";
+    private static final String RUNTIME_CANONICAL_PREFIX = "src/main/java/com/bear/generated/runtime/";
     private static final Set<String> JAVA_KEYWORDS = Set.of(
         "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const",
         "continue", "default", "do", "double", "else", "enum", "extends", "final", "finally", "float",
@@ -38,6 +39,7 @@ final class CheckCommandService {
         Path irFile,
         Path projectRoot,
         boolean runReachAndTests,
+        boolean strictHygiene,
         String expectedBlockKey,
         String expectedBlockLocator
     ) {
@@ -67,7 +69,8 @@ final class CheckCommandService {
             Set<String> ownedPrefixes = Set.of(
                 "src/main/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
                 "src/test/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
-                "runtime/src/main/java/com/bear/generated/runtime/"
+                RUNTIME_LEGACY_PREFIX,
+                RUNTIME_CANONICAL_PREFIX
             );
             String markerRelPath = "surfaces/" + blockKey + ".surface.json";
             String wiringRelPath = "wiring/" + blockKey + ".wiring.json";
@@ -234,8 +237,17 @@ final class CheckCommandService {
             List<DriftItem> drift = DriftAnalyzer.computeDrift(
                 baselineRoot,
                 candidateRoot,
-                path -> path.equals(markerRelPath) || path.equals(wiringRelPath) || DriftAnalyzer.startsWithAny(path, ownedPrefixes)
+                path -> path.equals(markerRelPath)
+                    || path.equals(wiringRelPath)
+                    || DriftAnalyzer.startsWithAny(path, ownedPrefixes)
             );
+            drift.sort((left, right) -> {
+                int pathCmp = left.path().compareTo(right.path());
+                if (pathCmp != 0) {
+                    return pathCmp;
+                }
+                return Integer.compare(left.type().order, right.type().order);
+            });
             if (!drift.isEmpty()) {
                 for (DriftItem item : drift) {
                     diagnostics.add("drift: " + item.type().label + ": " + item.path());
@@ -260,6 +272,31 @@ final class CheckCommandService {
                 return new CheckResult(CliCodes.EXIT_OK, List.of(), List.of(), null, null, null, null, null);
             }
 
+            Set<String> reflectionAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
+                projectRoot,
+                PolicyAllowlistParser.REFLECTION_ALLOWLIST_PATH
+            );
+            if (strictHygiene) {
+                Set<String> hygieneAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
+                    projectRoot,
+                    PolicyAllowlistParser.HYGIENE_ALLOWLIST_PATH
+                );
+                List<String> unexpectedPaths = HygieneScanner.scanUnexpectedPaths(projectRoot, hygieneAllowlist);
+                if (!unexpectedPaths.isEmpty()) {
+                    String line = "check: HYGIENE_UNEXPECTED_PATHS: " + unexpectedPaths.get(0);
+                    diagnostics.add(line);
+                    return checkFailure(
+                        CliCodes.EXIT_UNDECLARED_REACH,
+                        diagnostics,
+                        "HYGIENE",
+                        CliCodes.HYGIENE_UNEXPECTED_PATHS,
+                        unexpectedPaths.get(0),
+                        "Remove unexpected tool directories or allowlist them in `.bear/policy/hygiene-allowlist.txt`, then rerun `bear check`.",
+                        line
+                    );
+                }
+            }
+
             List<UndeclaredReachFinding> undeclaredReach = UndeclaredReachScanner.scanUndeclaredReach(projectRoot);
             if (!undeclaredReach.isEmpty()) {
                 for (UndeclaredReachFinding finding : undeclaredReach) {
@@ -276,7 +313,11 @@ final class CheckCommandService {
                 );
             }
 
-            List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(projectRoot, List.of(baselineWiringManifest));
+            List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(
+                projectRoot,
+                List.of(baselineWiringManifest),
+                reflectionAllowlist
+            );
             if (!bypassFindings.isEmpty()) {
                 for (BoundaryBypassFinding finding : bypassFindings) {
                     diagnostics.add(
@@ -325,7 +366,7 @@ final class CheckCommandService {
                     "IO_ERROR",
                     CliCodes.IO_ERROR,
                     "project.tests",
-                    "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check <ir-file> --project <path>`.",
+                    "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
                     ioLine
                 );
             }
@@ -354,7 +395,7 @@ final class CheckCommandService {
                     "IO_ERROR",
                     CliCodes.IO_ERROR,
                     "project.tests",
-                    "Fix Gradle wrapper bootstrap/cache (distribution zip/unzip) and rerun `bear check <ir-file> --project <path>`.",
+                    "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
                     ioLine
                 );
             }
@@ -435,6 +476,17 @@ final class CheckCommandService {
                 e.path(),
                 e.remediation(),
                 e.line()
+            );
+        } catch (PolicyValidationException e) {
+            String line = "policy: VALIDATION_ERROR: " + e.getMessage();
+            return checkFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.POLICY_INVALID,
+                e.policyPath(),
+                "Fix the policy contract file and rerun `bear check`.",
+                line
             );
         } catch (IOException e) {
             return checkFailure(
@@ -717,4 +769,5 @@ final class CheckCommandService {
             // Best effort only.
         }
     }
+
 }

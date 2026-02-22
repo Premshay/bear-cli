@@ -16,6 +16,7 @@ final class AllModeOptionParser {
         String onlyArg = null;
         boolean failFast = false;
         boolean strictOrphans = false;
+        boolean strictHygiene = false;
         for (int i = 2; i < args.length; i++) {
             String token = args[i];
             switch (token) {
@@ -63,6 +64,7 @@ final class AllModeOptionParser {
                 }
                 case "--fail-fast" -> failFast = true;
                 case "--strict-orphans" -> strictOrphans = true;
+                case "--strict-hygiene" -> strictHygiene = true;
                 default -> {
                     BearCli.failWithLegacy(
                         err,
@@ -70,7 +72,7 @@ final class AllModeOptionParser {
                         "usage: INVALID_ARGS: unexpected argument: " + token,
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`."
+                        "Run `bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene]`."
                     );
                     return null;
                 }
@@ -115,7 +117,7 @@ final class AllModeOptionParser {
             );
             return null;
         }
-        return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans);
+        return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans, strictHygiene);
     }
 
     static AllFixOptions parseAllFixOptions(String[] args, PrintStream err) {

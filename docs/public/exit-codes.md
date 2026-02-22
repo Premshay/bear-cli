@@ -7,7 +7,7 @@
 - `3`: drift failure (`check`)
 - `4`: project test failure or timeout (`check`)
 - `5`: boundary expansion detected (`pr-check`)
-- `6`: boundary policy failure in `check` (`UNDECLARED_REACH` or `BOUNDARY_BYPASS`)
+- `6`: boundary policy failure in `check` (`UNDECLARED_REACH`, `BOUNDARY_BYPASS`, `HYGIENE_UNEXPECTED_PATHS`)
 - `64`: usage or argument failure
 - `70`: internal or unexpected failure
 - `74`: IO or git failure
@@ -33,6 +33,11 @@ Global non-zero footer in aggregated failures uses:
 
 - `CODE=REPO_MULTI_BLOCK_FAILED`
 - `PATH=bear.blocks.yaml`
+
+Notable code mappings:
+
+- `exit 2` includes `POLICY_INVALID`
+- `exit 4` includes `INVARIANT_VIOLATION`
 
 ## Related
 

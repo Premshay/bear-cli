@@ -110,4 +110,93 @@ class BoundaryBypassScannerTest {
             "EFFECTS_BYPASS".equals(f.rule()) && f.detail().contains("semantic port usage forbidden"));
         assertTrue(!hasSemanticViolation);
     }
+
+    @Test
+    void firstReflectionClassloadingTokenDetectsClassLoadingApis() {
+        assertEquals("Class.forName(...)", BoundaryBypassScanner.firstReflectionClassloadingToken("Class.forName(name);"));
+        assertEquals("loadClass(...)", BoundaryBypassScanner.firstReflectionClassloadingToken("loader.loadClass(name);"));
+    }
+
+    @Test
+    void scanBoundaryBypassFlagsImplPlaceholderStub(@TempDir Path tempDir) throws Exception {
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
+        Files.createDirectories(impl.getParent());
+        Files.writeString(
+            impl,
+            "package blocks.withdraw.impl;\n"
+                + "public final class WithdrawImpl {\n"
+                + "  Object execute(Object request, Object ledgerPort) {\n"
+                + "    // TODO: replace this entire method body with business logic.\n"
+                + "    // Do not append logic below this placeholder return.\n"
+                + "    // BEAR:PORT_USED ledgerPort\n"
+                + "    return new WithdrawResult(0);\n"
+                + "  }\n"
+                + "}\n"
+        );
+
+        WiringManifest manifest = new WiringManifest(
+            "v2",
+            "withdraw",
+            "com.bear.generated.withdraw.Withdraw",
+            "com.bear.generated.withdraw.WithdrawLogic",
+            "blocks.withdraw.impl.WithdrawImpl",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of(),
+            List.of()
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
+        assertTrue(findings.stream().anyMatch(f -> "IMPL_PLACEHOLDER".equals(f.rule())));
+    }
+
+    @Test
+    void reflectionClassloadingAllowlistSkipsViolationForAllowlistedPath(@TempDir Path tempDir) throws Exception {
+        Path app = tempDir.resolve("src/main/java/com/example/App.java");
+        Files.createDirectories(app.getParent());
+        Files.writeString(
+            app,
+            "package com.example;\n"
+                + "public final class App {\n"
+                + "  void run(String name) throws Exception { Class.forName(name); }\n"
+                + "}\n"
+        );
+
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
+        Files.createDirectories(impl.getParent());
+        Files.writeString(
+            impl,
+            "package blocks.withdraw.impl;\n"
+                + "public final class WithdrawImpl {\n"
+                + "  Object execute(Object request, Object ledgerPort) {\n"
+                + "    return helper(ledgerPort);\n"
+                + "  }\n"
+                + "  Object helper(Object value) { return null; }\n"
+                + "}\n"
+        );
+
+        WiringManifest manifest = new WiringManifest(
+            "v2",
+            "withdraw",
+            "com.bear.generated.withdraw.Withdraw",
+            "com.bear.generated.withdraw.WithdrawLogic",
+            "blocks.withdraw.impl.WithdrawImpl",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of(),
+            List.of()
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
+            tempDir,
+            List.of(manifest),
+            Set.of("src/main/java/com/example/App.java")
+        );
+        assertTrue(findings.stream().noneMatch(f ->
+            "DIRECT_IMPL_USAGE".equals(f.rule()) && "src/main/java/com/example/App.java".equals(f.path())));
+    }
 }

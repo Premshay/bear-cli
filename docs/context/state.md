@@ -11,6 +11,7 @@ For milestone status and backlog ordering, use `docs/context/program-board.md`.
 
 P2 feature delivery:
 - active milestone is `P2`
+- CLI hardening v1 slice: reflection classloading seam closure, reach contract file scanner, strict hygiene opt-in, placeholder impl gate, and invariant all-mode parity
 - v1.2 Final Lock++ semantic hardening (wrapper-owned idempotency + invariants)
 - Windows Gradle reliability hardening v1 (deterministic retry/fallback, bounded stale self-heal, robust unblock)
 - deterministic marker-first invariant classification and manifest semantic validation
@@ -20,12 +21,24 @@ P2 feature delivery:
 ## Next Concrete Task
 
 Post-Lock++ follow-through:
-1. validate demo repo behavior with new lock/bootstrap diagnostics (`attempts/CACHE_MODE/FALLBACK`) and robust `unblock`
-2. follow through on BEAR-owned generated-source wiring enforcement (avoid ad-hoc `build.gradle` edits)
+1. run CLI hardening v1 demo validation end-to-end against `bear-account-demo` (reflection/hygiene/policy/placeholder/invariant paths)
+2. validate canonical-only runtime path behavior across compile/check/pr-check flows and docs
 3. continue command-service modularization cleanup with no contract drift
 4. keep full `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Implemented BEAR CLI hardening v1 (CLI-only) with passing tests:
+  - classloading reflection seam closure in `src/main/**` (`Class.forName`, `loadClass`) with deterministic `RULE=DIRECT_IMPL_USAGE` detail token `KIND=REFLECTION_CLASSLOADING: ...`.
+  - deterministic exact-path allowlist parser (`PolicyAllowlistParser`) and new policy code `POLICY_INVALID` (exit `2`).
+  - machine-readable reach contract scanner (`app/src/main/resources/reach-surfaces.v1.txt`) with sanitizer-based FQCN/import-bound detection.
+  - strict hygiene mode (`--strict-hygiene`) in single/all check with code `HYGIENE_UNEXPECTED_PATHS` (exit `6`) and allowlist support.
+  - placeholder impl stub gate (`RULE=IMPL_PLACEHOLDER`) in boundary bypass scanning.
+  - all-mode invariant parity: `INVARIANT_VIOLATION` now classified consistently in `check --all` with exit `4`.
+  - bounded lock/bootstrap remediation text aligned to BEAR-selected gradle-home + `bear unblock` flow.
+  - runtime path migration finalized as breaking change: compile emits runtime classes only to canonical `build/generated/bear/src/main/java/com/bear/generated/runtime/**`; legacy runtime path is no longer emitted and now surfaces as drift if present.
+  - added policy files: `.bear/policy/reflection-allowlist.txt`, `.bear/policy/hygiene-allowlist.txt`.
+  - updated tests/docs and verified green: `.\gradlew.bat --no-daemon test`.
 
 - Added explicit public promise-boundary wording:
   - `README.md` now includes the precise statement that BEAR enforces declared+supportable semantics by construction and does not over-claim undeclared/non-supportable behavior.

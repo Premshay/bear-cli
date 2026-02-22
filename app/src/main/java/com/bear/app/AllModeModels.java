@@ -112,7 +112,8 @@ record AllCheckOptions(
     Path blocksPath,
     Set<String> onlyNames,
     boolean failFast,
-    boolean strictOrphans
+    boolean strictOrphans,
+    boolean strictHygiene
 ) {
 }
 

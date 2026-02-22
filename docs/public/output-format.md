@@ -37,6 +37,7 @@ Contract:
 
 Common `check` policy lines:
 
+- `check: HYGIENE_UNEXPECTED_PATHS: <relative/path>`
 - `check: UNDECLARED_REACH: <relative/path>: <surface>`
 - `check: BOUNDARY_BYPASS: RULE=<rule>: <relative/path>: <detail>`
 
@@ -48,10 +49,11 @@ Common `check` policy lines:
 2. boundary signal lines
 3. drift lines
 4. containment lines
-5. undeclared-reach lines
-6. boundary-bypass lines
-7. test failure or timeout output
-8. failure footer
+5. strict-hygiene lines (if enabled)
+6. undeclared-reach lines
+7. boundary-bypass lines
+8. test failure or timeout output
+9. failure footer
 
 `pr-check` delta lines are deterministically sorted by class, category, change, and key.
 

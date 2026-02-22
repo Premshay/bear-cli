@@ -6,8 +6,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 final class CheckAllCommandService {
     private static final String CHECK_BLOCKED_REASON_LOCK = "LOCK";
@@ -85,6 +85,23 @@ final class CheckAllCommandService {
                     "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
                 );
             }
+            if (options.strictHygiene()) {
+                Set<String> hygieneAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
+                    options.repoRoot(),
+                    PolicyAllowlistParser.HYGIENE_ALLOWLIST_PATH
+                );
+                List<String> unexpectedPaths = HygieneScanner.scanUnexpectedPaths(options.repoRoot(), hygieneAllowlist);
+                if (!unexpectedPaths.isEmpty()) {
+                    return BearCli.failWithLegacy(
+                        err,
+                        CliCodes.EXIT_UNDECLARED_REACH,
+                        "check: HYGIENE_UNEXPECTED_PATHS: " + unexpectedPaths.get(0),
+                        CliCodes.HYGIENE_UNEXPECTED_PATHS,
+                        unexpectedPaths.get(0),
+                        "Remove unexpected tool directories or allowlist them in `.bear/policy/hygiene-allowlist.txt`, then rerun `bear check --all`."
+                    );
+                }
+            }
         } catch (IOException e) {
             return BearCli.failWithLegacy(
                 err,
@@ -93,6 +110,15 @@ final class CheckAllCommandService {
                 CliCodes.IO_ERROR,
                 "bear.blocks.yaml",
                 "Ensure repo paths are readable and rerun `bear check --all`."
+            );
+        } catch (PolicyValidationException e) {
+            return BearCli.failWithLegacy(
+                err,
+                CliCodes.EXIT_VALIDATION,
+                "policy: VALIDATION_ERROR: " + CliText.squash(e.getMessage()),
+                CliCodes.POLICY_INVALID,
+                e.policyPath(),
+                "Fix the policy contract file and rerun `bear check --all`."
             );
         }
 
@@ -113,6 +139,7 @@ final class CheckAllCommandService {
             CheckResult checkResult = CheckCommandService.executeCheck(
                 options.repoRoot().resolve(block.ir()).normalize(),
                 options.repoRoot().resolve(block.projectRoot()).normalize(),
+                false,
                 false,
                 block.name(),
                 BearCli.indexLocator(block)
@@ -139,6 +166,32 @@ final class CheckAllCommandService {
         for (Map.Entry<String, List<Integer>> entry : rootPassIndexes.entrySet()) {
             Path root = options.repoRoot().resolve(entry.getKey()).normalize();
             try {
+                Set<String> reflectionAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
+                    root,
+                    PolicyAllowlistParser.REFLECTION_ALLOWLIST_PATH
+                );
+                if (options.strictHygiene()) {
+                    Set<String> hygieneAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
+                        root,
+                        PolicyAllowlistParser.HYGIENE_ALLOWLIST_PATH
+                    );
+                    List<String> unexpectedPaths = HygieneScanner.scanUnexpectedPaths(root, hygieneAllowlist);
+                    if (!unexpectedPaths.isEmpty()) {
+                        for (int idx : entry.getValue()) {
+                            blockResults.set(idx, BearCli.rootFailure(
+                                blockResults.get(idx),
+                                CliCodes.EXIT_UNDECLARED_REACH,
+                                "HYGIENE",
+                                CliCodes.HYGIENE_UNEXPECTED_PATHS,
+                                unexpectedPaths.get(0),
+                                "check: HYGIENE_UNEXPECTED_PATHS: " + unexpectedPaths.get(0),
+                                "Remove unexpected tool directories or allowlist them in `.bear/policy/hygiene-allowlist.txt`, then rerun `bear check --all`."
+                            ));
+                        }
+                        continue;
+                    }
+                }
+
                 List<UndeclaredReachFinding> undeclaredReach = UndeclaredReachScanner.scanUndeclaredReach(root);
                 if (!undeclaredReach.isEmpty()) {
                     rootReachFailed++;
@@ -165,7 +218,11 @@ final class CheckAllCommandService {
                     Path wiringPath = root.resolve("build/generated/bear/wiring/" + blockKey + ".wiring.json");
                     wiringManifests.add(ManifestParsers.parseWiringManifest(wiringPath));
                 }
-                List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(root, wiringManifests);
+                List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(
+                    root,
+                    wiringManifests,
+                    reflectionAllowlist
+                );
                 if (!bypassFindings.isEmpty()) {
                     BoundaryBypassFinding first = bypassFindings.get(0);
                     String firstLine = "check: BOUNDARY_BYPASS: RULE=" + first.rule() + ": " + first.path() + ": " + first.detail();
@@ -211,7 +268,7 @@ final class CheckAllCommandService {
                             CliCodes.IO_ERROR,
                             "project.tests",
                             detail,
-                            "Release Gradle wrapper lock or set isolated GRADLE_USER_HOME, then rerun `bear check --all`."
+                            "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check --all --project <repoRoot>`."
                         ));
                     }
                 } else if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
@@ -241,7 +298,26 @@ final class CheckAllCommandService {
                             CliCodes.IO_ERROR,
                             "project.tests",
                             detail,
-                            "Fix Gradle wrapper bootstrap/cache (distribution zip/unzip) and rerun `bear check --all`."
+                            "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check --all --project <repoRoot>`."
+                        ));
+                    }
+                } else if (testResult.status() == ProjectTestStatus.INVARIANT_VIOLATION) {
+                    rootTestFailed++;
+                    String markerLine = ProjectTestRunner.firstInvariantViolationLine(testResult.output());
+                    String detail = ProjectTestRunner.projectTestDetail(
+                        "root-level invariant violation in projectRoot " + entry.getKey(),
+                        markerLine,
+                        CliText.shortTailSummary(testResult.output(), 3)
+                    );
+                    for (int idx : entry.getValue()) {
+                        blockResults.set(idx, BearCli.rootFailure(
+                            blockResults.get(idx),
+                            CliCodes.EXIT_TEST_FAILURE,
+                            "TEST_FAILURE",
+                            CliCodes.INVARIANT_VIOLATION,
+                            "project.tests",
+                            detail,
+                            "Fix invariant violation and rerun `bear check --all`."
                         ));
                     }
                 } else if (testResult.status() == ProjectTestStatus.FAILED) {
@@ -293,6 +369,18 @@ final class CheckAllCommandService {
                         "project.root",
                         "io: IO_ERROR: " + CliText.squash(e.getMessage()),
                         "Ensure project paths are accessible (including Gradle wrapper), then rerun `bear check --all`."
+                    ));
+                }
+            } catch (PolicyValidationException e) {
+                for (int idx : entry.getValue()) {
+                    blockResults.set(idx, BearCli.rootFailure(
+                        blockResults.get(idx),
+                        CliCodes.EXIT_VALIDATION,
+                        "VALIDATION",
+                        CliCodes.POLICY_INVALID,
+                        e.policyPath(),
+                        "policy: VALIDATION_ERROR: " + CliText.squash(e.getMessage()),
+                        "Fix the policy contract file and rerun `bear check --all`."
                     ));
                 }
             } catch (ManifestParseException e) {

@@ -1,0 +1,2 @@
+# Exact repo-relative unexpected paths allowed under --strict-hygiene.
+# Keep entries sorted lexicographically.

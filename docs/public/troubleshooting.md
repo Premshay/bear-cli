@@ -12,6 +12,15 @@ Fix:
 2. Run `bear validate <ir-file>`.
 3. Retry the original command.
 
+## `POLICY_INVALID`
+
+Symptom: `policy: VALIDATION_ERROR` and exit `2`.
+Likely cause: malformed allowlist or malformed reach-surface contract.
+Fix:
+
+1. Correct policy file format/order (exact repo-relative paths, sorted, no duplicates/globs).
+2. Re-run command.
+
 ## `USAGE_INVALID_ARGS`
 
 Symptom: `usage: INVALID_ARGS` and exit `64`.
@@ -108,6 +117,18 @@ Fix:
 1. Remove seam bypass usage.
 2. Wire through generated entrypoints and declared ports.
 3. Re-run `bear check`.
+
+`DIRECT_IMPL_USAGE` also includes classloading reflection API usage in `src/main/**` (`Class.forName`, `loadClass`) unless allowlisted.
+
+## `HYGIENE_UNEXPECTED_PATHS`
+
+Symptom: `check: HYGIENE_UNEXPECTED_PATHS` and exit `6` (strict mode only).
+Likely cause: opt-in strict hygiene found unexpected seed paths (for example `.g`, `.gradle-user`).
+Fix:
+
+1. Remove the unexpected path, or
+2. add exact path to `.bear/policy/hygiene-allowlist.txt`,
+3. rerun `bear check ... --strict-hygiene`.
 
 ## `TEST_FAILURE`, `TEST_TIMEOUT`, or `INVARIANT_VIOLATION`
 

@@ -281,20 +281,54 @@ public final class BearCli {
             return runCheckAll(args, out, err);
         }
 
-        if (args.length != 4 || !"--project".equals(args[2])) {
+        Path irFile = null;
+        Path projectRoot = null;
+        boolean strictHygiene = false;
+        for (int i = 1; i < args.length; i++) {
+            String token = args[i];
+            if ("--project".equals(token)) {
+                if (i + 1 >= args.length) {
+                    return failWithLegacy(
+                        err,
+                        ExitCode.USAGE,
+                        "usage: INVALID_ARGS: expected value after --project",
+                        FailureCode.USAGE_INVALID_ARGS,
+                        "cli.args",
+                        "Run `bear check <ir-file> --project <path> [--strict-hygiene]` with the expected arguments."
+                    );
+                }
+                projectRoot = Path.of(args[++i]);
+                continue;
+            }
+            if ("--strict-hygiene".equals(token)) {
+                strictHygiene = true;
+                continue;
+            }
+            if (token.startsWith("--") || irFile != null) {
+                return failWithLegacy(
+                    err,
+                    ExitCode.USAGE,
+                    "usage: INVALID_ARGS: unexpected argument: " + token,
+                    FailureCode.USAGE_INVALID_ARGS,
+                    "cli.args",
+                    "Run `bear check <ir-file> --project <path> [--strict-hygiene]` with the expected arguments."
+                );
+            }
+            irFile = Path.of(token);
+        }
+
+        if (irFile == null || projectRoot == null) {
             return failWithLegacy(
                 err,
                 ExitCode.USAGE,
-                "usage: INVALID_ARGS: expected: bear check <ir-file> --project <path>",
+                "usage: INVALID_ARGS: expected: bear check <ir-file> --project <path> [--strict-hygiene]",
                 FailureCode.USAGE_INVALID_ARGS,
                 "cli.args",
-                "Run `bear check <ir-file> --project <path>` with the expected arguments."
+                "Run `bear check <ir-file> --project <path> [--strict-hygiene]` with the expected arguments."
             );
         }
 
-        Path irFile = Path.of(args[1]);
-        Path projectRoot = Path.of(args[3]);
-        CheckResult result = executeCheck(irFile, projectRoot, true, null, null);
+        CheckResult result = executeCheck(irFile, projectRoot, true, strictHygiene, null, null);
         return emitCheckResult(result, out, err);
     }
 
@@ -595,6 +629,7 @@ public final class BearCli {
         Path irFile,
         Path projectRoot,
         boolean runReachAndTests,
+        boolean strictHygiene,
         String expectedBlockKey,
         String expectedBlockLocator
     ) {
@@ -602,6 +637,7 @@ public final class BearCli {
             irFile,
             projectRoot,
             runReachAndTests,
+            strictHygiene,
             expectedBlockKey,
             expectedBlockLocator
         );
@@ -1251,7 +1287,8 @@ public final class BearCli {
         return DriftAnalyzer.readRegularFiles(root);
     }
 
-    private static List<UndeclaredReachFinding> scanUndeclaredReach(Path projectRoot) throws IOException {
+    private static List<UndeclaredReachFinding> scanUndeclaredReach(Path projectRoot)
+        throws IOException, PolicyValidationException {
         return UndeclaredReachScanner.scanUndeclaredReach(projectRoot);
     }
 
@@ -1510,8 +1547,8 @@ public final class BearCli {
         out.println("       bear compile <ir-file> --project <path>");
         out.println("       bear fix <ir-file> --project <path>");
         out.println("       bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
-        out.println("       bear check <ir-file> --project <path>");
-        out.println("       bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
+        out.println("       bear check <ir-file> --project <path> [--strict-hygiene]");
+        out.println("       bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene]");
         out.println("       bear unblock --project <path>");
         out.println("       bear pr-check <ir-file> --project <path> --base <ref>");
         out.println("       bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]");
