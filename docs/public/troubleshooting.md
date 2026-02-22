@@ -20,18 +20,11 @@ Likely cause: malformed policy contract file.
 Files covered:
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
-- `.bear/policy/check-rules.properties`
 
 Fix:
 
 1. Correct policy file format/order.
 2. Re-run command.
-
-`check-rules.properties` must satisfy:
-- UTF-8, `key=value`
-- supported keys only (`impl_containment` in v1.3)
-- sorted keys
-- unique keys
 
 ## `USAGE_INVALID_ARGS`
 
@@ -132,9 +125,8 @@ Fix:
    - `module-info.java provides ... with ...`
 3. Prefer generated `Wrapper.of(<ports...>)` for production wiring.
 4. Keep `(ports..., Logic)` constructor only for tests/advanced injection.
-5. For `RULE=IMPL_CONTAINMENT_BYPASS`, keep execute-path business logic inside the governed block root (`blockRootSourceDir` from wiring manifest).
-6. Emergency brake only when explicitly needed: set `.bear/policy/check-rules.properties` to `impl_containment=false` and rerun `check`.
-7. Re-run `bear check`.
+5. For `RULE=IMPL_CONTAINMENT_BYPASS`, move helper logic into manifest `governedSourceRoots` (block root or `src/main/java/blocks/_shared`).
+6. Re-run `bear check`.
 
 `DIRECT_IMPL_USAGE` also includes classloading reflection API usage in `src/main/**` (`Class.forName`, `loadClass`) unless allowlisted.
 
@@ -164,6 +156,8 @@ Symptom: wiring semantic inconsistency with exit `2`.
 Likely cause:
 - generated wiring mismatch,
 - missing required v2 semantic fields (`logicRequiredPorts`, `wrapperOwnedSemanticPorts`, `wrapperOwnedSemanticChecks`, `blockRootSourceDir`),
+- missing required v2 containment fields (`governedSourceRoots`),
+- unsupported/non-v2 wiring schema,
 - missing governed binding fields (`logicInterfaceFqcn`, `implFqcn`).
 Fix:
 

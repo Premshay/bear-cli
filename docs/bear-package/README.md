@@ -36,7 +36,7 @@ Runtime distribution note:
 - generated runtime support classes are canonical under `build/generated/bear/src/main/java/com/bear/generated/runtime` (legacy `build/generated/bear/runtime/**` is unsupported)
 - generated logic wrappers expose `Wrapper.of(<ports...>)` as the sanctioned default wiring path in user production code
 - governed logic interface -> governed impl bindings in `META-INF/services` / `module-info.java` are blocked by `bear check` seam rules
-- governed impl containment is default-on (`impl_containment=true`): execute-path logic must stay inside governed block-root source paths unless policy explicitly disables containment
+- governed impl containment is always on: execute-body logic must stay inside manifest `governedSourceRoots`
 
 Containment note (v1 preview):
 - if IR declares `block.impl.allowedDeps`, Java+Gradle projects must apply generated containment entrypoint:
@@ -77,7 +77,6 @@ Canonical layout in adopter repos:
 <repoRoot>/.bear/policy/
   reflection-allowlist.txt
   hygiene-allowlist.txt
-  check-rules.properties
 <repoRoot>/.bear/tools/bear-cli/
   bin/bear(.bat)
   lib/*.jar
@@ -100,7 +99,6 @@ Required package files:
 - `.bear/agent/doc/BLOCK_INDEX_QUICKREF.md`
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
-- `.bear/policy/check-rules.properties`
 - `.bear/tools/bear-cli/bin/bear` / `.bear/tools/bear-cli/bin/bear.bat`
 - `.bear/tools/bear-cli/lib/*.jar`
 - `AGENTS_SHIM.md`

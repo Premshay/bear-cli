@@ -3,6 +3,7 @@ package com.bear.app;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -43,24 +44,9 @@ class BoundaryBypassScannerTest {
     @Test
     void scanBoundaryBypassReportsMissingGovernedImplSource(@TempDir Path tempDir) throws Exception {
         Files.createDirectories(tempDir.resolve("src/main/java/com/example"));
-        Files.writeString(tempDir.resolve("src/main/java/com/example/App.java"), "class App {}");
+        Files.writeString(tempDir.resolve("src/main/java/com/example/App.java"), "class App {}", StandardCharsets.UTF_8);
 
-        WiringManifest manifest = new WiringManifest(
-            "v1",
-            "withdraw",
-            "com.bear.generated.withdraw.Withdraw",
-            "com.bear.generated.withdraw.WithdrawLogic",
-            "blocks.withdraw.impl.WithdrawImpl",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
-            "src/main/java/blocks/withdraw",
-            List.of("ledgerPort"),
-            List.of("logic", "ledgerPort"),
-            List.of("ledgerPort"),
-            List.of(),
-            List.of()
-        );
-
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
 
         assertEquals(1, findings.size());
         BoundaryBypassFinding first = findings.get(0);
@@ -75,42 +61,6 @@ class BoundaryBypassScannerTest {
             "class X { void m(){ Class.forName(\"blocks.withdraw.impl.WithdrawImpl\"); } }"
         );
         assertEquals("Class.forName(\"blocks.withdraw.impl.WithdrawImpl\")", token);
-    }
-
-    @Test
-    void semanticPortIdentifierBindingUsesManifestIdentifierOnly(@TempDir Path tempDir) throws Exception {
-        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
-        Files.createDirectories(impl.getParent());
-        Files.writeString(
-            impl,
-            "package blocks.withdraw.impl;\n"
-                + "public final class WithdrawImpl {\n"
-                + "  public void execute(Object request, Object ledgerPort) {\n"
-                + "    ledgerPort.toString();\n"
-                + "    Object idempotencyPort = null;\n"
-                + "  }\n"
-                + "}\n"
-        );
-
-        WiringManifest manifest = new WiringManifest(
-            "v2",
-            "withdraw",
-            "com.bear.generated.withdraw.Withdraw",
-            "com.bear.generated.withdraw.WithdrawLogic",
-            "blocks.withdraw.impl.WithdrawImpl",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
-            "src/main/java/blocks/withdraw",
-            List.of("idempotencyPort", "ledgerPort"),
-            List.of("idempotencyPort", "ledgerPort"),
-            List.of("ledgerPort"),
-            List.of("idempotencyPortParam"),
-            List.of("IDEMPOTENCY")
-        );
-
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
-        boolean hasSemanticViolation = findings.stream().anyMatch(f ->
-            "EFFECTS_BYPASS".equals(f.rule()) && f.detail().contains("semantic port usage forbidden"));
-        assertTrue(!hasSemanticViolation);
     }
 
     @Test
@@ -133,25 +83,11 @@ class BoundaryBypassScannerTest {
                 + "    // BEAR:PORT_USED ledgerPort\n"
                 + "    return new WithdrawResult(0);\n"
                 + "  }\n"
-                + "}\n"
+                + "}\n",
+            StandardCharsets.UTF_8
         );
 
-        WiringManifest manifest = new WiringManifest(
-            "v2",
-            "withdraw",
-            "com.bear.generated.withdraw.Withdraw",
-            "com.bear.generated.withdraw.WithdrawLogic",
-            "blocks.withdraw.impl.WithdrawImpl",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
-            "src/main/java/blocks/withdraw",
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of(),
-            List.of()
-        );
-
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
         assertTrue(findings.stream().anyMatch(f -> "IMPL_PLACEHOLDER".equals(f.rule())));
     }
 
@@ -164,40 +100,14 @@ class BoundaryBypassScannerTest {
             "package com.example;\n"
                 + "public final class App {\n"
                 + "  void run(String name) throws Exception { Class.forName(name); }\n"
-                + "}\n"
+                + "}\n",
+            StandardCharsets.UTF_8
         );
-
-        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
-        Files.createDirectories(impl.getParent());
-        Files.writeString(
-            impl,
-            "package blocks.withdraw.impl;\n"
-                + "public final class WithdrawImpl {\n"
-                + "  Object execute(Object request, Object ledgerPort) {\n"
-                + "    return helper(ledgerPort);\n"
-                + "  }\n"
-                + "  Object helper(Object value) { return null; }\n"
-                + "}\n"
-        );
-
-        WiringManifest manifest = new WiringManifest(
-            "v2",
-            "withdraw",
-            "com.bear.generated.withdraw.Withdraw",
-            "com.bear.generated.withdraw.WithdrawLogic",
-            "blocks.withdraw.impl.WithdrawImpl",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
-            "src/main/java/blocks/withdraw",
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of(),
-            List.of()
-        );
+        writeWorkingWithdrawImpl(tempDir);
 
         List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
             tempDir,
-            List.of(manifest),
+            List.of(baseManifest()),
             Set.of("src/main/java/com/example/App.java")
         );
         assertTrue(findings.stream().noneMatch(f ->
@@ -213,57 +123,14 @@ class BoundaryBypassScannerTest {
             descriptor,
             "# comment\n"
                 + "blocks.withdraw.impl.WithdrawImpl  # trailing\n",
-            java.nio.charset.StandardCharsets.UTF_8
+            StandardCharsets.UTF_8
         );
 
-        WiringManifest manifest = new WiringManifest(
-            "v2",
-            "withdraw",
-            "com.bear.generated.withdraw.Withdraw",
-            "com.bear.generated.withdraw.WithdrawLogic",
-            "blocks.withdraw.impl.WithdrawImpl",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
-            "src/main/java/blocks/withdraw",
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of(),
-            List.of()
-        );
-
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
         assertTrue(findings.stream().anyMatch(f ->
             "DIRECT_IMPL_USAGE".equals(f.rule())
                 && "src/main/resources/META-INF/services/com.bear.generated.withdraw.WithdrawLogic".equals(f.path())
                 && f.detail().contains("KIND=IMPL_SERVICE_BINDING: com.bear.generated.withdraw.WithdrawLogic -> blocks.withdraw.impl.WithdrawImpl")
-        ));
-    }
-
-    @Test
-    void scanBoundaryBypassIgnoresNonGovernedServiceBinding(@TempDir Path tempDir) throws Exception {
-        writeWorkingWithdrawImpl(tempDir);
-        Path descriptor = tempDir.resolve("src/main/resources/META-INF/services/com.example.OtherLogic");
-        Files.createDirectories(descriptor.getParent());
-        Files.writeString(descriptor, "blocks.withdraw.impl.WithdrawImpl\n", java.nio.charset.StandardCharsets.UTF_8);
-
-        WiringManifest manifest = new WiringManifest(
-            "v2",
-            "withdraw",
-            "com.bear.generated.withdraw.Withdraw",
-            "com.bear.generated.withdraw.WithdrawLogic",
-            "blocks.withdraw.impl.WithdrawImpl",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
-            "src/main/java/blocks/withdraw",
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of(),
-            List.of()
-        );
-
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
-        assertTrue(findings.stream().noneMatch(f ->
-            "DIRECT_IMPL_USAGE".equals(f.rule()) && f.detail().contains("KIND=IMPL_SERVICE_BINDING")
         ));
     }
 
@@ -279,25 +146,10 @@ class BoundaryBypassScannerTest {
                 + "      with blocks.withdraw.impl.WithdrawImpl,\n"
                 + "           com.example.Other;\n"
                 + "}\n",
-            java.nio.charset.StandardCharsets.UTF_8
+            StandardCharsets.UTF_8
         );
 
-        WiringManifest manifest = new WiringManifest(
-            "v2",
-            "withdraw",
-            "com.bear.generated.withdraw.Withdraw",
-            "com.bear.generated.withdraw.WithdrawLogic",
-            "blocks.withdraw.impl.WithdrawImpl",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
-            "src/main/java/blocks/withdraw",
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of("ledgerPort"),
-            List.of(),
-            List.of()
-        );
-
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(manifest));
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
         assertTrue(findings.stream().anyMatch(f ->
             "DIRECT_IMPL_USAGE".equals(f.rule())
                 && "src/main/java/module-info.java".equals(f.path())
@@ -322,10 +174,7 @@ class BoundaryBypassScannerTest {
             "package com.example.domain;\npublic final class WalletDomain { static Object apply() { return null; } }\n"
         );
 
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
-            tempDir,
-            List.of(withdrawManifestWithoutRequiredPorts())
-        );
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithoutRequiredPorts()));
         assertTrue(findings.stream().anyMatch(f ->
             "IMPL_CONTAINMENT_BYPASS".equals(f.rule())
                 && f.detail().equals("KIND=IMPL_EXTERNAL_CALL: com.example.domain.WalletDomain")
@@ -350,10 +199,7 @@ class BoundaryBypassScannerTest {
             "package com.example.domain;\npublic final class WalletDomain { static Object apply() { return null; } }\n"
         );
 
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
-            tempDir,
-            List.of(withdrawManifestWithoutRequiredPorts())
-        );
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithoutRequiredPorts()));
         assertTrue(findings.stream().anyMatch(f ->
             "IMPL_CONTAINMENT_BYPASS".equals(f.rule())
                 && f.detail().equals("KIND=IMPL_EXTERNAL_CALL: com.example.domain.WalletDomain")
@@ -361,7 +207,7 @@ class BoundaryBypassScannerTest {
     }
 
     @Test
-    void scanBoundaryBypassAllowsInRootSamePackageResolution(@TempDir Path tempDir) throws Exception {
+    void scanBoundaryBypassAllowsInRootHelperCall(@TempDir Path tempDir) throws Exception {
         writeContainmentImpl(
             tempDir,
             "package blocks.withdraw.impl;\n"
@@ -378,10 +224,29 @@ class BoundaryBypassScannerTest {
             "package blocks.withdraw;\npublic final class Helper { public static Object apply() { return null; } }\n"
         );
 
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithoutRequiredPorts()));
+        assertTrue(findings.stream().noneMatch(f -> "IMPL_CONTAINMENT_BYPASS".equals(f.rule())));
+    }
+
+    @Test
+    void scanBoundaryBypassAllowsSharedRootHelperCallWhenConfigured(@TempDir Path tempDir) throws Exception {
+        writeContainmentImpl(
             tempDir,
-            List.of(withdrawManifestWithoutRequiredPorts())
+            "package blocks.withdraw.impl;\n"
+                + "import blocks._shared.SharedHelper;\n"
+                + "public final class WithdrawImpl {\n"
+                + "  Object execute(Object request) {\n"
+                + "    return SharedHelper.apply();\n"
+                + "  }\n"
+                + "}\n"
         );
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/SharedHelper.java",
+            "package blocks._shared;\npublic final class SharedHelper { public static Object apply() { return null; } }\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithSharedRoot()));
         assertTrue(findings.stream().noneMatch(f -> "IMPL_CONTAINMENT_BYPASS".equals(f.rule())));
     }
 
@@ -397,10 +262,7 @@ class BoundaryBypassScannerTest {
                 + "}\n"
         );
 
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
-            tempDir,
-            List.of(withdrawManifestWithoutRequiredPorts())
-        );
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithoutRequiredPorts()));
         assertTrue(findings.stream().noneMatch(f -> "IMPL_CONTAINMENT_BYPASS".equals(f.rule())));
     }
 
@@ -417,10 +279,31 @@ class BoundaryBypassScannerTest {
                 + "}\n"
         );
 
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithoutRequiredPorts()));
+        assertTrue(findings.stream().noneMatch(f -> "IMPL_CONTAINMENT_BYPASS".equals(f.rule())));
+    }
+
+    @Test
+    void scanBoundaryBypassOnlyScansExecuteMethodBodyForContainment(@TempDir Path tempDir) throws Exception {
+        writeContainmentImpl(
             tempDir,
-            List.of(withdrawManifestWithoutRequiredPorts())
+            "package blocks.withdraw.impl;\n"
+                + "public final class WithdrawImpl {\n"
+                + "  Object execute(Object request) {\n"
+                + "    return request;\n"
+                + "  }\n"
+                + "  Object helper() {\n"
+                + "    return com.example.domain.WalletDomain.apply();\n"
+                + "  }\n"
+                + "}\n"
         );
+        writeJavaFile(
+            tempDir,
+            "src/main/java/com/example/domain/WalletDomain.java",
+            "package com.example.domain;\npublic final class WalletDomain { public static Object apply() { return null; } }\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithoutRequiredPorts()));
         assertTrue(findings.stream().noneMatch(f -> "IMPL_CONTAINMENT_BYPASS".equals(f.rule())));
     }
 
@@ -448,10 +331,7 @@ class BoundaryBypassScannerTest {
             "package com.zeta;\npublic final class External { public static Object apply() { return null; } }\n"
         );
 
-        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
-            tempDir,
-            List.of(withdrawManifestWithoutRequiredPorts())
-        );
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(withdrawManifestWithoutRequiredPorts()));
         List<BoundaryBypassFinding> containment = findings.stream()
             .filter(f -> "IMPL_CONTAINMENT_BYPASS".equals(f.rule()))
             .toList();
@@ -480,6 +360,7 @@ class BoundaryBypassScannerTest {
             "blocks.withdraw.impl.WithdrawImpl",
             "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
             "src/main/java/blocks/withdraw",
+            List.of("src/main/java/blocks/withdraw"),
             List.of("ledgerPort"),
             List.of("ledgerPort"),
             List.of(),
@@ -504,7 +385,8 @@ class BoundaryBypassScannerTest {
                 + "    return helper(ledgerPort);\n"
                 + "  }\n"
                 + "  Object helper(Object value) { return null; }\n"
-                + "}\n"
+                + "}\n",
+            StandardCharsets.UTF_8
         );
     }
 
@@ -515,7 +397,25 @@ class BoundaryBypassScannerTest {
     private static void writeJavaFile(Path tempDir, String relPath, String source) throws Exception {
         Path file = tempDir.resolve(relPath);
         Files.createDirectories(file.getParent());
-        Files.writeString(file, source);
+        Files.writeString(file, source, StandardCharsets.UTF_8);
+    }
+
+    private static WiringManifest baseManifest() {
+        return new WiringManifest(
+            "v2",
+            "withdraw",
+            "com.bear.generated.withdraw.Withdraw",
+            "com.bear.generated.withdraw.WithdrawLogic",
+            "blocks.withdraw.impl.WithdrawImpl",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
+            "src/main/java/blocks/withdraw",
+            List.of("src/main/java/blocks/withdraw"),
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of(),
+            List.of()
+        );
     }
 
     private static WiringManifest withdrawManifestWithoutRequiredPorts() {
@@ -527,6 +427,25 @@ class BoundaryBypassScannerTest {
             "blocks.withdraw.impl.WithdrawImpl",
             "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
             "src/main/java/blocks/withdraw",
+            List.of("src/main/java/blocks/withdraw"),
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of(),
+            List.of(),
+            List.of()
+        );
+    }
+
+    private static WiringManifest withdrawManifestWithSharedRoot() {
+        return new WiringManifest(
+            "v2",
+            "withdraw",
+            "com.bear.generated.withdraw.Withdraw",
+            "com.bear.generated.withdraw.WithdrawLogic",
+            "blocks.withdraw.impl.WithdrawImpl",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
+            "src/main/java/blocks/withdraw",
+            List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared"),
             List.of("ledgerPort"),
             List.of("ledgerPort"),
             List.of(),

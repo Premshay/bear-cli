@@ -102,6 +102,9 @@ final class CheckCommandService {
             }
 
             tempRoot = Files.createTempDirectory("bear-check-");
+            if (Files.isDirectory(projectRoot.resolve("src/main/java/blocks/_shared"))) {
+                Files.createDirectories(tempRoot.resolve("src/main/java/blocks/_shared"));
+            }
             target.compile(normalized, tempRoot, blockKey);
             Path candidateRoot = tempRoot.resolve("build").resolve("generated").resolve("bear");
             Path baselineManifestPath = baselineRoot.resolve(markerRelPath);
@@ -296,7 +299,6 @@ final class CheckCommandService {
                 return new CheckResult(CliCodes.EXIT_OK, List.of(), List.of(), null, null, null, null, null);
             }
 
-            CheckRulesPolicy checkRulesPolicy = CheckRulesPolicyParser.parse(projectRoot);
             Set<String> reflectionAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
                 projectRoot,
                 PolicyAllowlistParser.REFLECTION_ALLOWLIST_PATH
@@ -341,8 +343,7 @@ final class CheckCommandService {
             List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(
                 projectRoot,
                 List.of(baselineWiringManifest),
-                reflectionAllowlist,
-                checkRulesPolicy.implContainment()
+                reflectionAllowlist
             );
             if (!bypassFindings.isEmpty()) {
                 for (BoundaryBypassFinding finding : bypassFindings) {
@@ -707,8 +708,19 @@ final class CheckCommandService {
                 line
             );
         }
-        if ("v2".equals(manifest.schemaVersion())
-            && (manifest.blockRootSourceDir() == null || manifest.blockRootSourceDir().trim().isEmpty())) {
+        if (!"v2".equals(manifest.schemaVersion())) {
+            String line = "check: MANIFEST_INVALID: unsupported wiring schema version: " + manifest.schemaVersion();
+            return checkFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.MANIFEST_INVALID,
+                path,
+                "Regenerate wiring manifests with `bear compile` so v2 wiring metadata is present, then rerun `bear check`.",
+                line
+            );
+        }
+        if (manifest.blockRootSourceDir() == null || manifest.blockRootSourceDir().trim().isEmpty()) {
             String line = "check: MANIFEST_INVALID: missing blockRootSourceDir";
             return checkFailure(
                 CliCodes.EXIT_VALIDATION,
@@ -717,6 +729,18 @@ final class CheckCommandService {
                 CliCodes.MANIFEST_INVALID,
                 path,
                 "Regenerate wiring manifests with governed block root metadata and rerun `bear check`.",
+                line
+            );
+        }
+        if (manifest.governedSourceRoots() == null || manifest.governedSourceRoots().isEmpty()) {
+            String line = "check: MANIFEST_INVALID: missing governedSourceRoots";
+            return checkFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.MANIFEST_INVALID,
+                path,
+                "Regenerate wiring manifests with governed source root metadata and rerun `bear check`.",
                 line
             );
         }
@@ -745,10 +769,16 @@ final class CheckCommandService {
             || "MISSING_KEY_wrapperOwnedSemanticPorts".equals(code)
             || "MISSING_KEY_wrapperOwnedSemanticChecks".equals(code)
             || "MISSING_KEY_blockRootSourceDir".equals(code)
+            || "MISSING_KEY_governedSourceRoots".equals(code)
             || "MALFORMED_ARRAY_logicRequiredPorts".equals(code)
             || "MALFORMED_ARRAY_wrapperOwnedSemanticPorts".equals(code)
             || "MALFORMED_ARRAY_wrapperOwnedSemanticChecks".equals(code)
-            || "INVALID_STRING_ARRAY".equals(code);
+            || "MALFORMED_ARRAY_governedSourceRoots".equals(code)
+            || "INVALID_STRING_ARRAY".equals(code)
+            || "UNSUPPORTED_WIRING_SCHEMA_VERSION".equals(code)
+            || "INVALID_GOVERNED_SOURCE_ROOTS".equals(code)
+            || "INVALID_ROOT_PATH_blockRootSourceDir".equals(code)
+            || "INVALID_ROOT_PATH_governedSourceRoots".equals(code);
     }
 
     private static void writeCheckBlockedMarker(Path projectRoot, String reason, String detail) throws IOException {

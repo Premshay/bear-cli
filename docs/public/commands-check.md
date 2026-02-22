@@ -24,16 +24,6 @@ bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-f
 Optional policy files:
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
-- `.bear/policy/check-rules.properties`
-
-`check-rules.properties` contract:
-- supported key set (v1.3): `impl_containment=true|false`
-- UTF-8, ignore blank lines and `#` comments
-- duplicate keys are invalid
-- unknown keys are invalid
-- lexicographic key order required
-- malformed content fails with `CODE=POLICY_INVALID`
-- missing file defaults to `impl_containment=true`
 
 Generated logic wrappers expose a sanctioned default wiring factory: `Wrapper.of(<ports...>)`.
 - Prefer `Wrapper.of(...)` in user production wiring.
@@ -70,8 +60,9 @@ Key line formats:
 - placeholder impl stubs (`RULE=IMPL_PLACEHOLDER`)
 - governed impl containment boundary violations (`RULE=IMPL_CONTAINMENT_BYPASS`)
 
-Containment scanner contract (`impl_containment=true`):
+Containment scanner contract (always-on):
 - scope: governed impl files from wiring manifests only
+- scan scope: `execute(...)` method body only
 - call shapes inspected:
   - `Type.method(...)`
   - `new Type(...).method(...)`
@@ -88,9 +79,17 @@ Containment scanner contract (`impl_containment=true`):
   - `java.*`, `javax.*` auto-allowed
   - `jakarta.*`, `com.sun.*` are not auto-allowed
 - final allow/deny is path-based only:
-  - resolved source path under manifest `blockRootSourceDir` -> allowed
+  - resolved source path under any manifest `governedSourceRoots` entry -> allowed
   - otherwise -> `IMPL_CONTAINMENT_BYPASS`
 - findings are emitted in deterministic order: `path`, then `rule`, then `detail`.
+
+Wiring manifest requirement:
+- containment consumes v2 wiring manifests only.
+- required containment fields include `blockRootSourceDir` and `governedSourceRoots`.
+- `governedSourceRoots` ordering is deterministic in this slice:
+  - first: `blockRootSourceDir`
+  - optional second: `src/main/java/blocks/_shared`
+- stale/non-v2/malformed wiring manifests fail deterministically with `CODE=MANIFEST_INVALID` (exit `2`); rerun `bear compile`.
 
 For lock/bootstrap test-runner failures, detail lines append deterministic diagnostics:
 

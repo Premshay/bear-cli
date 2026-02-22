@@ -76,22 +76,13 @@ final class BoundaryBypassScanner {
     }
 
     static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests) throws IOException {
-        return scanBoundaryBypass(projectRoot, manifests, Set.of(), true);
+        return scanBoundaryBypass(projectRoot, manifests, Set.of());
     }
 
     static List<BoundaryBypassFinding> scanBoundaryBypass(
         Path projectRoot,
         List<WiringManifest> manifests,
         Set<String> reflectionAllowlist
-    ) throws IOException {
-        return scanBoundaryBypass(projectRoot, manifests, reflectionAllowlist, true);
-    }
-
-    static List<BoundaryBypassFinding> scanBoundaryBypass(
-        Path projectRoot,
-        List<WiringManifest> manifests,
-        Set<String> reflectionAllowlist,
-        boolean implContainmentEnabled
     ) throws IOException {
         if (manifests.isEmpty()) {
             return List.of();
@@ -190,9 +181,8 @@ final class BoundaryBypassScanner {
                 ));
                 continue;
             }
-            if (implContainmentEnabled) {
-                findings.addAll(scanImplContainment(projectRoot, manifest, rel, sanitized));
-            }
+            String executeBodies = extractExecuteMethodBodies(sanitized);
+            findings.addAll(scanImplContainment(projectRoot, manifest, rel, sanitized, executeBodies));
             Set<String> suppressions = parsePortSuppressions(source);
             List<String> semanticPorts = new ArrayList<>(manifest.wrapperOwnedSemanticPorts());
             semanticPorts.sort(String::compareTo);
@@ -355,13 +345,17 @@ final class BoundaryBypassScanner {
         Path projectRoot,
         WiringManifest manifest,
         String relPath,
-        String sanitizedSource
+        String sanitizedSource,
+        String executeBodiesSource
     ) {
+        if (executeBodiesSource == null || executeBodiesSource.isBlank()) {
+            return List.of();
+        }
         String packageName = parsePackageName(sanitizedSource);
         Map<String, String> explicitImports = parseExplicitImports(sanitizedSource);
         TreeSet<String> targets = new TreeSet<>();
-        targets.addAll(findStaticCallTypeTargets(sanitizedSource));
-        targets.addAll(findConstructorCallTypeTargets(sanitizedSource));
+        targets.addAll(findStaticCallTypeTargets(executeBodiesSource));
+        targets.addAll(findConstructorCallTypeTargets(executeBodiesSource));
 
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
         for (String typeToken : targets) {
@@ -376,7 +370,7 @@ final class BoundaryBypassScanner {
             if (resolvedSourcePath == null) {
                 continue;
             }
-            if (isUnderBlockRoot(resolvedSourcePath, manifest.blockRootSourceDir())) {
+            if (isUnderAnyGovernedRoot(resolvedSourcePath, manifest.governedSourceRoots())) {
                 continue;
             }
             findings.add(new BoundaryBypassFinding(
@@ -386,6 +380,34 @@ final class BoundaryBypassScanner {
             ));
         }
         return findings;
+    }
+
+    private static String extractExecuteMethodBodies(String source) {
+        StringBuilder out = new StringBuilder();
+        Matcher matcher = Pattern.compile("\\bexecute\\s*\\(").matcher(source);
+        while (matcher.find()) {
+            int openParen = source.indexOf('(', matcher.start());
+            if (openParen < 0) {
+                continue;
+            }
+            int closeParen = findClosingParen(source, openParen);
+            if (closeParen < 0) {
+                continue;
+            }
+            int idx = closeParen + 1;
+            while (idx < source.length() && Character.isWhitespace(source.charAt(idx))) {
+                idx++;
+            }
+            if (idx >= source.length() || source.charAt(idx) != '{') {
+                continue;
+            }
+            int closeBrace = findClosingBrace(source, idx);
+            if (closeBrace < 0) {
+                continue;
+            }
+            out.append(source, idx + 1, closeBrace).append('\n');
+        }
+        return out.toString();
     }
 
     private static String parsePackageName(String source) {
@@ -486,6 +508,25 @@ final class BoundaryBypassScanner {
         return -1;
     }
 
+    private static int findClosingBrace(String source, int openBraceIndex) {
+        if (openBraceIndex < 0 || openBraceIndex >= source.length() || source.charAt(openBraceIndex) != '{') {
+            return -1;
+        }
+        int depth = 1;
+        for (int i = openBraceIndex + 1; i < source.length(); i++) {
+            char c = source.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
     private static String resolveTypeTokenFqcn(
         String typeToken,
         String packageName,
@@ -516,12 +557,20 @@ final class BoundaryBypassScanner {
         return candidateRelPath;
     }
 
-    private static boolean isUnderBlockRoot(String resolvedSourcePath, String blockRootSourceDir) {
-        String normalizedRoot = normalizeRepoPath(blockRootSourceDir);
-        if (normalizedRoot == null || normalizedRoot.isBlank()) {
+    private static boolean isUnderAnyGovernedRoot(String resolvedSourcePath, List<String> governedSourceRoots) {
+        if (governedSourceRoots == null || governedSourceRoots.isEmpty()) {
             return false;
         }
-        return resolvedSourcePath.equals(normalizedRoot) || resolvedSourcePath.startsWith(normalizedRoot + "/");
+        for (String root : governedSourceRoots) {
+            String normalizedRoot = normalizeRepoPath(root);
+            if (normalizedRoot == null || normalizedRoot.isBlank()) {
+                continue;
+            }
+            if (resolvedSourcePath.equals(normalizedRoot) || resolvedSourcePath.startsWith(normalizedRoot + "/")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String normalizeRepoPath(String value) {

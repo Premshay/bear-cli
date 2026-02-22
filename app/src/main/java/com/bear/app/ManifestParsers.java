@@ -13,6 +13,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class ManifestParsers {
+    private static final String SHARED_GOVERNED_ROOT = "src/main/java/blocks/_shared";
+
     private ManifestParsers() {
     }
 
@@ -42,40 +44,29 @@ final class ManifestParsers {
             throw new ManifestParseException("MALFORMED_JSON");
         }
         String schemaVersion = extractRequiredString(json, "schemaVersion");
+        if (!"v2".equals(schemaVersion)) {
+            throw new ManifestParseException("UNSUPPORTED_WIRING_SCHEMA_VERSION");
+        }
         String blockKey = extractRequiredString(json, "blockKey");
         String entrypointFqcn = extractRequiredString(json, "entrypointFqcn");
         String logicInterfaceFqcn = extractRequiredString(json, "logicInterfaceFqcn");
         String implFqcn = extractRequiredString(json, "implFqcn");
         String implSourcePath = extractRequiredString(json, "implSourcePath");
-        String blockRootSourceDir = extractOptionalString(json, "blockRootSourceDir");
+        String blockRootSourceDir = extractRequiredString(json, "blockRootSourceDir");
+        String governedSourceRootsPayload = extractRequiredArrayPayload(json, "governedSourceRoots");
         String requiredEffectPortsPayload = extractRequiredArrayPayload(json, "requiredEffectPorts");
         String constructorPortParamsPayload = extractRequiredArrayPayload(json, "constructorPortParams");
-        String logicRequiredPortsPayload;
-        String wrapperOwnedSemanticPortsPayload;
-        String wrapperOwnedSemanticChecksPayload;
-        if ("v2".equals(schemaVersion)) {
-            logicRequiredPortsPayload = extractRequiredArrayPayload(json, "logicRequiredPorts");
-            wrapperOwnedSemanticPortsPayload = extractRequiredArrayPayload(json, "wrapperOwnedSemanticPorts");
-            wrapperOwnedSemanticChecksPayload = extractRequiredArrayPayload(json, "wrapperOwnedSemanticChecks");
-            if (blockRootSourceDir == null || blockRootSourceDir.isBlank()) {
-                throw new ManifestParseException("MISSING_KEY_blockRootSourceDir");
-            }
-        } else {
-            logicRequiredPortsPayload = extractOptionalArrayPayload(json, "logicRequiredPorts");
-            wrapperOwnedSemanticPortsPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticPorts");
-            wrapperOwnedSemanticChecksPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticChecks");
-        }
+        String logicRequiredPortsPayload = extractRequiredArrayPayload(json, "logicRequiredPorts");
+        String wrapperOwnedSemanticPortsPayload = extractRequiredArrayPayload(json, "wrapperOwnedSemanticPorts");
+        String wrapperOwnedSemanticChecksPayload = extractRequiredArrayPayload(json, "wrapperOwnedSemanticChecks");
+        validateRepoRelativeRootPath(blockRootSourceDir, "blockRootSourceDir");
+        List<String> governedSourceRoots = parseStringArray(governedSourceRootsPayload);
+        validateGovernedSourceRoots(governedSourceRoots, blockRootSourceDir);
         List<String> requiredEffectPorts = parseStringArray(requiredEffectPortsPayload);
         List<String> constructorPortParams = parseStringArray(constructorPortParamsPayload);
-        List<String> logicRequiredPorts = logicRequiredPortsPayload == null
-            ? requiredEffectPorts
-            : parseStringArray(logicRequiredPortsPayload);
-        List<String> wrapperOwnedSemanticPorts = wrapperOwnedSemanticPortsPayload == null
-            ? List.of()
-            : parseStringArray(wrapperOwnedSemanticPortsPayload);
-        List<String> wrapperOwnedSemanticChecks = wrapperOwnedSemanticChecksPayload == null
-            ? List.of()
-            : parseStringArray(wrapperOwnedSemanticChecksPayload);
+        List<String> logicRequiredPorts = parseStringArray(logicRequiredPortsPayload);
+        List<String> wrapperOwnedSemanticPorts = parseStringArray(wrapperOwnedSemanticPortsPayload);
+        List<String> wrapperOwnedSemanticChecks = parseStringArray(wrapperOwnedSemanticChecksPayload);
         return new WiringManifest(
             schemaVersion,
             blockKey,
@@ -84,12 +75,54 @@ final class ManifestParsers {
             implFqcn,
             implSourcePath,
             blockRootSourceDir,
+            governedSourceRoots,
             requiredEffectPorts,
             constructorPortParams,
             logicRequiredPorts,
             wrapperOwnedSemanticPorts,
             wrapperOwnedSemanticChecks
         );
+    }
+
+    private static void validateGovernedSourceRoots(List<String> roots, String blockRootSourceDir) throws ManifestParseException {
+        if (roots.isEmpty()) {
+            throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
+        }
+        if (roots.size() > 2) {
+            throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
+        }
+        for (String root : roots) {
+            validateRepoRelativeRootPath(root, "governedSourceRoots");
+        }
+        if (!blockRootSourceDir.equals(roots.get(0))) {
+            throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
+        }
+        if (roots.size() == 2 && !SHARED_GOVERNED_ROOT.equals(roots.get(1))) {
+            throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
+        }
+    }
+
+    private static void validateRepoRelativeRootPath(String value, String field) throws ManifestParseException {
+        if (value == null || value.isBlank()) {
+            throw new ManifestParseException("INVALID_ROOT_PATH_" + field);
+        }
+        if (value.contains("\\")) {
+            throw new ManifestParseException("INVALID_ROOT_PATH_" + field);
+        }
+        if (value.endsWith("/")) {
+            throw new ManifestParseException("INVALID_ROOT_PATH_" + field);
+        }
+        if (value.startsWith("/") || value.startsWith("./")) {
+            throw new ManifestParseException("INVALID_ROOT_PATH_" + field);
+        }
+        if (value.matches("^[A-Za-z]:.*")) {
+            throw new ManifestParseException("INVALID_ROOT_PATH_" + field);
+        }
+        for (String segment : value.split("/")) {
+            if ("..".equals(segment) || segment.isBlank()) {
+                throw new ManifestParseException("INVALID_ROOT_PATH_" + field);
+            }
+        }
     }
 
     static String extractRequiredString(String json, String key) throws ManifestParseException {

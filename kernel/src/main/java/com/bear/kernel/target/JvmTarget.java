@@ -124,7 +124,17 @@ public final class JvmTarget implements Target {
         write(stagingSurfaceMarker, renderSurfaceManifest(ir));
         write(
             stagingWiringManifest,
-            renderWiringManifest(effectiveBlockKey, packageName, blockName, implPackageName, implPackagePath, ports, logicPorts, ir.block())
+            renderWiringManifest(
+                projectRoot,
+                effectiveBlockKey,
+                packageName,
+                blockName,
+                implPackageName,
+                implPackagePath,
+                ports,
+                logicPorts,
+                ir.block()
+            )
         );
 
         try {
@@ -650,6 +660,7 @@ public final class JvmTarget implements Target {
     }
 
     private String renderWiringManifest(
+        Path projectRoot,
         String blockKey,
         String generatedPackageName,
         String blockName,
@@ -691,6 +702,12 @@ public final class JvmTarget implements Target {
             .getParent()
             .toString()
             .replace('\\', '/');
+        List<String> governedSourceRoots = new ArrayList<>();
+        governedSourceRoots.add(blockRootSourceDir);
+        Path sharedRoot = projectRoot.resolve("src/main/java/blocks/_shared");
+        if (Files.isDirectory(sharedRoot)) {
+            governedSourceRoots.add("src/main/java/blocks/_shared");
+        }
 
         StringBuilder out = new StringBuilder();
         out.append("{");
@@ -701,6 +718,14 @@ public final class JvmTarget implements Target {
         out.append("\"implFqcn\":\"").append(jsonEscape(implFqcn)).append("\",");
         out.append("\"implSourcePath\":\"").append(jsonEscape(implSourcePath)).append("\",");
         out.append("\"blockRootSourceDir\":\"").append(jsonEscape(blockRootSourceDir)).append("\",");
+        out.append("\"governedSourceRoots\":[");
+        for (int i = 0; i < governedSourceRoots.size(); i++) {
+            if (i > 0) {
+                out.append(",");
+            }
+            out.append("\"").append(jsonEscape(governedSourceRoots.get(i))).append("\"");
+        }
+        out.append("],");
         out.append("\"requiredEffectPorts\":[");
         for (int i = 0; i < requiredEffectPorts.size(); i++) {
             if (i > 0) {

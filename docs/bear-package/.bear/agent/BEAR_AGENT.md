@@ -54,26 +54,25 @@ When running `bear check` or `bear check --all`:
 2. Policy files are optional:
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
- - `.bear/policy/check-rules.properties`
 3. If a policy file is present, entries must be exact repo-relative paths:
 - UTF-8, forward slashes, one path per line
 - sorted lexicographically
 - unique entries
 - no globs, no absolute paths, no trailing slash
 4. Missing policy file means empty allowlist; malformed policy file fails with `CODE=POLICY_INVALID`.
-4b. `check-rules.properties` supports only:
-- `impl_containment=true|false`
-- default is `true` when file is missing
-- keys must be sorted, unique, and known; malformed/unknown/duplicate keys fail with `CODE=POLICY_INVALID`.
 5. Reflection boundary rule:
 - classloading reflection in `src/main/**` (`Class.forName`, `loadClass`) is blocked unless exact-path allowlisted.
 6. Governed binding seam rule:
 - binding governed logic interface -> governed impl in `src/main/resources/META-INF/services/**` or `src/main/java/module-info.java` is blocked.
 7. Generated wiring preference:
 - in production code, prefer generated `Wrapper.of(<ports...>)`; keep `(ports..., Logic)` constructor for tests/advanced injection.
-8. Strict hygiene rule:
+8. Containment rule:
+- execute-body containment is always on (no policy toggle).
+- allowed source roots come from manifest `governedSourceRoots` (`blockRootSourceDir` first; optional `_shared` second).
+- unresolved call targets do not fail containment in v1.3.
+9. Strict hygiene rule:
 - unexpected seed paths fail with `CODE=HYGIENE_UNEXPECTED_PATHS` unless allowlisted.
-9. For concrete syntax examples, see header comments in `.bear/policy/reflection-allowlist.txt` and `.bear/policy/hygiene-allowlist.txt`.
+10. For concrete syntax examples, see header comments in `.bear/policy/reflection-allowlist.txt` and `.bear/policy/hygiene-allowlist.txt`.
 
 ## Session Baseline Check
 

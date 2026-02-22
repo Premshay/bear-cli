@@ -1601,76 +1601,6 @@ class BearCliTest {
     }
 
     @Test
-    void checkBoundaryBypassImplContainmentCanBeDisabledByPolicy(@TempDir Path tempDir) throws Exception {
-        Path repoRoot = TestRepoPaths.repoRoot();
-        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
-        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
-        writeProjectWrapper(
-            tempDir,
-            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
-            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
-        );
-
-        Path external = tempDir.resolve("src/main/java/com/example/domain/WalletDomain.java");
-        Files.createDirectories(external.getParent());
-        Files.writeString(
-            external,
-            "package com.example.domain;\n"
-                + "public final class WalletDomain {\n"
-                + "  public static Object apply() { return null; }\n"
-                + "}\n",
-            StandardCharsets.UTF_8
-        );
-
-        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
-        Files.writeString(
-            impl,
-            "package blocks.withdraw.impl;\n"
-                + "public final class WithdrawImpl {\n"
-                + "  Object execute(Object request, Object ledgerPort) {\n"
-                + "    ledgerPort.toString();\n"
-                + "    return com.example.domain.WalletDomain.apply();\n"
-                + "  }\n"
-                + "}\n",
-            StandardCharsets.UTF_8
-        );
-
-        Path rules = tempDir.resolve(".bear/policy/check-rules.properties");
-        Files.createDirectories(rules.getParent());
-        Files.writeString(rules, "impl_containment=false\n", StandardCharsets.UTF_8);
-
-        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(0, check.exitCode);
-        assertTrue(check.stdout.startsWith("check: OK"));
-    }
-
-    @Test
-    void checkRulesPolicyInvalidFailsValidation(@TempDir Path tempDir) throws Exception {
-        Path repoRoot = TestRepoPaths.repoRoot();
-        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
-        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
-        writeWorkingWithdrawImpl(tempDir);
-        writeProjectWrapper(
-            tempDir,
-            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
-            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
-        );
-
-        Path rules = tempDir.resolve(".bear/policy/check-rules.properties");
-        Files.createDirectories(rules.getParent());
-        Files.writeString(rules, "unknown=true\n", StandardCharsets.UTF_8);
-
-        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(2, check.exitCode);
-        assertFailureEnvelope(
-            check.stderr,
-            "POLICY_INVALID",
-            ".bear/policy/check-rules.properties",
-            "Fix the policy contract file and rerun `bear check`."
-        );
-    }
-
-    @Test
     void checkBoundaryBypassIgnoresImplTextInCommentsAndStrings(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
@@ -2022,27 +1952,6 @@ class BearCliTest {
         String stderr = normalizeLf(run.stderr);
         assertTrue(stderr.contains("RULE=IMPL_CONTAINMENT_BYPASS"));
         assertTrue(stderr.contains("KIND=IMPL_EXTERNAL_CALL: com.example.domain.WalletDomain"));
-        assertFailureEnvelope(
-            run.stderr,
-            "REPO_MULTI_BLOCK_FAILED",
-            "bear.blocks.yaml",
-            "Review per-block results above and fix failing blocks, then rerun the command."
-        );
-    }
-
-    @Test
-    void checkAllInvalidCheckRulesPolicyFailsValidation(@TempDir Path tempDir) throws Exception {
-        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
-        Path alphaRoot = fixture.projectRoots().get(0);
-        Path policy = alphaRoot.resolve(".bear/policy/check-rules.properties");
-        Files.createDirectories(policy.getParent());
-        Files.writeString(policy, "unknown=true\n", StandardCharsets.UTF_8);
-
-        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
-        assertEquals(2, run.exitCode);
-        String stderr = normalizeLf(run.stderr);
-        assertTrue(stderr.contains("BLOCK_CODE: POLICY_INVALID"));
-        assertTrue(stderr.contains("BLOCK_PATH: .bear/policy/check-rules.properties"));
         assertFailureEnvelope(
             run.stderr,
             "REPO_MULTI_BLOCK_FAILED",
@@ -3320,6 +3229,52 @@ class BearCliTest {
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(2, check.exitCode);
         assertTrue(normalizeLf(check.stderr).contains("check: MANIFEST_INVALID: MISSING_KEY_blockRootSourceDir"));
+        assertFailureEnvelope(
+            check.stderr,
+            "MANIFEST_INVALID",
+            "build/generated/bear/wiring/withdraw.wiring.json",
+            "Regenerate wiring manifests with governed binding fields and rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkFailsManifestInvalidWhenGovernedSourceRootsMissing(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+
+        Path wiring = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
+        String content = Files.readString(wiring, StandardCharsets.UTF_8);
+        content = content.replace("\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\"],", "");
+        Files.writeString(wiring, content, StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(2, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: MANIFEST_INVALID: MISSING_KEY_governedSourceRoots"));
+        assertFailureEnvelope(
+            check.stderr,
+            "MANIFEST_INVALID",
+            "build/generated/bear/wiring/withdraw.wiring.json",
+            "Regenerate wiring manifests with governed binding fields and rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkFailsManifestInvalidWhenWiringSchemaNotV2(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+
+        Path wiring = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
+        String content = Files.readString(wiring, StandardCharsets.UTF_8);
+        content = content.replace("\"schemaVersion\":\"v2\"", "\"schemaVersion\":\"v1\"");
+        Files.writeString(wiring, content, StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(2, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: MANIFEST_INVALID: UNSUPPORTED_WIRING_SCHEMA_VERSION"));
         assertFailureEnvelope(
             check.stderr,
             "MANIFEST_INVALID",

@@ -270,18 +270,13 @@ record WiringManifest(
     String implFqcn,
     String implSourcePath,
     String blockRootSourceDir,
+    List<String> governedSourceRoots,
     List<String> requiredEffectPorts,
     List<String> constructorPortParams,
     List<String> logicRequiredPorts,
     List<String> wrapperOwnedSemanticPorts,
     List<String> wrapperOwnedSemanticChecks
 ) {
-}
-
-record CheckRulesPolicy(boolean implContainment) {
-    static CheckRulesPolicy defaults() {
-        return new CheckRulesPolicy(true);
-    }
 }
 
 final class ManifestParseException extends Exception {

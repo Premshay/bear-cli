@@ -159,9 +159,8 @@ For each changed IR:
 Policy files used by `check`:
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
-- `.bear/policy/check-rules.properties` (`impl_containment=true|false`, default `true`)
 
 Generated wiring note:
 - logic wrappers expose `Wrapper.of(<ports...>)` for default production wiring.
 - keep constructor `(ports..., Logic)` for tests/advanced injection only.
-- governed impl execute-path logic must remain inside governed block-root code; no delegation to non-governed external packages.
+- governed impl execute-body logic must remain inside manifest `governedSourceRoots`; no delegation to non-governed external packages.

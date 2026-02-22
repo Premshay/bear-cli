@@ -54,7 +54,7 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `Boundary hardening v1.3` (implemented in cli/kernel; demo validation + sync pending)
+1. `Boundary hardening v1.3.x hard-break` (`governedSourceRoots`, execute-only containment, no check-rules toggle; demo validation + sync pending)
 2. `Declared allowed deps containment` (stabilization/operational hardening)
 3. Generated structural tests and cross-target parity follow-up
 4. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)

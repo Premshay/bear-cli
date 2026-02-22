@@ -64,6 +64,7 @@ class JvmTargetTest {
         assertTrue(wiring.contains("\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\""));
         assertTrue(wiring.contains("\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\""));
         assertTrue(wiring.contains("\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\""));
+        assertTrue(wiring.contains("\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\"]"));
         assertTrue(wiring.contains("\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"]"));
         assertTrue(wiring.contains("\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"]"));
         assertTrue(wiring.contains("\"logicRequiredPorts\":[\"ledgerPort\"]"));
@@ -71,6 +72,30 @@ class JvmTargetTest {
         assertTrue(wiring.contains("\"wrapperOwnedSemanticChecks\":[\"IDEMPOTENCY\",\"INVARIANTS\"]"));
         String containmentGradle = first.get("gradle/bear-containment.gradle");
         assertFalse(containmentGradle.contains("exclude('blocks/**/impl/**')"));
+    }
+
+    @Test
+    void compileIncludesSharedGovernedRootWhenDirectoryExists(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        BearIr normalized = normalizer.normalize(ir);
+
+        Files.createDirectories(tempDir.resolve("src/main/java/blocks/_shared"));
+        target.compile(normalized, tempDir, "withdraw");
+
+        Path wiringPath = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
+        String wiring = Files.readString(wiringPath);
+        assertTrue(wiring.contains(
+            "\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\",\"src/main/java/blocks/_shared\"]"
+        ));
     }
 
     @Test

@@ -139,12 +139,12 @@ Canonical rule:
     - `src/main/java/module-info.java` (`provides ... with ...`)
   - remove generated impl placeholder bodies (`RULE=IMPL_PLACEHOLDER`)
   - for `RULE=IMPL_CONTAINMENT_BYPASS`, keep execute-path logic inside governed block-root source paths (no external package delegation)
+    - containment allow roots are manifest `governedSourceRoots` (`blockRootSourceDir` first, optional `_shared` second)
   - use generated `Wrapper.of(<ports...>)` for production wiring
   - keep `(ports..., Logic)` constructor for tests/advanced injection
   - wire generated entrypoints with non-null ports
   - ensure declared logic-required effect ports are used
   - do not suppress wrapper-owned semantic ports (`// BEAR:PORT_USED ...` is invalid for those)
-  - emergency brake only when required by repo policy: `.bear/policy/check-rules.properties` with `impl_containment=false`
 - for `CODE=UNDECLARED_REACH`, declare required port/op in IR, compile, and route through generated port interface
 - for `CODE=HYGIENE_UNEXPECTED_PATHS` (strict mode), remove unexpected seed paths or allowlist exact path in `.bear/policy/hygiene-allowlist.txt`
 

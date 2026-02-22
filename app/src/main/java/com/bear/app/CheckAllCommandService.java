@@ -166,7 +166,6 @@ final class CheckAllCommandService {
         for (Map.Entry<String, List<Integer>> entry : rootPassIndexes.entrySet()) {
             Path root = options.repoRoot().resolve(entry.getKey()).normalize();
             try {
-                CheckRulesPolicy checkRulesPolicy = CheckRulesPolicyParser.parse(root);
                 Set<String> reflectionAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
                     root,
                     PolicyAllowlistParser.REFLECTION_ALLOWLIST_PATH
@@ -222,8 +221,7 @@ final class CheckAllCommandService {
                 List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(
                     root,
                     wiringManifests,
-                    reflectionAllowlist,
-                    checkRulesPolicy.implContainment()
+                    reflectionAllowlist
                 );
                 if (!bypassFindings.isEmpty()) {
                     BoundaryBypassFinding first = bypassFindings.get(0);
@@ -454,10 +452,16 @@ final class CheckAllCommandService {
             || "MISSING_KEY_wrapperOwnedSemanticPorts".equals(code)
             || "MISSING_KEY_wrapperOwnedSemanticChecks".equals(code)
             || "MISSING_KEY_blockRootSourceDir".equals(code)
+            || "MISSING_KEY_governedSourceRoots".equals(code)
             || "MALFORMED_ARRAY_logicRequiredPorts".equals(code)
             || "MALFORMED_ARRAY_wrapperOwnedSemanticPorts".equals(code)
             || "MALFORMED_ARRAY_wrapperOwnedSemanticChecks".equals(code)
-            || "INVALID_STRING_ARRAY".equals(code);
+            || "MALFORMED_ARRAY_governedSourceRoots".equals(code)
+            || "INVALID_STRING_ARRAY".equals(code)
+            || "UNSUPPORTED_WIRING_SCHEMA_VERSION".equals(code)
+            || "INVALID_GOVERNED_SOURCE_ROOTS".equals(code)
+            || "INVALID_ROOT_PATH_blockRootSourceDir".equals(code)
+            || "INVALID_ROOT_PATH_governedSourceRoots".equals(code);
     }
 
     private static String testDiagnosticsSuffix(ProjectTestResult testResult) {

@@ -200,8 +200,7 @@ $docMappings = @(
     @{ source = (Join-Path $packagedAgentRoot "doc\IR_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\IR_QUICKREF.md") },
     @{ source = (Join-Path $packagedAgentRoot "doc\BLOCK_INDEX_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BLOCK_INDEX_QUICKREF.md") },
     @{ source = (Join-Path $repoRoot "docs\bear-package\.bear\policy\reflection-allowlist.txt"); destination = (Join-Path $demoRoot ".bear\policy\reflection-allowlist.txt") },
-    @{ source = (Join-Path $repoRoot "docs\bear-package\.bear\policy\hygiene-allowlist.txt"); destination = (Join-Path $demoRoot ".bear\policy\hygiene-allowlist.txt") },
-    @{ source = (Join-Path $repoRoot "docs\bear-package\.bear\policy\check-rules.properties"); destination = (Join-Path $demoRoot ".bear\policy\check-rules.properties") }
+    @{ source = (Join-Path $repoRoot "docs\bear-package\.bear\policy\hygiene-allowlist.txt"); destination = (Join-Path $demoRoot ".bear\policy\hygiene-allowlist.txt") }
 )
 
 Write-Output "Sync plan:"
@@ -222,6 +221,11 @@ if ($WhatIf) {
 }
 
 Confirm-OrThrow -WhatIf:$WhatIf -Yes:$Yes
+
+$legacyCheckRulesPolicy = Join-Path $demoRoot ".bear\\policy\\check-rules.properties"
+if (Test-Path $legacyCheckRulesPolicy -PathType Leaf) {
+    Remove-Item -Force $legacyCheckRulesPolicy
+}
 
 foreach ($op in $runtimeOperations) {
     $src = Resolve-Absolute $op.source

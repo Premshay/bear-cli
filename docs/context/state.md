@@ -21,18 +21,29 @@ P2 feature delivery:
 ## Next Concrete Task
 
 v1.3 follow-through:
-1. run demo smoke against `bear-account-demo` for containment + `compile --all` (`compile --all`, `check --all`)
-2. verify docs/package sync in demo after `scripts/sync-bear-demo.ps1`
+1. run demo smoke against `bear-account-demo` for hard-break containment (`compile --all`, `check --all`)
+2. verify `sync-bear-demo.ps1` package sync with removed check-rules policy file path
 3. continue command-service modularization cleanup with no contract drift
 4. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
 
+- Implemented BEAR v1.3.x hard-break containment upgrade:
+  - wiring manifests now require `governedSourceRoots` (v2-only wiring contract for containment).
+  - kernel emits deterministic `governedSourceRoots` (`blockRootSourceDir`, optional `src/main/java/blocks/_shared` when directory exists).
+  - check/check-all enforce containment against `governedSourceRoots` and scan containment only inside governed impl `execute(...)` bodies.
+  - removed containment policy toggle path; `check-rules` policy support is no longer part of check flows.
+  - docs/package guidance updated for always-on execute-scoped containment and `_shared` convention.
+  - regression green:
+    - `.\gradlew.bat --no-daemon :kernel:test`
+    - `.\gradlew.bat --no-daemon :app:test`
+    - `.\gradlew.bat --no-daemon test`
+
 - Implemented BEAR v1.3 deterministic containment + consistency + `compile --all`:
   - fixed semantic-port enforcement mismatch by removing v2 fallback from `logicRequiredPorts` to `requiredEffectPorts`.
   - made v2 semantic manifest fields strict (`logicRequiredPorts`, `wrapperOwnedSemanticPorts`, `wrapperOwnedSemanticChecks`, `blockRootSourceDir`) with deterministic `MANIFEST_INVALID` (`exit 2`) classification in single/all check.
   - added governed impl containment scanner (`RULE=IMPL_CONTAINMENT_BYPASS`) with frozen call-shape/resolution/lookup contracts and deterministic finding ordering.
-  - added optional `.bear/policy/check-rules.properties` parser (`impl_containment=true|false`, default `true`) with deterministic `POLICY_INVALID` behavior.
+  - containment policy toggle was removed in the hard-break follow-up; containment is always on.
   - added `bear compile --all --project <repoRoot> [--blocks ...] [--only ...] [--fail-fast] [--strict-orphans]` with deterministic per-block output + summary.
   - kernel wiring manifest now emits deterministic `blockRootSourceDir`.
   - synced public docs + package docs/policy templates + demo sync script for the new contracts.
