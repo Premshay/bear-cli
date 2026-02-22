@@ -8,16 +8,26 @@ BEAR is a deterministic governance CLI for agentic backend development: agents i
 
 Role of this page: fast orientation. Deeper rationale and contracts are linked below.
 
-## What BEAR enforces and alerts on
+It is designed for AI-assisted development (or any fast iteration), where boundary expansion and generated-artifact drift can be easy to miss.
 
-- `check` enforces deterministic drift, boundary-policy, and test-stage gates.
-- `pr-check` alerts on boundary-expanding IR deltas against a base ref.
-- Non-zero failures always end with deterministic `CODE`, `PATH`, and `REMEDIATION`.
+## What BEAR Does (Plain Terms)
+
+- You declare what code is allowed to do at the boundary.
+- BEAR generates deterministic guardrails from that declaration.
+- Implementation can evolve freely inside those guardrails.
+- CI gets deterministic governance signals from `check` and `pr-check`.
+
+## What You Get
+
+- Boundary power expansion becomes explicit and machine-parseable in PRs.
+- Generated guardrails cannot drift silently.
+- Every non-zero failure is actionable: `CODE`, `PATH`, `REMEDIATION`.
 
 ## What BEAR is not (Preview non-goals)
 
 - Not a business-rules engine.
 - Not a runtime transaction framework.
+- Not an agent orchestrator.
 - Not a verifier of domain correctness beyond declared contract checks.
 - Not a replacement for application test strategy.
 
@@ -78,14 +88,19 @@ Fallback if `bear.blocks.yaml` is missing:
 .\.bear\tools\bear-cli\bin\bear.bat check spec\<block>.bear.yaml --project .
 ```
 
-Success signal: canonical `bear check --all --project .` exits `0` and reports no failing blocks.
+Success = exit `0` and no failing blocks (in `--all`, summary shows `EXIT_CODE: 0`).
 
-## Mental model
+## Preview Scope and Coverage
 
-- `IR`: declared block contract and allowed boundaries.
-- `compile`: deterministic generated artifacts from IR.
-- `check`: deterministic local gate (drift, boundary checks, tests).
-- `pr-check`: deterministic PR governance classification against base.
+Preview focuses on deterministic contracts and CI-friendly governance.
+Enforcement coverage is intentionally bounded to supported targets/surfaces in Preview.
+
+## How It Works
+
+- BEAR IR: small YAML boundary declaration.
+- `compile`: deterministic BEAR-owned generated artifacts.
+- `check`: deterministic local enforcement gate.
+- `pr-check`: deterministic boundary-governance classification against base.
 
 Pipeline: `IR -> compile -> check`, then `pr-check --base <ref>` for PR governance.
 
@@ -103,15 +118,7 @@ Pipeline: `IR -> compile -> check`, then `pr-check --base <ref>` for PR governan
 - Failure triage: [docs/public/troubleshooting.md](docs/public/troubleshooting.md)
 - Optional project context: [docs/context/state.md](docs/context/state.md)
 
-## Preview scope and supported targets
-
-Preview scope:
-
-- Deterministic `validate`, `compile`, `fix`, `check`, `unblock`, and `pr-check` contracts.
-- Deterministic failure footer and stable exit code registry.
-- Deterministic boundary-expansion signaling in `pr-check`.
-
-Supported targets:
+## Supported Targets
 
 - JVM/Java target in Preview.
 - Primary containment enforcement path is Java plus Gradle wrapper when `impl.allowedDeps` is declared.

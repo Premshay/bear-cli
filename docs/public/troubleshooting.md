@@ -113,6 +113,7 @@ Fix:
 
 Symptom: test-stage failure with exit `4`.
 Likely cause: project tests failed, timed out, or invariant marker emitted.
+Mapping: `INVARIANT_VIOLATION` is surfaced in the test-stage failure bucket and exits `4`.
 Fix:
 
 1. Fix failing test or invariant cause.

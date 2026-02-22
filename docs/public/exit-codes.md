@@ -24,6 +24,7 @@
 ## `--all` aggregation
 
 `check --all` and `pr-check --all` aggregate by severity rank, not numeric max.
+This severity ranking is part of the frozen Preview contract.
 
 - `check --all` rank: `70 > 74 > 64 > 2 > 3 > 6 > 4 > 0`
 - `pr-check --all` rank: `70 > 74 > 64 > 2 > 5 > 0`

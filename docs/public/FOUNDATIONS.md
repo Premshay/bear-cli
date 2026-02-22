@@ -56,10 +56,11 @@ Key idea:
 - `compile` materializes deterministic generated artifacts from that contract.
 - `check` enforces consistency and policy against that contract.
 - `pr-check` classifies contract deltas against base branch for governance.
+- invariant/idempotency semantics in scope are enforced in BEAR-owned wrappers (not by impl conventions).
 
 ## Agent workflow and developer visibility
 
-- BEAR is primarily an agent execution framework, not a manual developer checklist.
+- BEAR is designed for agent-driven workflows, not as a manual developer checklist.
 - Agent runs the deterministic loop (IR update, generation, gates) under BEAR restrictions.
 - Developer uses BEAR outputs for visibility and governance, especially in PR review and CI.
 
@@ -81,6 +82,7 @@ Developer-facing visibility:
 
 Preview focuses on structural contract enforcement, deterministic diagnostics, and boundary governance.
 It is intentionally not a business-rules engine and does not claim full runtime semantics.
+Enforcement coverage is intentionally bounded to supported targets/surfaces in Preview.
 
 ## CLI architecture at a glance
 

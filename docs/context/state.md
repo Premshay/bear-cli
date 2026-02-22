@@ -27,6 +27,12 @@ Post-Lock++ follow-through:
 
 ## Session Notes
 
+- Applied architect review refinements on public docs:
+  - rewrote README top section in plain terms (`what problem`, `what BEAR does`, `what you get`, quickstart first).
+  - added explicit bounded coverage language in `README.md` and `docs/public/FOUNDATIONS.md`.
+  - softened positioning language to `designed for agent-driven workflows` in `docs/public/FOUNDATIONS.md`.
+  - clarified `INVARIANT_VIOLATION -> exit 4` mapping in `docs/public/troubleshooting.md`.
+  - made `--all` severity ranking explicitly frozen in `docs/public/exit-codes.md`.
 - Completed public docs onboarding upgrade (concise-first, deep-link-second):
   - rewrote README.md for fast orientation (what it is, what it enforces/alerts, reproducible quickstart, focused links).
   - restructured docs/public/INDEX.md into Start in 5 minutes, Understand deeper, and Integrate in CI.
