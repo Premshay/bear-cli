@@ -1,7 +1,5 @@
 # Model
 
-Role of this page: operating model and vocabulary only.
-
 For rationale see [FOUNDATIONS.md](FOUNDATIONS.md). For guarantees/signals see [ENFORCEMENT.md](ENFORCEMENT.md).
 
 ## Vocabulary

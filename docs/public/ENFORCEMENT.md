@@ -1,7 +1,5 @@
 # Enforcement and Alerts
 
-Role of this page: what BEAR protects and what signals developers can trust.
-
 For rationale see [FOUNDATIONS.md](FOUNDATIONS.md). For exact command contracts see [CONTRACTS.md](CONTRACTS.md).
 
 ## Preview invariant status model

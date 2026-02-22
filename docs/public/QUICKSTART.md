@@ -1,7 +1,5 @@
 # Quickstart
 
-Role of this page: shortest reliable path to first BEAR success.
-
 Prerequisites:
 
 - Demo repo is present at `../bear-account-demo`.

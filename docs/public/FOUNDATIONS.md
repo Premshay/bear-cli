@@ -1,7 +1,5 @@
 # Foundations
 
-Role of this page: conceptual rationale and architecture context.
-
 For fastest onboarding use [QUICKSTART.md](QUICKSTART.md). For contract guarantees use [ENFORCEMENT.md](ENFORCEMENT.md) and [CONTRACTS.md](CONTRACTS.md).
 
 ## Why BEAR exists

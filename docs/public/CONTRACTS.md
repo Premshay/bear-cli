@@ -1,7 +1,5 @@
 # Contracts
 
-Role of this page: frozen machine contract surface for Preview.
-
 Preview treats command behavior and output contracts as frozen for reliable CI and agent workflows.
 
 ## Frozen contract in Preview

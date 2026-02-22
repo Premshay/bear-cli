@@ -6,8 +6,6 @@
 
 BEAR is a deterministic governance CLI for agentic backend development: agents implement inside declared IR boundaries, and BEAR turns boundary risk into explicit PR/CI signals.
 
-Role of this page: fast orientation. Deeper rationale and contracts are linked below.
-
 It is designed for AI-assisted development (or any fast iteration), where boundary expansion and generated-artifact drift can be easy to miss.
 
 ## What BEAR Does (Plain Terms)

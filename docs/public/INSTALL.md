@@ -1,7 +1,5 @@
 # Install
 
-Role of this page: install BEAR package files in a non-demo project.
-
 ## Package rule
 
 Install BEAR by copying one package bundle: [`docs/bear-package/.bear/`](../bear-package/.bear/) into your project as `.bear/`.
