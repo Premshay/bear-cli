@@ -44,6 +44,11 @@ Post-Lock++ follow-through:
   - `check` / `check --all` lock/bootstrap details now include `attempts=...`, `CACHE_MODE=...`, `FALLBACK=...`.
   - `bear unblock` now retries marker delete (3 attempts, `200ms`), stays idempotent when marker missing, and emits deterministic `CODE=UNBLOCK_LOCKED` on persistent lock (exit `74`) with `ATTRS=...`.
   - added/updated tests in `ProjectTestRunnerTest` and `BearCliTest`; verified with `.\gradlew.bat --no-daemon :app:test`.
+- Updated marker semantics to remove check dead-end:
+  - `check` and `check --all` no longer hard-fail on pre-existing `build/bear/check.blocked.marker`.
+  - marker is now advisory; fresh gate run proceeds and clears marker on pass.
+  - added/updated tests for advisory marker behavior in single and all-mode check flows.
+  - synced updated CLI + package docs into `bear-account-demo` after cleaning demo workspace.
 - Clarified invariant-doc split:
   - keep `docs/context/invariant-charter.md` as internal normative catalog.
   - expose a distilled public Preview invariant view in `docs/public/ENFORCEMENT.md` (explicit `ENFORCED` vs `PARTIAL` statuses and coverage caveat).

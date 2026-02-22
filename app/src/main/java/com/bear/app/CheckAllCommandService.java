@@ -10,7 +10,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 final class CheckAllCommandService {
-    private static final String CHECK_BLOCKED_MARKER_RELATIVE = "build/bear/check.blocked.marker";
     private static final String CHECK_BLOCKED_REASON_LOCK = "LOCK";
     private static final String CHECK_BLOCKED_REASON_BOOTSTRAP = "BOOTSTRAP_IO";
 
@@ -55,33 +54,6 @@ final class CheckAllCommandService {
                 CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Use only block names declared in `bear.blocks.yaml`."
-            );
-        }
-
-        TreeSet<String> managedRoots = new TreeSet<>();
-        for (BlockIndexEntry entry : selected) {
-            if (!entry.enabled()) {
-                continue;
-            }
-            managedRoots.add(entry.projectRoot());
-        }
-        for (String managedRoot : managedRoots) {
-            Path root = options.repoRoot().resolve(managedRoot).normalize();
-            CheckBlockedState blockedState = BearCli.readCheckBlockedState(root);
-            if (!blockedState.blocked()) {
-                continue;
-            }
-            String markerPath = options.repoRoot()
-                .relativize(root.resolve(CHECK_BLOCKED_MARKER_RELATIVE))
-                .toString()
-                .replace('\\', '/');
-            return BearCli.failWithLegacy(
-                err,
-                CliCodes.EXIT_IO,
-                "check: IO_ERROR: CHECK_BLOCKED: " + managedRoot + ": " + blockedState.summary(),
-                CliCodes.IO_ERROR,
-                markerPath,
-                "Run `bear unblock --project <path>` after fixing lock/bootstrap IO and rerun `bear check --all`."
             );
         }
 

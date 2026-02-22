@@ -14,6 +14,7 @@ bear unblock --project <path>
 
 - `--project <path>`: required project root.
 - Marker target is `<project>/build/bear/check.blocked.marker`.
+- Marker is advisory; `check` and `check --all` still run fresh gates.
 - Missing or invalid args are usage errors.
 
 ## Output schema and ordering guarantees

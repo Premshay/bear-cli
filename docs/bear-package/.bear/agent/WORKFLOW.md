@@ -52,7 +52,7 @@ Anti-patterns:
 7. Run gate:
 - single-block mode: `bear check <ir-file> --project <repoRoot>`
 - multi-block mode: `bear check --all --project <repoRoot>`
-  - if gate is blocked by `build/bear/check.blocked.marker`, clear with `bear unblock --project <repoRoot>` after fixing lock/bootstrap IO
+  - if a stale `build/bear/check.blocked.marker` exists, gate still runs; clear with `bear unblock --project <repoRoot>` when cleanup is needed
 8. Implement in `*Impl.java` and tests only.
 9. Re-run check to `0`.
 
@@ -73,7 +73,7 @@ Greenfield hard stop:
 - ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
 - run Gradle build/test once to write containment marker
 7. Run check gate (`check` or `check --all`).
-  - if gate is blocked by `build/bear/check.blocked.marker`, clear with `bear unblock --project <repoRoot>` after fixing lock/bootstrap IO
+  - stale `build/bear/check.blocked.marker` is advisory; use `bear unblock --project <repoRoot>` when cleanup is needed
 8. Implement and test.
 9. Re-run check gate to `0`.
 10. For PR/base governance run:

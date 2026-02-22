@@ -40,7 +40,7 @@ Purpose:
 24. In `src/main/**`, do not import or instantiate governed `*Impl` classes directly; wire through generated entrypoints under `com.bear.generated.*`.
 25. Do not wire governed entrypoints with top-level `null` port arguments in production code.
 26. For each logic-required effect port, impl code must use the corresponding port parameter directly, pass it through to a helper call, or explicitly suppress with exact same-file line `// BEAR:PORT_USED <portParamName>`; wrapper-owned semantic ports must not be used/suppressed from impl code.
-27. If `check` writes `build/bear/check.blocked.marker` (`PROJECT_TEST_LOCK`/`PROJECT_TEST_BOOTSTRAP`), stop feature edits and clear with `bear unblock --project <path>` after fixing environment.
+27. If `check` writes `build/bear/check.blocked.marker` (`PROJECT_TEST_LOCK`/`PROJECT_TEST_BOOTSTRAP`), treat it as advisory and continue fixing root cause; use `bear unblock --project <path>` to clear stale marker when needed.
 28. Do not patch `build.gradle` manually as first response to lock/bootstrap failures; first use BEAR deterministic retry/fallback and BEAR-owned generated wiring.
 29. Agent guidance must remain package-local: rely on `.bear/agent/**` plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**`), not non-shipped repo docs.
 

@@ -1412,7 +1412,7 @@ class BearCliTest {
     }
 
     @Test
-    void checkBlockedMarkerRequiresUnblockAndSuccessfulCheckClears(@TempDir Path tempDir) throws Exception {
+    void checkBlockedMarkerIsAdvisoryAndSuccessfulCheckClears(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1433,15 +1433,6 @@ class BearCliTest {
             "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
             "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
         );
-        CliRunResult blocked = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(74, blocked.exitCode);
-        assertTrue(normalizeLf(blocked.stderr).startsWith("check: IO_ERROR: CHECK_BLOCKED:"));
-
-        CliRunResult unblock = runCli(new String[] { "unblock", "--project", tempDir.toString() });
-        assertEquals(0, unblock.exitCode);
-        assertEquals("unblock: OK\n", normalizeLf(unblock.stdout));
-        assertFalse(Files.exists(marker));
-
         CliRunResult pass = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(0, pass.exitCode);
         assertFalse(Files.exists(marker));
@@ -1502,7 +1493,7 @@ class BearCliTest {
     }
 
     @Test
-    void checkAllHonorsBlockedMarkerPreflight(@TempDir Path tempDir) throws Exception {
+    void checkAllBlockedMarkerIsAdvisoryAndRunCanProceed(@TempDir Path tempDir) throws Exception {
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         Path marker = alphaRoot.resolve("build/bear/check.blocked.marker");
@@ -1512,14 +1503,9 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] {
             "check", "--all", "--project", fixture.repoRoot().toString()
         });
-        assertEquals(74, run.exitCode);
-        assertTrue(normalizeLf(run.stderr).startsWith("check: IO_ERROR: CHECK_BLOCKED: services/alpha:"));
-        assertFailureEnvelope(
-            run.stderr,
-            "IO_ERROR",
-            "services/alpha/build/bear/check.blocked.marker",
-            "Run `bear unblock --project <path>` after fixing lock/bootstrap IO and rerun `bear check --all`."
-        );
+        assertEquals(0, run.exitCode);
+        assertTrue(normalizeLf(run.stdout).contains("BLOCK: alpha"));
+        assertFalse(Files.exists(marker));
     }
 
     @Test

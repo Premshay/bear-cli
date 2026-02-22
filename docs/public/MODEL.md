@@ -11,7 +11,7 @@ For rationale see [FOUNDATIONS.md](FOUNDATIONS.md). For guarantees/signals see [
 - `compile`: deterministic generation of BEAR-owned artifacts.
 - `check`: deterministic local gate for drift, boundary rules, and tests.
 - `pr-check`: deterministic base-vs-head governance classification.
-- `unblock`: clears `check` blocked marker after lock/bootstrap IO failures.
+- `unblock`: clears advisory `check` blocked marker after lock/bootstrap IO failures.
 - `determinism`: same inputs produce the same output lines, files, and exit behavior.
 - `agent loop`: BEAR command sequence executed by the agent while implementing specs.
 - `developer visibility`: PR/CI signals BEAR emits for review and governance.

@@ -189,7 +189,7 @@ bear unblock --project <path>
 ```
 
 Use when:
-- `check`/`check --all` reports `CHECK_BLOCKED` after project-test lock/bootstrap IO classification
+- you want to clear a stale marker after prior lock/bootstrap failures
 
 Behavior:
 - clears `<project>/build/bear/check.blocked.marker` if present
@@ -197,6 +197,7 @@ Behavior:
 - retries marker delete up to 3 attempts with fixed `200ms` backoff
 - on persistent marker lock, fails with `CODE=UNBLOCK_LOCKED` (exit `74`)
 - marker is written only after BEAR exhausts deterministic retry/fallback for Gradle lock/bootstrap IO
+- marker is advisory: `check`/`check --all` proceed with a fresh gate run even if marker exists
 
 ### 5. PR governance gate (base diff classification)
 

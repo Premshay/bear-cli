@@ -294,18 +294,6 @@ public final class BearCli {
 
         Path irFile = Path.of(args[1]);
         Path projectRoot = Path.of(args[3]);
-        CheckBlockedState blockedState = readCheckBlockedState(projectRoot);
-        if (blockedState.blocked()) {
-            String line = "check: IO_ERROR: CHECK_BLOCKED: " + blockedState.summary();
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                line,
-                FailureCode.IO_ERROR,
-                CHECK_BLOCKED_MARKER_RELATIVE,
-                "Run `bear unblock --project <path>` after fixing lock/bootstrap IO and rerun `bear check`."
-            );
-        }
         CheckResult result = executeCheck(irFile, projectRoot, true, null, null);
         return emitCheckResult(result, out, err);
     }
