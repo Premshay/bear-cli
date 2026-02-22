@@ -1,0 +1,8 @@
+# Exact repo-relative paths allowed to use classloading reflection APIs in src/main/**.
+# Rules:
+# - UTF-8, forward slashes only
+# - one path per line
+# - sorted lexicographically
+# - unique entries
+# - no globs, no absolute paths, no trailing slash
+

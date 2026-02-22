@@ -1,0 +1,8 @@
+# Exact repo-relative paths exempted from strict hygiene unexpected-path checks.
+# Rules:
+# - UTF-8, forward slashes only
+# - one path per line
+# - sorted lexicographically
+# - unique entries
+# - no globs, no absolute paths, no trailing slash
+

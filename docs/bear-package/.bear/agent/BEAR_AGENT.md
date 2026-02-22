@@ -43,6 +43,26 @@ Purpose:
 27. If `check` writes `build/bear/check.blocked.marker` (`PROJECT_TEST_LOCK`/`PROJECT_TEST_BOOTSTRAP`), treat it as advisory and continue fixing root cause; use `bear unblock --project <path>` to clear stale marker when needed.
 28. Do not patch `build.gradle` manually as first response to lock/bootstrap failures; first use BEAR deterministic retry/fallback and BEAR-owned generated wiring.
 29. Agent guidance must remain package-local: rely on `.bear/agent/**` plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**`), not non-shipped repo docs.
+30. If using reflection/hygiene policy allowlists, keep exact repo-relative path entries in `.bear/policy/*.txt` sorted, unique, and non-glob.
+
+## Policy Contract (Check)
+
+When running `bear check` or `bear check --all`:
+1. `--strict-hygiene` enables hygiene unexpected-path enforcement; default mode does not.
+2. Policy files are optional:
+- `.bear/policy/reflection-allowlist.txt`
+- `.bear/policy/hygiene-allowlist.txt`
+3. If a policy file is present, entries must be exact repo-relative paths:
+- UTF-8, forward slashes, one path per line
+- sorted lexicographically
+- unique entries
+- no globs, no absolute paths, no trailing slash
+4. Missing policy file means empty allowlist; malformed policy file fails with `CODE=POLICY_INVALID`.
+5. Reflection boundary rule:
+- classloading reflection in `src/main/**` (`Class.forName`, `loadClass`) is blocked unless exact-path allowlisted.
+6. Strict hygiene rule:
+- unexpected seed paths fail with `CODE=HYGIENE_UNEXPECTED_PATHS` unless allowlisted.
+7. For concrete syntax examples, see header comments in `.bear/policy/reflection-allowlist.txt` and `.bear/policy/hygiene-allowlist.txt`.
 
 ## Session Baseline Check
 
@@ -139,8 +159,8 @@ Preferred user-owned impl location:
 ## Canonical Gates
 
 Use direct CLI commands as canonical defaults:
-- single-block: `bear check <ir-file> --project <repoRoot>`
-- multi-block: `bear check --all --project <repoRoot>`
+- single-block: `bear check <ir-file> --project <repoRoot> [--strict-hygiene]`
+- multi-block: `bear check --all --project <repoRoot> [--strict-hygiene]`
 - clear check-only block marker: `bear unblock --project <repoRoot>`
 - PR/base: `bear pr-check ...`
 - repair generated artifacts: `bear fix <ir-file> --project <repoRoot>` / `bear fix --all --project <repoRoot>`

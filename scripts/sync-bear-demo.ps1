@@ -198,7 +198,9 @@ $docMappings = @(
     @{ source = (Join-Path $packagedAgentRoot "doc\BEAR_PRIMER.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BEAR_PRIMER.md") },
     @{ source = (Join-Path $packagedAgentRoot "doc\IR_EXAMPLES.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\IR_EXAMPLES.md") },
     @{ source = (Join-Path $packagedAgentRoot "doc\IR_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\IR_QUICKREF.md") },
-    @{ source = (Join-Path $packagedAgentRoot "doc\BLOCK_INDEX_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BLOCK_INDEX_QUICKREF.md") }
+    @{ source = (Join-Path $packagedAgentRoot "doc\BLOCK_INDEX_QUICKREF.md"); destination = (Join-Path $demoRoot ".bear\agent\doc\BLOCK_INDEX_QUICKREF.md") },
+    @{ source = (Join-Path $repoRoot "docs\bear-package\.bear\policy\reflection-allowlist.txt"); destination = (Join-Path $demoRoot ".bear\policy\reflection-allowlist.txt") },
+    @{ source = (Join-Path $repoRoot "docs\bear-package\.bear\policy\hygiene-allowlist.txt"); destination = (Join-Path $demoRoot ".bear\policy\hygiene-allowlist.txt") }
 )
 
 Write-Output "Sync plan:"

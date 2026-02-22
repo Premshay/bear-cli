@@ -28,6 +28,18 @@ Post-Lock++ follow-through:
 
 ## Session Notes
 
+- Clarified packaged agent policy semantics in one place:
+  - added `Policy Contract (Check)` section to `docs/bear-package/.bear/agent/BEAR_AGENT.md` covering strict hygiene mode, optional policy files, exact-path allowlist format, and `POLICY_INVALID` / `HYGIENE_UNEXPECTED_PATHS` behavior.
+  - linked to `.bear/policy/*.txt` header comments for concrete syntax examples.
+  - verified with `.\gradlew.bat --no-daemon :app:test --tests com.bear.app.BearPackageDocsConsistencyTest`.
+
+- Synced BEAR package bundle with CLI hardening updates:
+  - added package policy templates under `docs/bear-package/.bear/policy/` (`reflection-allowlist.txt`, `hygiene-allowlist.txt`)
+  - updated packaged agent docs (`BEAR_AGENT.md`, `WORKFLOW.md`, `IR_QUICKREF.md`) for `check [--strict-hygiene]` and policy/hardening semantics
+  - updated `docs/bear-package/README.md` package layout/distributed-file set and canonical runtime path note
+  - updated `scripts/sync-bear-demo.ps1` so demo sync copies `.bear/policy/*` templates from package source
+  - verified with `.\gradlew.bat --no-daemon :app:test --tests com.bear.app.BearPackageDocsConsistencyTest`
+
 - Implemented BEAR CLI hardening v1 (CLI-only) with passing tests:
   - classloading reflection seam closure in `src/main/**` (`Class.forName`, `loadClass`) with deterministic `RULE=DIRECT_IMPL_USAGE` detail token `KIND=REFLECTION_CLASSLOADING: ...`.
   - deterministic exact-path allowlist parser (`PolicyAllowlistParser`) and new policy code `POLICY_INVALID` (exit `2`).

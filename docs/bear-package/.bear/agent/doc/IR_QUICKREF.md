@@ -153,4 +153,8 @@ For each changed IR:
 1. `bear validate <ir-file>`
 2. `bear compile <ir-file> --project <repoRoot>`
 3. `bear fix <ir-file> --project <repoRoot>` (or `fix --all`)
-4. `bear check <ir-file> --project <repoRoot>` (or `check --all`)
+4. `bear check <ir-file> --project <repoRoot> [--strict-hygiene]` (or `check --all [--strict-hygiene]`)
+
+Policy files used by `check`:
+- `.bear/policy/reflection-allowlist.txt`
+- `.bear/policy/hygiene-allowlist.txt`

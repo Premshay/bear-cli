@@ -33,6 +33,7 @@ Runtime distribution note:
 - package includes a vendored CLI runtime under `.bear/tools/bear-cli/`
 - adopters copy the full `.bear/` bundle from this directory into `<repoRoot>/.bear/`
 - commands are invoked via vendored path (for example `.bear/tools/bear-cli/bin/bear(.bat) ...`)
+- generated runtime support classes are canonical under `build/generated/bear/src/main/java/com/bear/generated/runtime` (legacy `build/generated/bear/runtime/**` is unsupported)
 
 Containment note (v1 preview):
 - if IR declares `block.impl.allowedDeps`, Java+Gradle projects must apply generated containment entrypoint:
@@ -70,6 +71,9 @@ Canonical layout in adopter repos:
   doc/IR_QUICKREF.md
   doc/IR_EXAMPLES.md
   doc/BLOCK_INDEX_QUICKREF.md
+<repoRoot>/.bear/policy/
+  reflection-allowlist.txt
+  hygiene-allowlist.txt
 <repoRoot>/.bear/tools/bear-cli/
   bin/bear(.bat)
   lib/*.jar
@@ -90,6 +94,8 @@ Required package files:
 - `.bear/agent/doc/IR_QUICKREF.md`
 - `.bear/agent/doc/IR_EXAMPLES.md`
 - `.bear/agent/doc/BLOCK_INDEX_QUICKREF.md`
+- `.bear/policy/reflection-allowlist.txt`
+- `.bear/policy/hygiene-allowlist.txt`
 - `.bear/tools/bear-cli/bin/bear` / `.bear/tools/bear-cli/bin/bear.bat`
 - `.bear/tools/bear-cli/lib/*.jar`
 - `AGENTS_SHIM.md`

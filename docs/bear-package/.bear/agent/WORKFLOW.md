@@ -50,8 +50,8 @@ Anti-patterns:
 - ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
 - run Gradle build/test once to write containment marker
 7. Run gate:
-- single-block mode: `bear check <ir-file> --project <repoRoot>`
-- multi-block mode: `bear check --all --project <repoRoot>`
+- single-block mode: `bear check <ir-file> --project <repoRoot> [--strict-hygiene]`
+- multi-block mode: `bear check --all --project <repoRoot> [--strict-hygiene]`
   - if a stale `build/bear/check.blocked.marker` exists, gate still runs; clear with `bear unblock --project <repoRoot>` when cleanup is needed
 8. Implement in `*Impl.java` and tests only.
 9. Re-run check to `0`.
@@ -120,6 +120,7 @@ Canonical rule:
 
 2. `2` validation/schema/semantic failure:
 - fix IR structure/references/enums/duplicates
+- for policy contract failures (`CODE=POLICY_INVALID`), fix `.bear/policy/*.txt` format/order and rerun
 
 3. `3` drift failure:
 - prefer `bear fix` (or `fix --all`) to deterministically repair generated artifacts
@@ -130,12 +131,13 @@ Canonical rule:
 4. `6` boundary-bypass or undeclared reach:
 - for `CODE=BOUNDARY_BYPASS`:
   - remove direct impl usage from `src/main/**`
+  - remove classloading reflection APIs (`Class.forName`, `loadClass`) unless exact-path allowlisted
+  - remove generated impl placeholder bodies (`RULE=IMPL_PLACEHOLDER`)
   - wire generated entrypoints with non-null ports
   - ensure declared logic-required effect ports are used
   - do not suppress wrapper-owned semantic ports (`// BEAR:PORT_USED ...` is invalid for those)
-- declare required port/op in IR
-- compile
-- route call through generated port interface
+- for `CODE=UNDECLARED_REACH`, declare required port/op in IR, compile, and route through generated port interface
+- for `CODE=HYGIENE_UNEXPECTED_PATHS` (strict mode), remove unexpected seed paths or allowlist exact path in `.bear/policy/hygiene-allowlist.txt`
 
 5. `4` project tests failed:
 - fix implementation/tests
