@@ -52,6 +52,7 @@ class ManifestParsersTest {
         assertEquals("ledgerPort", parsed.requiredEffectPorts().get(0));
         assertEquals(1, parsed.logicRequiredPorts().size());
         assertEquals("ledgerPort", parsed.logicRequiredPorts().get(0));
+        assertEquals(null, parsed.blockRootSourceDir());
         assertEquals(0, parsed.wrapperOwnedSemanticPorts().size());
         assertEquals(0, parsed.wrapperOwnedSemanticChecks().size());
     }
@@ -61,12 +62,39 @@ class ManifestParsersTest {
         Path wiring = tempDir.resolve("x.wiring.json");
         Files.writeString(
             wiring,
-            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"],\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"],\"logicRequiredPorts\":[\"ledgerPort\"],\"wrapperOwnedSemanticPorts\":[\"idempotencyPort\"],\"wrapperOwnedSemanticChecks\":[\"IDEMPOTENCY\",\"INVARIANTS\"]}"
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"],\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"],\"logicRequiredPorts\":[\"ledgerPort\"],\"wrapperOwnedSemanticPorts\":[\"idempotencyPort\"],\"wrapperOwnedSemanticChecks\":[\"IDEMPOTENCY\",\"INVARIANTS\"]}"
         );
 
         WiringManifest parsed = ManifestParsers.parseWiringManifest(wiring);
         assertEquals(List.of("ledgerPort"), parsed.logicRequiredPorts());
+        assertEquals("src/main/java/blocks/withdraw", parsed.blockRootSourceDir());
         assertEquals(List.of("idempotencyPort"), parsed.wrapperOwnedSemanticPorts());
         assertEquals(List.of("IDEMPOTENCY", "INVARIANTS"), parsed.wrapperOwnedSemanticChecks());
+    }
+
+    @Test
+    void parseWiringManifestV2AllowsExplicitEmptySemanticArrays(@TempDir Path tempDir) throws Exception {
+        Path wiring = tempDir.resolve("x.wiring.json");
+        Files.writeString(
+            wiring,
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"requiredEffectPorts\":[\"ledgerPort\"],\"constructorPortParams\":[\"ledgerPort\"],\"logicRequiredPorts\":[],\"wrapperOwnedSemanticPorts\":[],\"wrapperOwnedSemanticChecks\":[]}"
+        );
+
+        WiringManifest parsed = ManifestParsers.parseWiringManifest(wiring);
+        assertEquals(List.of(), parsed.logicRequiredPorts());
+        assertEquals(List.of(), parsed.wrapperOwnedSemanticPorts());
+        assertEquals(List.of(), parsed.wrapperOwnedSemanticChecks());
+    }
+
+    @Test
+    void parseWiringManifestV2RequiresBlockRootSourceDir(@TempDir Path tempDir) throws Exception {
+        Path wiring = tempDir.resolve("x.wiring.json");
+        Files.writeString(
+            wiring,
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"requiredEffectPorts\":[\"ledgerPort\"],\"constructorPortParams\":[\"ledgerPort\"],\"logicRequiredPorts\":[],\"wrapperOwnedSemanticPorts\":[],\"wrapperOwnedSemanticChecks\":[]}"
+        );
+
+        ManifestParseException ex = assertThrows(ManifestParseException.class, () -> ManifestParsers.parseWiringManifest(wiring));
+        assertEquals("MISSING_KEY_blockRootSourceDir", ex.reasonCode());
     }
 }

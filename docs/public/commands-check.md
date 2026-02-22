@@ -1,4 +1,4 @@
-﻿# bear check
+# bear check
 
 ## Purpose
 
@@ -20,12 +20,24 @@ bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-f
 - `--fail-fast` stops block execution after first failure.
 - `--strict-orphans` enables strict marker-orphan checks.
 - `--strict-hygiene` enables opt-in unexpected-path hygiene checks (`.g`, `.gradle-user`) with exact-path allowlist support.
-- Optional policy files:
-  - `.bear/policy/reflection-allowlist.txt`
-  - `.bear/policy/hygiene-allowlist.txt`
-- Generated logic wrappers expose a sanctioned default wiring factory: `Wrapper.of(<ports...>)`.
-  - Prefer `Wrapper.of(...)` in user production wiring.
-  - Keep constructor `(ports..., Logic)` for tests/advanced injection.
+
+Optional policy files:
+- `.bear/policy/reflection-allowlist.txt`
+- `.bear/policy/hygiene-allowlist.txt`
+- `.bear/policy/check-rules.properties`
+
+`check-rules.properties` contract:
+- supported key set (v1.3): `impl_containment=true|false`
+- UTF-8, ignore blank lines and `#` comments
+- duplicate keys are invalid
+- unknown keys are invalid
+- lexicographic key order required
+- malformed content fails with `CODE=POLICY_INVALID`
+- missing file defaults to `impl_containment=true`
+
+Generated logic wrappers expose a sanctioned default wiring factory: `Wrapper.of(<ports...>)`.
+- Prefer `Wrapper.of(...)` in user production wiring.
+- Keep constructor `(ports..., Logic)` for tests/advanced injection.
 
 ## Output schema and ordering guarantees
 
@@ -55,14 +67,36 @@ Key line formats:
   - `src/main/resources/META-INF/services/**`
   - `src/main/java/module-info.java` (`provides ... with ...`)
 - null port wiring and effect-port bypass checks on governed wrappers/impls
+- placeholder impl stubs (`RULE=IMPL_PLACEHOLDER`)
+- governed impl containment boundary violations (`RULE=IMPL_CONTAINMENT_BYPASS`)
+
+Containment scanner contract (`impl_containment=true`):
+- scope: governed impl files from wiring manifests only
+- call shapes inspected:
+  - `Type.method(...)`
+  - `new Type(...).method(...)`
+- target resolution:
+  - token containing `.` -> FQCN
+  - else explicit import (`import a.b.Type;`)
+  - else same-package fallback (`package p;` -> `p.Type`)
+  - unresolved target -> no failure
+- source-path lookup for resolved FQCN `a.b.C`:
+  - only `src/main/java/a/b/C.java`
+  - no lookup in `build/**`, `build/generated/**`, `src/test/**`
+  - missing file -> unresolved (no failure)
+- allow namespace:
+  - `java.*`, `javax.*` auto-allowed
+  - `jakarta.*`, `com.sun.*` are not auto-allowed
+- final allow/deny is path-based only:
+  - resolved source path under manifest `blockRootSourceDir` -> allowed
+  - otherwise -> `IMPL_CONTAINMENT_BYPASS`
+- findings are emitted in deterministic order: `path`, then `rule`, then `detail`.
 
 For lock/bootstrap test-runner failures, detail lines append deterministic diagnostics:
 
 - `attempts=<csv>`
 - `CACHE_MODE=<isolated|user-cache|external-env>`
 - `FALLBACK=<none|to_user_cache>`
-
-Diagnostics are emitted in detail text only (footer contract is unchanged).
 
 Troubleshooting guardrail:
 - do not patch `build.gradle` manually as first response to lock/bootstrap failures; first use BEAR retry/fallback flow and BEAR-owned generated wiring (`build/generated/bear/gradle/bear-containment.gradle` where applicable).
@@ -106,4 +140,3 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
 - [troubleshooting.md](troubleshooting.md)
-

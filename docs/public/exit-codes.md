@@ -1,4 +1,4 @@
-﻿# Exit Codes
+# Exit Codes
 
 ## Registry
 
@@ -23,10 +23,12 @@
 
 ## `--all` aggregation
 
-`check --all` and `pr-check --all` aggregate by severity rank, not numeric max.
+`check --all`, `compile --all`, `fix --all`, and `pr-check --all` aggregate by severity rank, not numeric max.
 This severity ranking is part of the frozen Preview contract.
 
 - `check --all` rank: `70 > 74 > 64 > 2 > 3 > 6 > 4 > 0`
+- `compile --all` rank: `70 > 74 > 64 > 2 > 0`
+- `fix --all` rank: `70 > 74 > 64 > 2 > 0`
 - `pr-check --all` rank: `70 > 74 > 64 > 2 > 5 > 0`
 
 Global non-zero footer in aggregated failures uses:
@@ -34,9 +36,16 @@ Global non-zero footer in aggregated failures uses:
 - `CODE=REPO_MULTI_BLOCK_FAILED`
 - `PATH=bear.blocks.yaml`
 
-Notable code mappings:
+## Exit `2` bucket
 
-- `exit 2` includes `POLICY_INVALID`
+`exit=2` is the configuration/schema failure bucket. It is not IR-only.
+
+Common code values in this bucket:
+- `IR_VALIDATION`
+- `MANIFEST_INVALID`
+- `POLICY_INVALID`
+
+Notable mappings:
 - `exit 4` includes `INVARIANT_VIOLATION`
 
 ## Related
@@ -47,4 +56,3 @@ Notable code mappings:
 - [commands-pr-check.md](commands-pr-check.md)
 - [troubleshooting.md](troubleshooting.md)
 - [CONTRACTS.md](CONTRACTS.md)
-

@@ -63,6 +63,7 @@ class JvmTargetTest {
         assertTrue(wiring.contains("\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\""));
         assertTrue(wiring.contains("\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\""));
         assertTrue(wiring.contains("\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\""));
+        assertTrue(wiring.contains("\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\""));
         assertTrue(wiring.contains("\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"]"));
         assertTrue(wiring.contains("\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"]"));
         assertTrue(wiring.contains("\"logicRequiredPorts\":[\"ledgerPort\"]"));
@@ -134,6 +135,7 @@ class JvmTargetTest {
         String wiringContent = Files.readString(wiring);
         assertTrue(wiringContent.contains("\"implFqcn\":\"blocks.create.wallet.impl.CreateWalletImpl\""));
         assertTrue(wiringContent.contains("\"implSourcePath\":\"src/main/java/blocks/create/wallet/impl/CreateWalletImpl.java\""));
+        assertTrue(wiringContent.contains("\"blockRootSourceDir\":\"src/main/java/blocks/create/wallet\""));
         assertTrue(wiringContent.contains("\"constructorPortParams\":[\"walletStorePort\"]"));
         Path wrapper = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/create/wallet/CreateWallet.java");
         String wrapperContent = Files.readString(wrapper);

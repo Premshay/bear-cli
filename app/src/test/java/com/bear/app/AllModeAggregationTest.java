@@ -49,6 +49,21 @@ class AllModeAggregationTest {
         assertEquals(true, summary.failFastTriggered());
     }
 
+    @Test
+    void aggregateCompileResultsTracksFailuresAndFailFastFlag() {
+        RepoAggregationResult summary = AllModeAggregation.aggregateCompileResults(List.of(
+            block("a", BlockStatus.FAIL, 2),
+            block("b", BlockStatus.SKIP, 0),
+            block("c", BlockStatus.PASS, 0)
+        ), true);
+
+        assertEquals(2, summary.exitCode());
+        assertEquals(1, summary.failed());
+        assertEquals(1, summary.skipped());
+        assertEquals(1, summary.passed());
+        assertEquals(true, summary.failFastTriggered());
+    }
+
     private static BlockExecutionResult block(String name, BlockStatus status, int code) {
         return new BlockExecutionResult(
             name,

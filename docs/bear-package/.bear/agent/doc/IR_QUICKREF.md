@@ -152,13 +152,16 @@ Canonical details:
 For each changed IR:
 1. `bear validate <ir-file>`
 2. `bear compile <ir-file> --project <repoRoot>`
+   - or `bear compile --all --project <repoRoot>` when index-managed multi-block
 3. `bear fix <ir-file> --project <repoRoot>` (or `fix --all`)
 4. `bear check <ir-file> --project <repoRoot> [--strict-hygiene]` (or `check --all [--strict-hygiene]`)
 
 Policy files used by `check`:
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
+- `.bear/policy/check-rules.properties` (`impl_containment=true|false`, default `true`)
 
 Generated wiring note:
 - logic wrappers expose `Wrapper.of(<ports...>)` for default production wiring.
 - keep constructor `(ports..., Logic)` for tests/advanced injection only.
+- governed impl execute-path logic must remain inside governed block-root code; no delegation to non-governed external packages.

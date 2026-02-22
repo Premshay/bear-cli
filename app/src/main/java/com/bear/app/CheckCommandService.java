@@ -177,7 +177,7 @@ final class CheckCommandService {
             try {
                 baselineWiringManifest = ManifestParsers.parseWiringManifest(baselineWiringPath);
             } catch (ManifestParseException e) {
-                if (isMissingGovernedBindingField(e)) {
+                if (isManifestSemanticFieldError(e)) {
                     String line = "check: MANIFEST_INVALID: " + e.reasonCode();
                     return checkFailure(
                         CliCodes.EXIT_VALIDATION,
@@ -203,7 +203,7 @@ final class CheckCommandService {
             try {
                 candidateWiringManifest = ManifestParsers.parseWiringManifest(candidateWiringPath);
             } catch (ManifestParseException e) {
-                if (isMissingGovernedBindingField(e)) {
+                if (isManifestSemanticFieldError(e)) {
                     String line = "check: MANIFEST_INVALID: " + e.reasonCode();
                     return checkFailure(
                         CliCodes.EXIT_VALIDATION,
@@ -296,6 +296,7 @@ final class CheckCommandService {
                 return new CheckResult(CliCodes.EXIT_OK, List.of(), List.of(), null, null, null, null, null);
             }
 
+            CheckRulesPolicy checkRulesPolicy = CheckRulesPolicyParser.parse(projectRoot);
             Set<String> reflectionAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
                 projectRoot,
                 PolicyAllowlistParser.REFLECTION_ALLOWLIST_PATH
@@ -340,7 +341,8 @@ final class CheckCommandService {
             List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(
                 projectRoot,
                 List.of(baselineWiringManifest),
-                reflectionAllowlist
+                reflectionAllowlist,
+                checkRulesPolicy.implContainment()
             );
             if (!bypassFindings.isEmpty()) {
                 for (BoundaryBypassFinding finding : bypassFindings) {
@@ -705,6 +707,19 @@ final class CheckCommandService {
                 line
             );
         }
+        if ("v2".equals(manifest.schemaVersion())
+            && (manifest.blockRootSourceDir() == null || manifest.blockRootSourceDir().trim().isEmpty())) {
+            String line = "check: MANIFEST_INVALID: missing blockRootSourceDir";
+            return checkFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.MANIFEST_INVALID,
+                path,
+                "Regenerate wiring manifests with governed block root metadata and rerun `bear check`.",
+                line
+            );
+        }
         for (String semanticPort : manifest.wrapperOwnedSemanticPorts()) {
             if (manifest.logicRequiredPorts().contains(semanticPort)) {
                 String line = "check: MANIFEST_INVALID: wrapperOwnedSemanticPorts overlaps logicRequiredPorts: " + semanticPort;
@@ -722,10 +737,18 @@ final class CheckCommandService {
         return null;
     }
 
-    private static boolean isMissingGovernedBindingField(ManifestParseException e) {
+    private static boolean isManifestSemanticFieldError(ManifestParseException e) {
         String code = e.reasonCode();
         return "MISSING_KEY_logicInterfaceFqcn".equals(code)
-            || "MISSING_KEY_implFqcn".equals(code);
+            || "MISSING_KEY_implFqcn".equals(code)
+            || "MISSING_KEY_logicRequiredPorts".equals(code)
+            || "MISSING_KEY_wrapperOwnedSemanticPorts".equals(code)
+            || "MISSING_KEY_wrapperOwnedSemanticChecks".equals(code)
+            || "MISSING_KEY_blockRootSourceDir".equals(code)
+            || "MALFORMED_ARRAY_logicRequiredPorts".equals(code)
+            || "MALFORMED_ARRAY_wrapperOwnedSemanticPorts".equals(code)
+            || "MALFORMED_ARRAY_wrapperOwnedSemanticChecks".equals(code)
+            || "INVALID_STRING_ARRAY".equals(code);
     }
 
     private static void writeCheckBlockedMarker(Path projectRoot, String reason, String detail) throws IOException {

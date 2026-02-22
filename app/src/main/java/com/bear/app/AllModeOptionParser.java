@@ -120,6 +120,114 @@ final class AllModeOptionParser {
         return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans, strictHygiene);
     }
 
+    static AllCompileOptions parseAllCompileOptions(String[] args, PrintStream err) {
+        Path repoRoot = null;
+        String blocksArg = null;
+        String onlyArg = null;
+        boolean failFast = false;
+        boolean strictOrphans = false;
+        for (int i = 2; i < args.length; i++) {
+            String token = args[i];
+            switch (token) {
+                case "--project" -> {
+                    if (i + 1 >= args.length) {
+                        BearCli.failWithLegacy(
+                            err,
+                            CliCodes.EXIT_USAGE,
+                            "usage: INVALID_ARGS: expected value after --project",
+                            CliCodes.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Run `bear compile --all --project <repoRoot>` with required arguments."
+                        );
+                        return null;
+                    }
+                    repoRoot = Path.of(args[++i]).toAbsolutePath().normalize();
+                }
+                case "--blocks" -> {
+                    if (i + 1 >= args.length) {
+                        BearCli.failWithLegacy(
+                            err,
+                            CliCodes.EXIT_USAGE,
+                            "usage: INVALID_ARGS: expected value after --blocks",
+                            CliCodes.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass a repo-relative path after `--blocks`."
+                        );
+                        return null;
+                    }
+                    blocksArg = args[++i];
+                }
+                case "--only" -> {
+                    if (i + 1 >= args.length) {
+                        BearCli.failWithLegacy(
+                            err,
+                            CliCodes.EXIT_USAGE,
+                            "usage: INVALID_ARGS: expected value after --only",
+                            CliCodes.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Pass comma-separated block names after `--only`."
+                        );
+                        return null;
+                    }
+                    onlyArg = args[++i];
+                }
+                case "--fail-fast" -> failFast = true;
+                case "--strict-orphans" -> strictOrphans = true;
+                default -> {
+                    BearCli.failWithLegacy(
+                        err,
+                        CliCodes.EXIT_USAGE,
+                        "usage: INVALID_ARGS: unexpected argument: " + token,
+                        CliCodes.USAGE_INVALID_ARGS,
+                        "cli.args",
+                        "Run `bear compile --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]`."
+                    );
+                    return null;
+                }
+            }
+        }
+        if (repoRoot == null) {
+            BearCli.failWithLegacy(
+                err,
+                CliCodes.EXIT_USAGE,
+                "usage: INVALID_ARGS: expected: bear compile --all --project <repoRoot>",
+                CliCodes.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Run `bear compile --all --project <repoRoot>` with required arguments."
+            );
+            return null;
+        }
+        Path blocksPath;
+        try {
+            blocksPath = resolveBlocksPath(repoRoot, blocksArg);
+        } catch (IllegalArgumentException e) {
+            BearCli.failWithLegacy(
+                err,
+                CliCodes.EXIT_USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                CliCodes.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass a repo-relative path for `--blocks`."
+            );
+            return null;
+        }
+        Set<String> onlyNames;
+        try {
+            onlyNames = parseOnlyNames(onlyArg);
+        } catch (IllegalArgumentException e) {
+            BearCli.failWithLegacy(
+                err,
+                CliCodes.EXIT_USAGE,
+                "usage: INVALID_ARGS: " + e.getMessage(),
+                CliCodes.USAGE_INVALID_ARGS,
+                "cli.args",
+                "Pass comma-separated block names for `--only`."
+            );
+            return null;
+        }
+        return new AllCompileOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans);
+    }
+
     static AllFixOptions parseAllFixOptions(String[] args, PrintStream err) {
         Path repoRoot = null;
         String blocksArg = null;

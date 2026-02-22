@@ -114,6 +114,18 @@ Behavior:
   - idempotent wrappers compute/replay/persist idempotency payloads
   - invariant checks run in wrappers on fresh and replay paths
 
+### 2b. Compile generated artifacts (multi-block)
+
+```text
+bear compile --all --project <repoRoot>
+```
+
+Optional flags:
+- `--blocks <path>`
+- `--only <name1,name2,...>`
+- `--fail-fast`
+- `--strict-orphans`
+
 ### 3. Repair generated artifacts
 
 ```text
@@ -163,13 +175,19 @@ Behavior:
   - top-level `null` port args in governed entrypoint constructors
   - governed impl missing required effect-port usage (unless exact suppression comment is present)
   - governed impl placeholder stubs left unimplemented (`RULE=IMPL_PLACEHOLDER`)
+  - governed impl calls into positively resolved source outside its manifest `blockRootSourceDir` (`RULE=IMPL_CONTAINMENT_BYPASS`)
 - sanctioned production wiring path is generated `Wrapper.of(<ports...>)`
   - keep constructor `(ports..., Logic)` for tests/advanced injection
 - optional strict hygiene mode (`--strict-hygiene`) fails on unexpected seed paths (`.g`, `.gradle-user`) unless allowlisted
 - policy allowlist files (optional, exact-path deterministic parser):
   - `.bear/policy/reflection-allowlist.txt`
   - `.bear/policy/hygiene-allowlist.txt`
+- optional check-rules policy file:
+  - `.bear/policy/check-rules.properties`
+  - supported key (v1.3): `impl_containment=true|false` (default `true`)
+  - malformed/unknown/duplicate/unsorted keys fail with `CODE=POLICY_INVALID`
 - fails with validation (`MANIFEST_INVALID`) when wiring semantics are inconsistent
+  - v2 required semantic fields must be present (`logicRequiredPorts`, `wrapperOwnedSemanticPorts`, `wrapperOwnedSemanticChecks`, `blockRootSourceDir`)
   - wrapper-owned semantic ports must not overlap logic-required ports
 - runs project tests only after no-drift result
 - invariant marker-first classification:

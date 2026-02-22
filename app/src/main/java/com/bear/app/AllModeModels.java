@@ -48,6 +48,18 @@ record FixResult(
 ) {
 }
 
+record CompileResult(
+    int exitCode,
+    List<String> stdoutLines,
+    List<String> stderrLines,
+    String category,
+    String failureCode,
+    String failurePath,
+    String failureRemediation,
+    String detail
+) {
+}
+
 enum BlockStatus {
     PASS,
     FAIL,
@@ -114,6 +126,15 @@ record AllCheckOptions(
     boolean failFast,
     boolean strictOrphans,
     boolean strictHygiene
+) {
+}
+
+record AllCompileOptions(
+    Path repoRoot,
+    Path blocksPath,
+    Set<String> onlyNames,
+    boolean failFast,
+    boolean strictOrphans
 ) {
 }
 
@@ -248,12 +269,19 @@ record WiringManifest(
     String logicInterfaceFqcn,
     String implFqcn,
     String implSourcePath,
+    String blockRootSourceDir,
     List<String> requiredEffectPorts,
     List<String> constructorPortParams,
     List<String> logicRequiredPorts,
     List<String> wrapperOwnedSemanticPorts,
     List<String> wrapperOwnedSemanticChecks
 ) {
+}
+
+record CheckRulesPolicy(boolean implContainment) {
+    static CheckRulesPolicy defaults() {
+        return new CheckRulesPolicy(true);
+    }
 }
 
 final class ManifestParseException extends Exception {

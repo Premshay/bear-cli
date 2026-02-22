@@ -11,7 +11,7 @@ For milestone status and backlog ordering, use `docs/context/program-board.md`.
 
 P2 feature delivery:
 - active milestone is `P2`
-- CLI hardening v1 slice: reflection classloading seam closure, reach contract file scanner, strict hygiene opt-in, placeholder impl gate, and invariant all-mode parity
+- CLI hardening v1.3 slice: semantic-port consistency fix, governed impl containment, and `compile --all`
 - v1.2 Final Lock++ semantic hardening (wrapper-owned idempotency + invariants)
 - Windows Gradle reliability hardening v1 (deterministic retry/fallback, bounded stale self-heal, robust unblock)
 - deterministic marker-first invariant classification and manifest semantic validation
@@ -20,13 +20,26 @@ P2 feature delivery:
 
 ## Next Concrete Task
 
-Post-Lock++ follow-through:
-1. run CLI hardening v1 demo validation end-to-end against `bear-account-demo` (reflection/hygiene/policy/placeholder/invariant paths)
-2. validate canonical-only runtime path behavior across compile/check/pr-check flows and docs
+v1.3 follow-through:
+1. run demo smoke against `bear-account-demo` for containment + `compile --all` (`compile --all`, `check --all`)
+2. verify docs/package sync in demo after `scripts/sync-bear-demo.ps1`
 3. continue command-service modularization cleanup with no contract drift
-4. keep full `:app:test` + root `test` green after each incremental update
+4. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Implemented BEAR v1.3 deterministic containment + consistency + `compile --all`:
+  - fixed semantic-port enforcement mismatch by removing v2 fallback from `logicRequiredPorts` to `requiredEffectPorts`.
+  - made v2 semantic manifest fields strict (`logicRequiredPorts`, `wrapperOwnedSemanticPorts`, `wrapperOwnedSemanticChecks`, `blockRootSourceDir`) with deterministic `MANIFEST_INVALID` (`exit 2`) classification in single/all check.
+  - added governed impl containment scanner (`RULE=IMPL_CONTAINMENT_BYPASS`) with frozen call-shape/resolution/lookup contracts and deterministic finding ordering.
+  - added optional `.bear/policy/check-rules.properties` parser (`impl_containment=true|false`, default `true`) with deterministic `POLICY_INVALID` behavior.
+  - added `bear compile --all --project <repoRoot> [--blocks ...] [--only ...] [--fail-fast] [--strict-orphans]` with deterministic per-block output + summary.
+  - kernel wiring manifest now emits deterministic `blockRootSourceDir`.
+  - synced public docs + package docs/policy templates + demo sync script for the new contracts.
+  - verified green:
+    - `.\gradlew.bat --no-daemon :kernel:test`
+    - `.\gradlew.bat --no-daemon :app:test`
+    - `.\gradlew.bat --no-daemon test`
 
 - Implemented governed-impl binding seam closure + sanctioned wrapper factory path:
   - generator now emits `Wrapper.of(<ports...>)` for logic wrappers (constructor `(ports..., Logic)` preserved).

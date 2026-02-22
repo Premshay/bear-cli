@@ -166,6 +166,7 @@ final class CheckAllCommandService {
         for (Map.Entry<String, List<Integer>> entry : rootPassIndexes.entrySet()) {
             Path root = options.repoRoot().resolve(entry.getKey()).normalize();
             try {
+                CheckRulesPolicy checkRulesPolicy = CheckRulesPolicyParser.parse(root);
                 Set<String> reflectionAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
                     root,
                     PolicyAllowlistParser.REFLECTION_ALLOWLIST_PATH
@@ -221,7 +222,8 @@ final class CheckAllCommandService {
                 List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(
                     root,
                     wiringManifests,
-                    reflectionAllowlist
+                    reflectionAllowlist,
+                    checkRulesPolicy.implContainment()
                 );
                 if (!bypassFindings.isEmpty()) {
                     BoundaryBypassFinding first = bypassFindings.get(0);
@@ -385,7 +387,7 @@ final class CheckAllCommandService {
                 }
             } catch (ManifestParseException e) {
                 for (int idx : entry.getValue()) {
-                    if (isMissingGovernedBindingField(e)) {
+                    if (isManifestSemanticFieldError(e)) {
                         blockResults.set(idx, BearCli.rootFailure(
                             blockResults.get(idx),
                             CliCodes.EXIT_VALIDATION,
@@ -444,10 +446,18 @@ final class CheckAllCommandService {
         );
     }
 
-    private static boolean isMissingGovernedBindingField(ManifestParseException e) {
+    private static boolean isManifestSemanticFieldError(ManifestParseException e) {
         String code = e.reasonCode();
         return "MISSING_KEY_logicInterfaceFqcn".equals(code)
-            || "MISSING_KEY_implFqcn".equals(code);
+            || "MISSING_KEY_implFqcn".equals(code)
+            || "MISSING_KEY_logicRequiredPorts".equals(code)
+            || "MISSING_KEY_wrapperOwnedSemanticPorts".equals(code)
+            || "MISSING_KEY_wrapperOwnedSemanticChecks".equals(code)
+            || "MISSING_KEY_blockRootSourceDir".equals(code)
+            || "MALFORMED_ARRAY_logicRequiredPorts".equals(code)
+            || "MALFORMED_ARRAY_wrapperOwnedSemanticPorts".equals(code)
+            || "MALFORMED_ARRAY_wrapperOwnedSemanticChecks".equals(code)
+            || "INVALID_STRING_ARRAY".equals(code);
     }
 
     private static String testDiagnosticsSuffix(ProjectTestResult testResult) {

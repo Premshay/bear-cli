@@ -47,6 +47,7 @@ Anti-patterns:
 5. For each touched IR file run:
 - `bear validate <ir-file>`
 - `bear compile <ir-file> --project <repoRoot>`
+  - or compile all indexed blocks in one pass: `bear compile --all --project <repoRoot>`
 6. If IR declares `impl.allowedDeps` and project is Java+Gradle:
 - ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
 - run Gradle build/test once to write containment marker
@@ -137,11 +138,13 @@ Canonical rule:
     - `src/main/resources/META-INF/services/**`
     - `src/main/java/module-info.java` (`provides ... with ...`)
   - remove generated impl placeholder bodies (`RULE=IMPL_PLACEHOLDER`)
+  - for `RULE=IMPL_CONTAINMENT_BYPASS`, keep execute-path logic inside governed block-root source paths (no external package delegation)
   - use generated `Wrapper.of(<ports...>)` for production wiring
   - keep `(ports..., Logic)` constructor for tests/advanced injection
   - wire generated entrypoints with non-null ports
   - ensure declared logic-required effect ports are used
   - do not suppress wrapper-owned semantic ports (`// BEAR:PORT_USED ...` is invalid for those)
+  - emergency brake only when required by repo policy: `.bear/policy/check-rules.properties` with `impl_containment=false`
 - for `CODE=UNDECLARED_REACH`, declare required port/op in IR, compile, and route through generated port interface
 - for `CODE=HYGIENE_UNEXPECTED_PATHS` (strict mode), remove unexpected seed paths or allowlist exact path in `.bear/policy/hygiene-allowlist.txt`
 
@@ -210,6 +213,7 @@ Lock and environment troubleshooting:
 - No silent boundary expansion.
 - One deterministic gate determines done/not-done.
 - No implementation-first bypass in greenfield mode.
+- No execute-path business-logic delegation from governed impls to non-governed external packages.
 - Prefer minimal sufficient design; avoid unnecessary architecture expansion.
 - If new production architecture is introduced, include a short necessity rationale mapped to requirements and BEAR boundaries.
 - For extension prompts that keep existing behavior unchanged, prefer extending existing blocks; add new blocks only for distinct lifecycle/effect boundaries.

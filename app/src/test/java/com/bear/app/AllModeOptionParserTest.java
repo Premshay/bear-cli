@@ -82,4 +82,23 @@ class AllModeOptionParserTest {
         assertTrue(options.strictHygiene());
         assertEquals("", errBytes.toString());
     }
+
+    @Test
+    void parseAllCompileOptionsParsesValidArgs(@TempDir Path repoRoot) {
+        ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+        PrintStream err = new PrintStream(errBytes);
+
+        AllCompileOptions options = AllModeOptionParser.parseAllCompileOptions(
+            new String[] {
+                "compile", "--all", "--project", repoRoot.toString(), "--only", "alpha,beta", "--fail-fast"
+            },
+            err
+        );
+
+        assertNotNull(options);
+        assertEquals(repoRoot.toAbsolutePath().normalize(), options.repoRoot());
+        assertEquals(Set.of("alpha", "beta"), options.onlyNames());
+        assertTrue(options.failFast());
+        assertEquals("", errBytes.toString());
+    }
 }

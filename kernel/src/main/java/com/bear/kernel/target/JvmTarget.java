@@ -687,6 +687,10 @@ public final class JvmTarget implements Target {
         String logicInterfaceFqcn = generatedPackageName + "." + blockName + "Logic";
         String implFqcn = implPackageName + "." + blockName + "Impl";
         String implSourcePath = "src/main/java/" + implPackagePath + "/" + blockName + "Impl.java";
+        String blockRootSourceDir = Path.of("src/main/java/" + implPackagePath)
+            .getParent()
+            .toString()
+            .replace('\\', '/');
 
         StringBuilder out = new StringBuilder();
         out.append("{");
@@ -696,6 +700,7 @@ public final class JvmTarget implements Target {
         out.append("\"logicInterfaceFqcn\":\"").append(jsonEscape(logicInterfaceFqcn)).append("\",");
         out.append("\"implFqcn\":\"").append(jsonEscape(implFqcn)).append("\",");
         out.append("\"implSourcePath\":\"").append(jsonEscape(implSourcePath)).append("\",");
+        out.append("\"blockRootSourceDir\":\"").append(jsonEscape(blockRootSourceDir)).append("\",");
         out.append("\"requiredEffectPorts\":[");
         for (int i = 0; i < requiredEffectPorts.size(); i++) {
             if (i > 0) {

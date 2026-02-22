@@ -159,6 +159,10 @@ public final class BearCli {
             return ExitCode.OK;
         }
 
+        if (args.length >= 2 && "--all".equals(args[1])) {
+            return runCompileAll(args, out, err);
+        }
+
         if (args.length != 4 || !"--project".equals(args[2])) {
             return failWithLegacy(
                 err,
@@ -173,71 +177,8 @@ public final class BearCli {
         Path irFile = Path.of(args[1]);
         Path projectRoot = Path.of(args[3]);
 
-        try {
-            maybeFailInternalForTest("compile");
-            BearIrParser parser = new BearIrParser();
-            BearIrValidator validator = new BearIrValidator();
-            BearIrNormalizer normalizer = new BearIrNormalizer();
-            JvmTarget target = new JvmTarget();
-
-            BearIr ir = parser.parse(irFile);
-            validator.validate(ir);
-            BearIr normalized = normalizer.normalize(ir);
-            BlockIdentityResolution identity = BlockIdentityResolver.resolveSingleCommandIdentity(
-                irFile,
-                projectRoot,
-                normalized.block().name()
-            );
-            target.compile(normalized, projectRoot, identity.blockKey());
-
-            out.println("compiled: OK");
-            return ExitCode.OK;
-        } catch (BearIrValidationException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.VALIDATION,
-                e.formatLine(),
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix the IR issue at the reported path and rerun `bear compile <ir-file> --project <path>`."
-            );
-        } catch (BlockIndexValidationException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.VALIDATION,
-                "index: VALIDATION_ERROR: " + e.getMessage(),
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                "Fix `bear.blocks.yaml` and rerun `bear compile <ir-file> --project <path>`."
-            );
-        } catch (BlockIdentityResolutionException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.VALIDATION,
-                e.line(),
-                FailureCode.IR_VALIDATION,
-                e.path(),
-                e.remediation()
-            );
-        } catch (IOException e) {
-            return failWithLegacy(
-                err,
-                ExitCode.IO,
-                "io: IO_ERROR: " + e.getMessage(),
-                FailureCode.IO_ERROR,
-                "project.root",
-                "Ensure the IR/project paths are readable and writable, then rerun `bear compile`."
-            );
-        } catch (Exception e) {
-            return failWithLegacy(
-                err,
-                ExitCode.INTERNAL,
-                "internal: INTERNAL_ERROR:",
-                FailureCode.INTERNAL_ERROR,
-                "internal",
-                "Capture stderr and file an issue against bear-cli."
-            );
-        }
+        CompileResult result = executeCompile(irFile, projectRoot, null, null);
+        return emitCompileResult(result, out, err);
     }
 
     private static int runFix(String[] args, PrintStream out, PrintStream err) {
@@ -269,6 +210,10 @@ public final class BearCli {
 
     private static int runFixAll(String[] args, PrintStream out, PrintStream err) {
         return FixAllCommandService.runFixAll(args, out, err);
+    }
+
+    private static int runCompileAll(String[] args, PrintStream out, PrintStream err) {
+        return CompileAllCommandService.runCompileAll(args, out, err);
     }
 
     private static int runCheck(String[] args, PrintStream out, PrintStream err) {
@@ -534,6 +479,21 @@ public final class BearCli {
         );
     }
 
+    private static int emitCompileResult(CompileResult result, PrintStream out, PrintStream err) {
+        printLines(out, result.stdoutLines());
+        printLines(err, result.stderrLines());
+        if (result.exitCode() == ExitCode.OK) {
+            return ExitCode.OK;
+        }
+        return fail(
+            err,
+            result.exitCode(),
+            result.failureCode(),
+            result.failurePath(),
+            result.failureRemediation()
+        );
+    }
+
     private static int emitPrCheckResult(PrCheckResult result, PrintStream out, PrintStream err) {
         printLines(out, result.stdoutLines());
         printLines(err, result.stderrLines());
@@ -625,6 +585,81 @@ public final class BearCli {
         }
     }
 
+    static CompileResult executeCompile(Path irFile, Path projectRoot, String expectedBlockKey, String expectedBlockLocator) {
+        try {
+            maybeFailInternalForTest("compile");
+            BearIrParser parser = new BearIrParser();
+            BearIrValidator validator = new BearIrValidator();
+            BearIrNormalizer normalizer = new BearIrNormalizer();
+            JvmTarget target = new JvmTarget();
+
+            BearIr ir = parser.parse(irFile);
+            validator.validate(ir);
+            BearIr normalized = normalizer.normalize(ir);
+            BlockIdentityResolution identity = expectedBlockKey == null
+                ? BlockIdentityResolver.resolveSingleCommandIdentity(irFile, projectRoot, normalized.block().name())
+                : BlockIdentityResolver.resolveIndexIdentity(
+                    expectedBlockKey,
+                    expectedBlockLocator == null || expectedBlockLocator.isBlank()
+                        ? "bear.blocks.yaml:name=" + expectedBlockKey
+                        : expectedBlockLocator,
+                    normalized.block().name()
+                );
+            target.compile(normalized, projectRoot, identity.blockKey());
+            return new CompileResult(ExitCode.OK, List.of("compiled: OK"), List.of(), null, null, null, null, null);
+        } catch (BearIrValidationException e) {
+            return compileFailure(
+                ExitCode.VALIDATION,
+                List.of(e.formatLine()),
+                "VALIDATION",
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                "Fix the IR issue at the reported path and rerun `bear compile <ir-file> --project <path>`.",
+                e.formatLine()
+            );
+        } catch (BlockIndexValidationException e) {
+            return compileFailure(
+                ExitCode.VALIDATION,
+                List.of("index: VALIDATION_ERROR: " + e.getMessage()),
+                "VALIDATION",
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                "Fix `bear.blocks.yaml` and rerun `bear compile`.",
+                "index: VALIDATION_ERROR: " + e.getMessage()
+            );
+        } catch (BlockIdentityResolutionException e) {
+            return compileFailure(
+                ExitCode.VALIDATION,
+                List.of(e.line()),
+                "VALIDATION",
+                FailureCode.IR_VALIDATION,
+                e.path(),
+                e.remediation(),
+                e.line()
+            );
+        } catch (IOException e) {
+            return compileFailure(
+                ExitCode.IO,
+                List.of("io: IO_ERROR: " + e.getMessage()),
+                "IO_ERROR",
+                FailureCode.IO_ERROR,
+                "project.root",
+                "Ensure the IR/project paths are readable and writable, then rerun `bear compile`.",
+                "io: IO_ERROR: " + e.getMessage()
+            );
+        } catch (Exception e) {
+            return compileFailure(
+                ExitCode.INTERNAL,
+                List.of("internal: INTERNAL_ERROR:"),
+                "INTERNAL_ERROR",
+                FailureCode.INTERNAL_ERROR,
+                "internal",
+                "Capture stderr and file an issue against bear-cli.",
+                "internal: INTERNAL_ERROR:"
+            );
+        }
+    }
+
     private static CheckResult executeCheck(
         Path irFile,
         Path projectRoot,
@@ -678,6 +713,27 @@ public final class BearCli {
         String detail
     ) {
         return new FixResult(
+            exitCode,
+            List.of(),
+            List.copyOf(stderrLines),
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail
+        );
+    }
+
+    private static CompileResult compileFailure(
+        int exitCode,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail
+    ) {
+        return new CompileResult(
             exitCode,
             List.of(),
             List.copyOf(stderrLines),
@@ -904,6 +960,41 @@ public final class BearCli {
     }
 
     static BlockExecutionResult toFixBlockResult(BlockIndexEntry block, FixResult result) {
+        if (result.exitCode() == ExitCode.OK) {
+            return new BlockExecutionResult(
+                block.name(),
+                block.ir(),
+                block.projectRoot(),
+                BlockStatus.PASS,
+                ExitCode.OK,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of()
+            );
+        }
+        return new BlockExecutionResult(
+            block.name(),
+            block.ir(),
+            block.projectRoot(),
+            BlockStatus.FAIL,
+            result.exitCode(),
+            result.category(),
+            result.failureCode(),
+            normalizeLocator(result.failurePath()),
+            squash(result.detail()),
+            result.failureRemediation(),
+            null,
+            null,
+            List.of()
+        );
+    }
+
+    static BlockExecutionResult toCompileBlockResult(BlockIndexEntry block, CompileResult result) {
         if (result.exitCode() == ExitCode.OK) {
             return new BlockExecutionResult(
                 block.name(),
@@ -1545,6 +1636,7 @@ public final class BearCli {
     private static void printUsage(PrintStream out) {
         out.println("Usage: bear validate <file>");
         out.println("       bear compile <ir-file> --project <path>");
+        out.println("       bear compile --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
         out.println("       bear fix <ir-file> --project <path>");
         out.println("       bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
         out.println("       bear check <ir-file> --project <path> [--strict-hygiene]");

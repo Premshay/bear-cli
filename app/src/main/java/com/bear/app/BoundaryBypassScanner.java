@@ -57,6 +57,18 @@ final class BoundaryBypassScanner {
         "\\bprovides\\s+([A-Za-z_][A-Za-z0-9_$.]*)\\s+with\\s+([^;]+);",
         Pattern.DOTALL
     );
+    private static final Pattern STATIC_CALL_PATTERN = Pattern.compile(
+        "\\b([A-Za-z_][A-Za-z0-9_\\.]*)\\s*\\.\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\("
+    );
+    private static final Pattern NEW_TYPE_PATTERN = Pattern.compile(
+        "\\bnew\\s+([A-Za-z_][A-Za-z0-9_\\.]*)\\s*\\("
+    );
+    private static final Pattern PACKAGE_DECL_PATTERN = Pattern.compile(
+        "(?m)^\\s*package\\s+([A-Za-z_][A-Za-z0-9_\\.]*)\\s*;"
+    );
+    private static final Pattern IMPORT_DECL_PATTERN = Pattern.compile(
+        "(?m)^\\s*import\\s+(static\\s+)?([A-Za-z_][A-Za-z0-9_\\.]*?)\\s*;"
+    );
     private static final String SERVICE_DESCRIPTOR_PREFIX = "src/main/resources/META-INF/services/";
     private static final String MODULE_INFO_PATH = "src/main/java/module-info.java";
 
@@ -64,13 +76,22 @@ final class BoundaryBypassScanner {
     }
 
     static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests) throws IOException {
-        return scanBoundaryBypass(projectRoot, manifests, Set.of());
+        return scanBoundaryBypass(projectRoot, manifests, Set.of(), true);
     }
 
     static List<BoundaryBypassFinding> scanBoundaryBypass(
         Path projectRoot,
         List<WiringManifest> manifests,
         Set<String> reflectionAllowlist
+    ) throws IOException {
+        return scanBoundaryBypass(projectRoot, manifests, reflectionAllowlist, true);
+    }
+
+    static List<BoundaryBypassFinding> scanBoundaryBypass(
+        Path projectRoot,
+        List<WiringManifest> manifests,
+        Set<String> reflectionAllowlist,
+        boolean implContainmentEnabled
     ) throws IOException {
         if (manifests.isEmpty()) {
             return List.of();
@@ -169,6 +190,9 @@ final class BoundaryBypassScanner {
                 ));
                 continue;
             }
+            if (implContainmentEnabled) {
+                findings.addAll(scanImplContainment(projectRoot, manifest, rel, sanitized));
+            }
             Set<String> suppressions = parsePortSuppressions(source);
             List<String> semanticPorts = new ArrayList<>(manifest.wrapperOwnedSemanticPorts());
             semanticPorts.sort(String::compareTo);
@@ -189,9 +213,7 @@ final class BoundaryBypassScanner {
                 }
             }
 
-            List<String> requiredPorts = manifest.logicRequiredPorts().isEmpty()
-                ? new ArrayList<>(manifest.requiredEffectPorts())
-                : new ArrayList<>(manifest.logicRequiredPorts());
+            List<String> requiredPorts = new ArrayList<>(manifest.logicRequiredPorts());
             requiredPorts.sort(String::compareTo);
             for (String portParam : requiredPorts) {
                 if (suppressions.contains(portParam)) {
@@ -327,6 +349,190 @@ final class BoundaryBypassScanner {
                 }
             }
         }
+    }
+
+    private static List<BoundaryBypassFinding> scanImplContainment(
+        Path projectRoot,
+        WiringManifest manifest,
+        String relPath,
+        String sanitizedSource
+    ) {
+        String packageName = parsePackageName(sanitizedSource);
+        Map<String, String> explicitImports = parseExplicitImports(sanitizedSource);
+        TreeSet<String> targets = new TreeSet<>();
+        targets.addAll(findStaticCallTypeTargets(sanitizedSource));
+        targets.addAll(findConstructorCallTypeTargets(sanitizedSource));
+
+        ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
+        for (String typeToken : targets) {
+            String resolvedTarget = resolveTypeTokenFqcn(typeToken, packageName, explicitImports);
+            if (resolvedTarget == null) {
+                continue;
+            }
+            if (resolvedTarget.startsWith("java.") || resolvedTarget.startsWith("javax.")) {
+                continue;
+            }
+            String resolvedSourcePath = resolveSourcePath(projectRoot, resolvedTarget);
+            if (resolvedSourcePath == null) {
+                continue;
+            }
+            if (isUnderBlockRoot(resolvedSourcePath, manifest.blockRootSourceDir())) {
+                continue;
+            }
+            findings.add(new BoundaryBypassFinding(
+                "IMPL_CONTAINMENT_BYPASS",
+                relPath,
+                "KIND=IMPL_EXTERNAL_CALL: " + resolvedTarget
+            ));
+        }
+        return findings;
+    }
+
+    private static String parsePackageName(String source) {
+        Matcher matcher = PACKAGE_DECL_PATTERN.matcher(source);
+        if (!matcher.find()) {
+            return "";
+        }
+        return matcher.group(1).trim();
+    }
+
+    private static Map<String, String> parseExplicitImports(String source) {
+        TreeMap<String, String> importsBySimple = new TreeMap<>();
+        Matcher matcher = IMPORT_DECL_PATTERN.matcher(source);
+        while (matcher.find()) {
+            if (matcher.group(1) != null) {
+                continue;
+            }
+            String value = matcher.group(2).trim();
+            if (value.endsWith(".*")) {
+                continue;
+            }
+            int idx = value.lastIndexOf('.');
+            if (idx <= 0 || idx == value.length() - 1) {
+                continue;
+            }
+            String simple = value.substring(idx + 1);
+            importsBySimple.putIfAbsent(simple, value);
+        }
+        return importsBySimple;
+    }
+
+    private static List<String> findStaticCallTypeTargets(String source) {
+        ArrayList<String> targets = new ArrayList<>();
+        Matcher matcher = STATIC_CALL_PATTERN.matcher(source);
+        while (matcher.find()) {
+            String token = matcher.group(1).trim();
+            if ("this".equals(token) || "super".equals(token)) {
+                continue;
+            }
+            targets.add(token);
+        }
+        return targets;
+    }
+
+    private static List<String> findConstructorCallTypeTargets(String source) {
+        ArrayList<String> targets = new ArrayList<>();
+        Matcher matcher = NEW_TYPE_PATTERN.matcher(source);
+        while (matcher.find()) {
+            String token = matcher.group(1).trim();
+            int openParen = matcher.end() - 1;
+            int closeParen = findClosingParen(source, openParen);
+            if (closeParen < 0) {
+                continue;
+            }
+            int idx = closeParen + 1;
+            while (idx < source.length() && Character.isWhitespace(source.charAt(idx))) {
+                idx++;
+            }
+            if (idx >= source.length() || source.charAt(idx) != '.') {
+                continue;
+            }
+            idx++;
+            while (idx < source.length() && Character.isWhitespace(source.charAt(idx))) {
+                idx++;
+            }
+            if (idx >= source.length() || !Character.isJavaIdentifierStart(source.charAt(idx))) {
+                continue;
+            }
+            while (idx < source.length() && Character.isJavaIdentifierPart(source.charAt(idx))) {
+                idx++;
+            }
+            while (idx < source.length() && Character.isWhitespace(source.charAt(idx))) {
+                idx++;
+            }
+            if (idx < source.length() && source.charAt(idx) == '(') {
+                targets.add(token);
+            }
+        }
+        return targets;
+    }
+
+    private static int findClosingParen(String source, int openParenIndex) {
+        if (openParenIndex < 0 || openParenIndex >= source.length() || source.charAt(openParenIndex) != '(') {
+            return -1;
+        }
+        int depth = 1;
+        for (int i = openParenIndex + 1; i < source.length(); i++) {
+            char c = source.charAt(i);
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static String resolveTypeTokenFqcn(
+        String typeToken,
+        String packageName,
+        Map<String, String> explicitImports
+    ) {
+        if (typeToken.contains(".")) {
+            return typeToken;
+        }
+        String imported = explicitImports.get(typeToken);
+        if (imported != null) {
+            return imported;
+        }
+        if (packageName.isBlank()) {
+            return null;
+        }
+        return packageName + "." + typeToken;
+    }
+
+    private static String resolveSourcePath(Path projectRoot, String targetFqcn) {
+        String candidateRelPath = "src/main/java/" + targetFqcn.replace('.', '/') + ".java";
+        Path candidate = projectRoot.resolve(candidateRelPath).normalize();
+        if (!candidate.startsWith(projectRoot)) {
+            return null;
+        }
+        if (!Files.isRegularFile(candidate)) {
+            return null;
+        }
+        return candidateRelPath;
+    }
+
+    private static boolean isUnderBlockRoot(String resolvedSourcePath, String blockRootSourceDir) {
+        String normalizedRoot = normalizeRepoPath(blockRootSourceDir);
+        if (normalizedRoot == null || normalizedRoot.isBlank()) {
+            return false;
+        }
+        return resolvedSourcePath.equals(normalizedRoot) || resolvedSourcePath.startsWith(normalizedRoot + "/");
+    }
+
+    private static String normalizeRepoPath(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replace('\\', '/');
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     private static String firstToken(String value) {

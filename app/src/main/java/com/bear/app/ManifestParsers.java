@@ -47,11 +47,24 @@ final class ManifestParsers {
         String logicInterfaceFqcn = extractRequiredString(json, "logicInterfaceFqcn");
         String implFqcn = extractRequiredString(json, "implFqcn");
         String implSourcePath = extractRequiredString(json, "implSourcePath");
+        String blockRootSourceDir = extractOptionalString(json, "blockRootSourceDir");
         String requiredEffectPortsPayload = extractRequiredArrayPayload(json, "requiredEffectPorts");
         String constructorPortParamsPayload = extractRequiredArrayPayload(json, "constructorPortParams");
-        String logicRequiredPortsPayload = extractOptionalArrayPayload(json, "logicRequiredPorts");
-        String wrapperOwnedSemanticPortsPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticPorts");
-        String wrapperOwnedSemanticChecksPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticChecks");
+        String logicRequiredPortsPayload;
+        String wrapperOwnedSemanticPortsPayload;
+        String wrapperOwnedSemanticChecksPayload;
+        if ("v2".equals(schemaVersion)) {
+            logicRequiredPortsPayload = extractRequiredArrayPayload(json, "logicRequiredPorts");
+            wrapperOwnedSemanticPortsPayload = extractRequiredArrayPayload(json, "wrapperOwnedSemanticPorts");
+            wrapperOwnedSemanticChecksPayload = extractRequiredArrayPayload(json, "wrapperOwnedSemanticChecks");
+            if (blockRootSourceDir == null || blockRootSourceDir.isBlank()) {
+                throw new ManifestParseException("MISSING_KEY_blockRootSourceDir");
+            }
+        } else {
+            logicRequiredPortsPayload = extractOptionalArrayPayload(json, "logicRequiredPorts");
+            wrapperOwnedSemanticPortsPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticPorts");
+            wrapperOwnedSemanticChecksPayload = extractOptionalArrayPayload(json, "wrapperOwnedSemanticChecks");
+        }
         List<String> requiredEffectPorts = parseStringArray(requiredEffectPortsPayload);
         List<String> constructorPortParams = parseStringArray(constructorPortParamsPayload);
         List<String> logicRequiredPorts = logicRequiredPortsPayload == null
@@ -70,6 +83,7 @@ final class ManifestParsers {
             logicInterfaceFqcn,
             implFqcn,
             implSourcePath,
+            blockRootSourceDir,
             requiredEffectPorts,
             constructorPortParams,
             logicRequiredPorts,
@@ -108,6 +122,14 @@ final class ManifestParsers {
             }
         }
         throw new ManifestParseException("MALFORMED_ARRAY_" + key);
+    }
+
+    static String extractOptionalString(String json, String key) {
+        Matcher m = Pattern.compile("\"" + Pattern.quote(key) + "\":\"((?:\\\\.|[^\\\\\"])*)\"").matcher(json);
+        if (!m.find()) {
+            return null;
+        }
+        return jsonUnescape(m.group(1));
     }
 
     static String extractOptionalArrayPayload(String json, String key) throws ManifestParseException {

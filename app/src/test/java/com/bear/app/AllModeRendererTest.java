@@ -42,4 +42,24 @@ class AllModeRendererTest {
         assertTrue(output.contains("DELTA:"));
         assertTrue(output.contains("pr-delta: BOUNDARY_EXPANDING: PORTS: ADDED: ledger"));
     }
+
+    @Test
+    void renderCompileAllOutputIncludesFailFastSummary() {
+        List<BlockExecutionResult> results = List.of(
+            new BlockExecutionResult("alpha", "spec/alpha.bear.yaml", "services/alpha", BlockStatus.PASS, 0, null, null, null, null, null, null, null, List.of()),
+            new BlockExecutionResult("beta", "spec/beta.bear.yaml", "services/beta", BlockStatus.SKIP, 0, null, null, null, null, null, "FAIL_FAST_ABORT", null, List.of())
+        );
+        RepoAggregationResult summary = new RepoAggregationResult(0, 2, 1, 1, 0, 1, true, 0, 0, 0);
+
+        String output = String.join("\n", AllModeRenderer.renderCompileAllOutput(results, summary));
+        CliTestAsserts.assertContainsInOrder(output, List.of(
+            "BLOCK: alpha",
+            "STATUS: PASS",
+            "BLOCK: beta",
+            "REASON: FAIL_FAST_ABORT",
+            "SUMMARY:",
+            "FAIL_FAST_TRIGGERED: true",
+            "EXIT_CODE: 0"
+        ));
+    }
 }

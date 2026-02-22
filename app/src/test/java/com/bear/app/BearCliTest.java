@@ -94,6 +94,7 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "--help" });
         assertEquals(0, run.exitCode);
         String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("bear compile --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]"));
         assertTrue(stdout.contains("bear fix <ir-file> --project <path>"));
         assertTrue(stdout.contains("bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]"));
         assertTrue(stdout.contains("bear unblock --project <path>"));
@@ -1553,6 +1554,123 @@ class BearCliTest {
     }
 
     @Test
+    void checkBoundaryBypassImplContainmentFailsForExternalResolvedCall(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path external = tempDir.resolve("src/main/java/com/example/domain/WalletDomain.java");
+        Files.createDirectories(external.getParent());
+        Files.writeString(
+            external,
+            "package com.example.domain;\n"
+                + "public final class WalletDomain {\n"
+                + "  public static Object apply() { return null; }\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
+        Files.writeString(
+            impl,
+            "package blocks.withdraw.impl;\n"
+                + "public final class WithdrawImpl {\n"
+                + "  Object execute(Object request, Object ledgerPort) {\n"
+                + "    ledgerPort.toString();\n"
+                + "    return com.example.domain.WalletDomain.apply();\n"
+                + "  }\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(6, check.exitCode);
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=IMPL_CONTAINMENT_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: KIND=IMPL_EXTERNAL_CALL: com.example.domain.WalletDomain"));
+        assertFailureEnvelope(
+            check.stderr,
+            "BOUNDARY_BYPASS",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
+            "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses."
+        );
+    }
+
+    @Test
+    void checkBoundaryBypassImplContainmentCanBeDisabledByPolicy(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path external = tempDir.resolve("src/main/java/com/example/domain/WalletDomain.java");
+        Files.createDirectories(external.getParent());
+        Files.writeString(
+            external,
+            "package com.example.domain;\n"
+                + "public final class WalletDomain {\n"
+                + "  public static Object apply() { return null; }\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
+        Files.writeString(
+            impl,
+            "package blocks.withdraw.impl;\n"
+                + "public final class WithdrawImpl {\n"
+                + "  Object execute(Object request, Object ledgerPort) {\n"
+                + "    ledgerPort.toString();\n"
+                + "    return com.example.domain.WalletDomain.apply();\n"
+                + "  }\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        Path rules = tempDir.resolve(".bear/policy/check-rules.properties");
+        Files.createDirectories(rules.getParent());
+        Files.writeString(rules, "impl_containment=false\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+        assertTrue(check.stdout.startsWith("check: OK"));
+    }
+
+    @Test
+    void checkRulesPolicyInvalidFailsValidation(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path rules = tempDir.resolve(".bear/policy/check-rules.properties");
+        Files.createDirectories(rules.getParent());
+        Files.writeString(rules, "unknown=true\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(2, check.exitCode);
+        assertFailureEnvelope(
+            check.stderr,
+            "POLICY_INVALID",
+            ".bear/policy/check-rules.properties",
+            "Fix the policy contract file and rerun `bear check`."
+        );
+    }
+
+    @Test
     void checkBoundaryBypassIgnoresImplTextInCommentsAndStrings(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
@@ -1873,6 +1991,88 @@ class BearCliTest {
     }
 
     @Test
+    void checkAllBoundaryBypassImplContainmentFails(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path alphaRoot = fixture.projectRoots().get(0);
+        Path external = alphaRoot.resolve("src/main/java/com/example/domain/WalletDomain.java");
+        Files.createDirectories(external.getParent());
+        Files.writeString(
+            external,
+            "package com.example.domain;\n"
+                + "public final class WalletDomain {\n"
+                + "  public static Object apply() { return null; }\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+        Path alphaImpl = alphaRoot.resolve("src/main/java/blocks/alpha/impl/AlphaImpl.java");
+        Files.writeString(
+            alphaImpl,
+            "package blocks.alpha.impl;\n"
+                + "public final class AlphaImpl {\n"
+                + "  Object execute(Object request, Object ledgerPort) {\n"
+                + "    ledgerPort.toString();\n"
+                + "    return com.example.domain.WalletDomain.apply();\n"
+                + "  }\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
+        assertEquals(6, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("RULE=IMPL_CONTAINMENT_BYPASS"));
+        assertTrue(stderr.contains("KIND=IMPL_EXTERNAL_CALL: com.example.domain.WalletDomain"));
+        assertFailureEnvelope(
+            run.stderr,
+            "REPO_MULTI_BLOCK_FAILED",
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    @Test
+    void checkAllInvalidCheckRulesPolicyFailsValidation(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path alphaRoot = fixture.projectRoots().get(0);
+        Path policy = alphaRoot.resolve(".bear/policy/check-rules.properties");
+        Files.createDirectories(policy.getParent());
+        Files.writeString(policy, "unknown=true\n", StandardCharsets.UTF_8);
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
+        assertEquals(2, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK_CODE: POLICY_INVALID"));
+        assertTrue(stderr.contains("BLOCK_PATH: .bear/policy/check-rules.properties"));
+        assertFailureEnvelope(
+            run.stderr,
+            "REPO_MULTI_BLOCK_FAILED",
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    @Test
+    void checkAllManifestInvalidWhenBlockRootSourceDirMissing(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path alphaWiring = fixture.projectRoots().get(0).resolve("build/generated/bear/wiring/alpha.wiring.json");
+        String content = Files.readString(alphaWiring, StandardCharsets.UTF_8);
+        content = content.replace("\"blockRootSourceDir\":\"src/main/java/blocks/alpha\",", "");
+        Files.writeString(alphaWiring, content, StandardCharsets.UTF_8);
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
+        assertEquals(2, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK_CODE: MANIFEST_INVALID"));
+        assertTrue(stderr.contains("DETAIL: check: MANIFEST_INVALID: MISSING_KEY_blockRootSourceDir"));
+        assertFailureEnvelope(
+            run.stderr,
+            "REPO_MULTI_BLOCK_FAILED",
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    @Test
     void checkAllDefaultContinueAllEvaluatesRemainingBlocks(@TempDir Path tempDir) throws Exception {
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         deleteGeneratedBaseline(fixture.projectRoots().get(1));
@@ -2170,6 +2370,90 @@ class BearCliTest {
             "REPO_MULTI_BLOCK_FAILED",
             "bear.blocks.yaml",
             "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    @Test
+    void compileAllPassesInCanonicalOrder(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        CliRunResult run = runCli(new String[] { "compile", "--all", "--project", fixture.repoRoot().toString() });
+
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("BLOCK: alpha"));
+        assertTrue(stdout.contains("BLOCK: beta"));
+        assertTrue(stdout.contains("BLOCK: gamma"));
+        assertTrue(stdout.indexOf("BLOCK: alpha") < stdout.indexOf("BLOCK: beta"));
+        assertTrue(stdout.indexOf("BLOCK: beta") < stdout.indexOf("BLOCK: gamma"));
+        assertTrue(stdout.contains("SUMMARY:"));
+        assertTrue(stdout.contains("EXIT_CODE: 0"));
+        assertEquals("", run.stderr);
+    }
+
+    @Test
+    void compileAllUnknownOnlyNameIsUsageError(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        CliRunResult run = runCli(new String[] {
+            "compile", "--all", "--project", fixture.repoRoot().toString(), "--only", "not-a-block"
+        });
+        assertEquals(64, run.exitCode);
+        assertTrue(run.stderr.startsWith("usage: INVALID_ARGS: unknown block in --only"));
+        assertFailureEnvelope(
+            run.stderr,
+            "USAGE_INVALID_ARGS",
+            "cli.args",
+            "Use only block names declared in `bear.blocks.yaml`."
+        );
+    }
+
+    @Test
+    void compileAllOnlyFiltersSelectedBlocks(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        CliRunResult run = runCli(new String[] {
+            "compile", "--all", "--project", fixture.repoRoot().toString(), "--only", "alpha,beta"
+        });
+
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains("BLOCK: alpha"));
+        assertTrue(stdout.contains("BLOCK: beta"));
+        assertTrue(!stdout.contains("BLOCK: gamma"));
+    }
+
+    @Test
+    void compileAllFailFastMarksRemainingAsSkip(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
+        Files.writeString(alphaIr, "version: v1\nblock:\n  name: alpha\n");
+
+        CliRunResult run = runCli(new String[] {
+            "compile", "--all", "--project", fixture.repoRoot().toString(), "--fail-fast"
+        });
+
+        assertEquals(2, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: beta\nIR: spec/beta.bear.yaml\nPROJECT: services/beta\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: FAIL_FAST_ABORT"));
+        assertTrue(stderr.contains("BLOCK: gamma\nIR: spec/gamma.bear.yaml\nPROJECT: services/gamma\nSTATUS: SKIP\nEXIT_CODE: 0\nREASON: FAIL_FAST_ABORT"));
+        assertTrue(stderr.contains("FAIL_FAST_TRIGGERED: true"));
+    }
+
+    @Test
+    void compileAllStrictOrphansFailsOnRepoMarker(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/surfaces/orphan.surface.json");
+        Files.createDirectories(orphan.getParent());
+        Files.writeString(orphan, "{}\n");
+
+        CliRunResult run = runCli(new String[] {
+            "compile", "--all", "--project", fixture.repoRoot().toString(), "--strict-orphans"
+        });
+        assertEquals(74, run.exitCode);
+        assertTrue(run.stderr.startsWith("compile: IO_ERROR: ORPHAN_MARKER: orphan-root/build/generated/bear/surfaces/orphan.surface.json"));
+        assertFailureEnvelope(
+            run.stderr,
+            "IO_ERROR",
+            "orphan-root/build/generated/bear/surfaces/orphan.surface.json",
+            "Add missing block entries to `bear.blocks.yaml` or remove stale generated BEAR artifacts."
         );
     }
 
@@ -3013,6 +3297,29 @@ class BearCliTest {
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(2, check.exitCode);
         assertTrue(normalizeLf(check.stderr).contains("check: MANIFEST_INVALID: MISSING_KEY_logicInterfaceFqcn"));
+        assertFailureEnvelope(
+            check.stderr,
+            "MANIFEST_INVALID",
+            "build/generated/bear/wiring/withdraw.wiring.json",
+            "Regenerate wiring manifests with governed binding fields and rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkFailsManifestInvalidWhenBlockRootSourceDirMissing(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+
+        Path wiring = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
+        String content = Files.readString(wiring, StandardCharsets.UTF_8);
+        content = content.replace("\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",", "");
+        Files.writeString(wiring, content, StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(2, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: MANIFEST_INVALID: MISSING_KEY_blockRootSourceDir"));
         assertFailureEnvelope(
             check.stderr,
             "MANIFEST_INVALID",

@@ -15,11 +15,23 @@ Fix:
 ## `POLICY_INVALID`
 
 Symptom: `policy: VALIDATION_ERROR` and exit `2`.
-Likely cause: malformed allowlist or malformed reach-surface contract.
+Likely cause: malformed policy contract file.
+
+Files covered:
+- `.bear/policy/reflection-allowlist.txt`
+- `.bear/policy/hygiene-allowlist.txt`
+- `.bear/policy/check-rules.properties`
+
 Fix:
 
-1. Correct policy file format/order (exact repo-relative paths, sorted, no duplicates/globs).
+1. Correct policy file format/order.
 2. Re-run command.
+
+`check-rules.properties` must satisfy:
+- UTF-8, `key=value`
+- supported keys only (`impl_containment` in v1.3)
+- sorted keys
+- unique keys
 
 ## `USAGE_INVALID_ARGS`
 
@@ -85,7 +97,7 @@ Symptom: `drift:` lines and exit `3`.
 Likely cause: generated artifacts are stale, missing, or edited.
 Fix:
 
-1. Run `bear compile <ir-file> --project <path>` or `bear fix ...`.
+1. Run `bear compile <ir-file> --project <path>` (or `bear compile --all --project <repoRoot>`).
 2. Re-run `bear check`.
 
 ## `BOUNDARY_EXPANSION`
@@ -111,7 +123,7 @@ Fix:
 ## `BOUNDARY_BYPASS`
 
 Symptom: `check: BOUNDARY_BYPASS` and exit `6`.
-Likely cause: impl seam bypass (`DIRECT_IMPL_USAGE`, `NULL_PORT_WIRING`, `EFFECTS_BYPASS`).
+Likely cause: seam or containment rule violation.
 Fix:
 
 1. Remove seam bypass usage.
@@ -120,7 +132,9 @@ Fix:
    - `module-info.java provides ... with ...`
 3. Prefer generated `Wrapper.of(<ports...>)` for production wiring.
 4. Keep `(ports..., Logic)` constructor only for tests/advanced injection.
-5. Re-run `bear check`.
+5. For `RULE=IMPL_CONTAINMENT_BYPASS`, keep execute-path business logic inside the governed block root (`blockRootSourceDir` from wiring manifest).
+6. Emergency brake only when explicitly needed: set `.bear/policy/check-rules.properties` to `impl_containment=false` and rerun `check`.
+7. Re-run `bear check`.
 
 `DIRECT_IMPL_USAGE` also includes classloading reflection API usage in `src/main/**` (`Class.forName`, `loadClass`) unless allowlisted.
 
@@ -146,12 +160,15 @@ Fix:
 
 ## `MANIFEST_INVALID`
 
-Symptom: wiring/surface semantic inconsistency with exit `2`.
-Likely cause: generated manifest mismatch, missing governed binding fields (`logicInterfaceFqcn`, `implFqcn`), or unsupported semantic enforcement target.
+Symptom: wiring semantic inconsistency with exit `2`.
+Likely cause:
+- generated wiring mismatch,
+- missing required v2 semantic fields (`logicRequiredPorts`, `wrapperOwnedSemanticPorts`, `wrapperOwnedSemanticChecks`, `blockRootSourceDir`),
+- missing governed binding fields (`logicInterfaceFqcn`, `implFqcn`).
 Fix:
 
-1. Re-run `bear compile` to regenerate manifests.
-2. Ensure supported target and consistent generated artifacts.
+1. Re-run `bear compile` (or `bear compile --all`) to regenerate manifests.
+2. Ensure generated artifacts are consistent with current IR/index.
 3. Re-run `bear check`.
 
 ## `INTERNAL_ERROR`

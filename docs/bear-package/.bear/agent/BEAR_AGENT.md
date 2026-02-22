@@ -40,11 +40,12 @@ Purpose:
 24. In `src/main/**`, do not import or instantiate governed `*Impl` classes directly, and do not bind governed logic interfaces to governed impls via `META-INF/services` or `module-info.java provides`; wire through generated entrypoints under `com.bear.generated.*` (prefer `Wrapper.of(<ports...>)`).
 25. Do not wire governed entrypoints with top-level `null` port arguments in production code.
 26. For each logic-required effect port, impl code must use the corresponding port parameter directly, pass it through to a helper call, or explicitly suppress with exact same-file line `// BEAR:PORT_USED <portParamName>`; wrapper-owned semantic ports must not be used/suppressed from impl code.
-27. If `check` writes `build/bear/check.blocked.marker` (`PROJECT_TEST_LOCK`/`PROJECT_TEST_BOOTSTRAP`), treat it as advisory and continue fixing root cause; use `bear unblock --project <path>` to clear stale marker when needed.
-28. Do not patch `build.gradle` manually as first response to lock/bootstrap failures; first use BEAR deterministic retry/fallback and BEAR-owned generated wiring.
-29. Agent guidance must remain package-local: rely on `.bear/agent/**` plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**`), not non-shipped repo docs.
-30. If using reflection/hygiene policy allowlists, keep exact repo-relative path entries in `.bear/policy/*.txt` sorted, unique, and non-glob.
-31. You may use git history/branches/stashes for context in real projects, but BEAR decisions and outputs must remain grounded in the current working tree plus current IR/index contracts.
+27. Keep execute-path business logic inside governed impl/block-root code; do not delegate execution logic from governed impls to non-governed external packages.
+28. If `check` writes `build/bear/check.blocked.marker` (`PROJECT_TEST_LOCK`/`PROJECT_TEST_BOOTSTRAP`), treat it as advisory and continue fixing root cause; use `bear unblock --project <path>` to clear stale marker when needed.
+29. Do not patch `build.gradle` manually as first response to lock/bootstrap failures; first use BEAR deterministic retry/fallback and BEAR-owned generated wiring.
+30. Agent guidance must remain package-local: rely on `.bear/agent/**` plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**`), not non-shipped repo docs.
+31. If using reflection/hygiene policy allowlists, keep exact repo-relative path entries in `.bear/policy/*.txt` sorted, unique, and non-glob.
+32. You may use git history/branches/stashes for context in real projects, but BEAR decisions and outputs must remain grounded in the current working tree plus current IR/index contracts.
 
 ## Policy Contract (Check)
 
@@ -53,12 +54,17 @@ When running `bear check` or `bear check --all`:
 2. Policy files are optional:
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
+ - `.bear/policy/check-rules.properties`
 3. If a policy file is present, entries must be exact repo-relative paths:
 - UTF-8, forward slashes, one path per line
 - sorted lexicographically
 - unique entries
 - no globs, no absolute paths, no trailing slash
 4. Missing policy file means empty allowlist; malformed policy file fails with `CODE=POLICY_INVALID`.
+4b. `check-rules.properties` supports only:
+- `impl_containment=true|false`
+- default is `true` when file is missing
+- keys must be sorted, unique, and known; malformed/unknown/duplicate keys fail with `CODE=POLICY_INVALID`.
 5. Reflection boundary rule:
 - classloading reflection in `src/main/**` (`Class.forName`, `loadClass`) is blocked unless exact-path allowlisted.
 6. Governed binding seam rule:

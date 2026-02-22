@@ -1,26 +1,53 @@
-﻿# bear compile
+# bear compile
 
 ## Purpose
 
-Compile one validated IR into deterministic BEAR-owned generated artifacts for a target project.
+Compile validated IR into deterministic BEAR-owned generated artifacts for one block or all indexed blocks.
 
 ## Invocation forms
 
 ```text
 bear compile <ir-file> --project <path>
+bear compile --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]
 ```
 
 ## Inputs and flags
 
+Single-block:
 - `<ir-file>`: required IR YAML path.
 - `--project <path>`: required project root.
-- Args must match exact command form.
+
+All-mode:
+- `--all`: enables index-managed multi-block compile.
+- `--project <repoRoot>`: required repo root containing index/project roots.
+- `--blocks <path>`: optional override for index path (`bear.blocks.yaml` by default).
+- `--only <csv>`: optional block-name filter from index.
+- `--fail-fast`: stop compiling additional blocks after first fail.
+- `--strict-orphans`: enforce repo-wide orphan/legacy marker checks.
+
+Identity and selection:
+- all-mode uses the same index/block identity resolver as other `--all` commands.
+- unknown `--only` names fail with deterministic usage error.
 
 ## Output schema and ordering guarantees
 
-- Success: `compiled: OK` to `stdout`, exit `0`.
-- Non-zero: deterministic diagnostic lines to `stderr`, then failure footer.
-- Compile preserves user-owned impl files and regenerates BEAR-owned artifacts deterministically.
+Single-block success:
+- `compiled: OK` to `stdout`, exit `0`.
+
+All-mode success:
+- deterministic per-block sections followed by:
+  - `SUMMARY`
+  - total/checked/passed/failed/skipped
+  - `FAIL_FAST_TRIGGERED`
+  - `EXIT_CODE`
+
+Failure:
+- deterministic diagnostic lines to `stderr`, then failure footer.
+- all-mode non-zero footer uses:
+  - `CODE=REPO_MULTI_BLOCK_FAILED`
+  - `PATH=bear.blocks.yaml`
+
+Compile always preserves user-owned impl files and regenerates BEAR-owned artifacts deterministically.
 
 ## Exit codes emitted
 
@@ -43,6 +70,7 @@ See [output-format.md](output-format.md).
 ## Remediation pointers
 
 - [troubleshooting.md#ir_validation](troubleshooting.md#ir_validation)
+- [troubleshooting.md#manifest_invalid](troubleshooting.md#manifest_invalid)
 - [troubleshooting.md#usage_invalid_args](troubleshooting.md#usage_invalid_args)
 - [troubleshooting.md#io_error](troubleshooting.md#io_error)
 
@@ -53,4 +81,3 @@ See [output-format.md](output-format.md).
 - [commands-fix.md](commands-fix.md)
 - [output-format.md](output-format.md)
 - [troubleshooting.md](troubleshooting.md)
-

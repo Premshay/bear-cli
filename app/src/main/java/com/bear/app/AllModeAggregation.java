@@ -114,6 +114,40 @@ final class AllModeAggregation {
         );
     }
 
+    static RepoAggregationResult aggregateCompileResults(List<BlockExecutionResult> results, boolean failFastTriggered) {
+        int passed = 0;
+        int failed = 0;
+        int skipped = 0;
+        int exitCode = CliCodes.EXIT_OK;
+        int rank = severityRankFix(exitCode);
+        for (BlockExecutionResult result : results) {
+            if (result.status() == BlockStatus.PASS) {
+                passed++;
+            } else if (result.status() == BlockStatus.FAIL) {
+                failed++;
+                int candidateRank = severityRankFix(result.exitCode());
+                if (candidateRank < rank) {
+                    rank = candidateRank;
+                    exitCode = result.exitCode();
+                }
+            } else {
+                skipped++;
+            }
+        }
+        return new RepoAggregationResult(
+            exitCode,
+            results.size(),
+            passed + failed,
+            passed,
+            failed,
+            skipped,
+            failFastTriggered,
+            0,
+            0,
+            0
+        );
+    }
+
     static int severityRankCheck(int code) {
         return switch (code) {
             case 70 -> 1;

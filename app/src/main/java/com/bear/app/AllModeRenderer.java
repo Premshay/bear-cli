@@ -114,4 +114,34 @@ final class AllModeRenderer {
         lines.add("EXIT_CODE: " + summary.exitCode());
         return lines;
     }
+
+    static List<String> renderCompileAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
+        List<String> lines = new ArrayList<>();
+        for (BlockExecutionResult result : results) {
+            lines.add("BLOCK: " + result.name());
+            lines.add("IR: " + result.ir());
+            lines.add("PROJECT: " + result.project());
+            lines.add("STATUS: " + result.status());
+            lines.add("EXIT_CODE: " + result.exitCode());
+            if (result.status() == BlockStatus.FAIL) {
+                lines.add("CATEGORY: " + result.category());
+                lines.add("BLOCK_CODE: " + result.blockCode());
+                lines.add("BLOCK_PATH: " + result.blockPath());
+                lines.add("DETAIL: " + result.detail());
+                lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
+            } else if (result.status() == BlockStatus.SKIP) {
+                lines.add("REASON: " + result.reason());
+            }
+            lines.add("");
+        }
+        lines.add("SUMMARY:");
+        lines.add(summary.total() + " blocks total");
+        lines.add(summary.checked() + " checked");
+        lines.add(summary.passed() + " passed");
+        lines.add(summary.failed() + " failed");
+        lines.add(summary.skipped() + " skipped");
+        lines.add("FAIL_FAST_TRIGGERED: " + summary.failFastTriggered());
+        lines.add("EXIT_CODE: " + summary.exitCode());
+        return lines;
+    }
 }
