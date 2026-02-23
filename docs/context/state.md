@@ -28,6 +28,14 @@ v1.3 follow-through:
 
 ## Session Notes
 
+- Fixed relative `--project` handling for project test execution:
+  - normalized `ProjectTestRunner.runProjectTests(...)` to use absolute normalized project roots before wrapper resolution/process launch.
+  - added CLI regression `BearCliTest.checkPassesWhenProjectPathIsRelative` to verify `bear check ... --project <relative-path>` succeeds.
+  - verified green:
+    - `.\gradlew.bat --no-daemon :app:test --tests "com.bear.app.ProjectTestRunnerTest" --tests "com.bear.app.BearCliTest.checkPassesWhenProjectPathIsRelative"`
+    - `.\gradlew.bat --no-daemon :app:test`
+    - `.\gradlew.bat --no-daemon test`
+
 - Implemented BEAR v1.3.x hard-break containment upgrade:
   - wiring manifests now require `governedSourceRoots` (v2-only wiring contract for containment).
   - kernel emits deterministic `governedSourceRoots` (`blockRootSourceDir`, optional `src/main/java/blocks/_shared` when directory exists).

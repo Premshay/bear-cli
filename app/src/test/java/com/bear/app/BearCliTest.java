@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.List;
@@ -427,6 +428,32 @@ class BearCliTest {
 
         byte[] after = Files.readAllBytes(baselineFile);
         assertEquals(bytesToHex(before), bytesToHex(after));
+    }
+
+    @Test
+    void checkPassesWhenProjectPathIsRelative() throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        Path relativeProjectRoot = Path.of("build/tmp/check-relative-project-" + System.nanoTime());
+        Path absoluteProjectRoot = relativeProjectRoot.toAbsolutePath().normalize();
+        Files.createDirectories(absoluteProjectRoot);
+        try {
+            CliRunResult compile = runCli(new String[] { "compile", fixture.toString(), "--project", relativeProjectRoot.toString() });
+            assertEquals(0, compile.exitCode);
+            writeWorkingWithdrawImpl(absoluteProjectRoot);
+            writeProjectWrapper(
+                absoluteProjectRoot,
+                "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+                "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+            );
+
+            CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", relativeProjectRoot.toString() });
+            assertEquals(0, check.exitCode);
+            assertTrue(check.stdout.startsWith("check: OK"));
+            assertEquals("", check.stderr);
+        } finally {
+            deleteRecursively(absoluteProjectRoot);
+        }
     }
 
     @Test
@@ -3378,6 +3405,23 @@ class BearCliTest {
             + "  }\n"
             + "}\n";
         Files.writeString(impl, source, StandardCharsets.UTF_8);
+    }
+
+    private static void deleteRecursively(Path root) {
+        if (!Files.exists(root)) {
+            return;
+        }
+        try (var stream = Files.walk(root)) {
+            for (Path path : stream.sorted(Comparator.reverseOrder()).toList()) {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (Exception ignored) {
+                    // Best-effort cleanup for temp test workspace.
+                }
+            }
+        } catch (Exception ignored) {
+            // Best-effort cleanup for temp test workspace.
+        }
     }
 
     private static CliRunResult runCli(String[] args) {

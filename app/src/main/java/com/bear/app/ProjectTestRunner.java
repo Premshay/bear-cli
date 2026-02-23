@@ -50,13 +50,14 @@ final class ProjectTestRunner {
     }
 
     static ProjectTestResult runProjectTests(Path projectRoot) throws IOException, InterruptedException {
-        Path wrapper = resolveWrapper(projectRoot);
+        Path normalizedProjectRoot = projectRoot.toAbsolutePath().normalize();
+        Path wrapper = resolveWrapper(normalizedProjectRoot);
         List<ProjectTestAttempt> attempts = new ArrayList<>();
 
         String externalGradleUserHome = configuredExternalGradleUserHome();
         if (externalGradleUserHome != null) {
             ProjectTestAttempt first = runProjectTestsOnce(
-                projectRoot,
+                normalizedProjectRoot,
                 wrapper,
                 externalGradleUserHome,
                 GradleHomeMode.EXTERNAL_ENV.initialLabel
@@ -67,7 +68,7 @@ final class ProjectTestRunner {
                 safeSelfHealGradleHome(latest.gradleUserHome());
                 deterministicBackoff();
                 latest = runProjectTestsOnce(
-                    projectRoot,
+                    normalizedProjectRoot,
                     wrapper,
                     externalGradleUserHome,
                     GradleHomeMode.EXTERNAL_ENV.retryLabel
@@ -77,9 +78,9 @@ final class ProjectTestRunner {
             return finalizeAttempts(attempts, latest);
         }
 
-        String isolatedGradleUserHome = projectRoot.resolve(".bear-gradle-user-home").toString();
+        String isolatedGradleUserHome = normalizedProjectRoot.resolve(".bear-gradle-user-home").toString();
         ProjectTestAttempt latest = runProjectTestsOnce(
-            projectRoot,
+            normalizedProjectRoot,
             wrapper,
             isolatedGradleUserHome,
             GradleHomeMode.ISOLATED.initialLabel
@@ -96,7 +97,7 @@ final class ProjectTestRunner {
         if (isWindows()) {
             String userGradleUserHome = defaultUserGradleHome();
             latest = runProjectTestsOnce(
-                projectRoot,
+                normalizedProjectRoot,
                 wrapper,
                 userGradleUserHome,
                 GradleHomeMode.USER_CACHE.initialLabel
@@ -106,7 +107,7 @@ final class ProjectTestRunner {
                 safeSelfHealGradleHome(userGradleUserHome);
                 deterministicBackoff();
                 latest = runProjectTestsOnce(
-                    projectRoot,
+                    normalizedProjectRoot,
                     wrapper,
                     userGradleUserHome,
                     GradleHomeMode.USER_CACHE.retryLabel
@@ -117,7 +118,7 @@ final class ProjectTestRunner {
         }
 
         latest = runProjectTestsOnce(
-            projectRoot,
+            normalizedProjectRoot,
             wrapper,
             isolatedGradleUserHome,
             GradleHomeMode.ISOLATED.retryLabel
@@ -128,7 +129,7 @@ final class ProjectTestRunner {
             safeSelfHealGradleHome(userGradleUserHome);
             deterministicBackoff();
             latest = runProjectTestsOnce(
-                projectRoot,
+                normalizedProjectRoot,
                 wrapper,
                 userGradleUserHome,
                 GradleHomeMode.USER_CACHE.initialLabel
