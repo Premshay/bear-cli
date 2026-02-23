@@ -7,4 +7,6 @@ import java.nio.file.Path;
 
 public interface Target {
     void compile(BearIr ir, Path projectRoot, String blockKey) throws IOException;
+
+    void generateWiringOnly(BearIr ir, Path projectRoot, Path outputRoot, String blockKey) throws IOException;
 }

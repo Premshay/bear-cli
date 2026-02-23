@@ -5,6 +5,7 @@ import com.bear.kernel.ir.BearIrNormalizer;
 import com.bear.kernel.ir.BearIrParser;
 import com.bear.kernel.ir.BearIrValidationException;
 import com.bear.kernel.ir.BearIrValidator;
+import com.bear.kernel.target.JvmTarget;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,16 +18,24 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 final class PrCheckCommandService {
+    private static final String PORT_IMPL_BYPASS_RULE = "PORT_IMPL_OUTSIDE_GOVERNED_ROOT";
+    private static final String TEMP_BASE_IR_RELATIVE = "work/base/base.bear.yaml";
+    private static final String TEMP_BASE_WIRING_ROOT_RELATIVE = "generated/base";
+    private static final String TEMP_HEAD_WIRING_ROOT_RELATIVE = "generated/head";
+    private static volatile Path lastTempRootForTest;
+
     private PrCheckCommandService() {
     }
 
     static PrCheckResult executePrCheck(Path projectRoot, String repoRelativePath, String baseRef) {
         Path tempRoot = null;
         try {
+            lastTempRootForTest = null;
             maybeFailInternalForTest();
             BearIrParser parser = new BearIrParser();
             BearIrValidator validator = new BearIrValidator();
             BearIrNormalizer normalizer = new BearIrNormalizer();
+            JvmTarget target = new JvmTarget();
 
             Path headIrPath = projectRoot.resolve(repoRelativePath).normalize();
             if (!headIrPath.startsWith(projectRoot) || !Files.isRegularFile(headIrPath)) {
@@ -45,6 +54,12 @@ final class PrCheckCommandService {
             }
 
             BearIr head = normalizer.normalize(parseAndValidateIr(parser, validator, headIrPath));
+            BlockIdentityResolution headIdentity = BlockIdentityResolver.resolveSingleCommandIdentity(
+                headIrPath,
+                projectRoot,
+                head.block().name()
+            );
+            String blockKey = headIdentity.blockKey();
 
             GitResult isRepoResult = runGitForPrCheck(projectRoot, List.of("rev-parse", "--is-inside-work-tree"), "git.repo");
             if (isRepoResult.exitCode() != 0 || !"true".equals(isRepoResult.stdout().trim())) {
@@ -95,11 +110,43 @@ final class PrCheckCommandService {
 
             List<String> stderrLines = new ArrayList<>();
             BearIr base = null;
+            WiringManifest baseWiring = null;
             GitResult catFileResult = runGitForPrCheck(
                 projectRoot,
                 List.of("cat-file", "-e", mergeBase + ":" + repoRelativePath),
                 repoRelativePath
             );
+            tempRoot = Files.createTempDirectory("bear-pr-check-");
+            lastTempRootForTest = tempRoot;
+            Path baseTempIr = tempRoot.resolve(TEMP_BASE_IR_RELATIVE);
+            Path baseWiringRoot = tempRoot.resolve(TEMP_BASE_WIRING_ROOT_RELATIVE);
+            Path headWiringRoot = tempRoot.resolve(TEMP_HEAD_WIRING_ROOT_RELATIVE);
+            Path baseWiringManifestPath = baseWiringRoot.resolve("wiring").resolve(blockKey + ".wiring.json");
+            Path headWiringManifestPath = headWiringRoot.resolve("wiring").resolve(blockKey + ".wiring.json");
+            Files.createDirectories(baseTempIr.getParent());
+            Files.createDirectories(baseWiringManifestPath.getParent());
+            Files.createDirectories(headWiringManifestPath.getParent());
+
+            target.generateWiringOnly(head, projectRoot, headWiringRoot, blockKey);
+            WiringManifest headWiring;
+            try {
+                headWiring = ManifestParsers.parseWiringManifest(headWiringManifestPath);
+            } catch (ManifestParseException e) {
+                String line = "pr-check: MANIFEST_INVALID: " + e.reasonCode();
+                return prFailure(
+                    CliCodes.EXIT_VALIDATION,
+                    List.of(line),
+                    "VALIDATION",
+                    CliCodes.MANIFEST_INVALID,
+                    "generated/head/wiring/" + blockKey + ".wiring.json",
+                    "Regenerate wiring metadata and rerun `bear pr-check`.",
+                    line,
+                    List.of(),
+                    false,
+                    false
+                );
+            }
+
             if (catFileResult.exitCode() != 0) {
                 GitResult existsResult = runGitForPrCheck(
                     projectRoot,
@@ -156,10 +203,73 @@ final class PrCheckCommandService {
                         false
                     );
                 }
-                tempRoot = Files.createTempDirectory("bear-pr-check-");
-                Path baseTempIr = tempRoot.resolve("base.bear.yaml");
                 Files.writeString(baseTempIr, showResult.stdout(), StandardCharsets.UTF_8);
-                base = normalizer.normalize(parseAndValidateIr(parser, validator, baseTempIr));
+                try {
+                    base = normalizer.normalize(parseAndValidateIr(parser, validator, baseTempIr));
+                } catch (BearIrValidationException e) {
+                    return prFailure(
+                        CliCodes.EXIT_VALIDATION,
+                        List.of("validation at " + repoRelativePath + ": BASE_IR_VALIDATION_FAILED"),
+                        "VALIDATION",
+                        CliCodes.IR_VALIDATION,
+                        repoRelativePath,
+                        "Fix the IR issue at the reported path and rerun `bear pr-check <ir-file> --project <path> --base <ref>`.",
+                        "validation at " + repoRelativePath + ": BASE_IR_VALIDATION_FAILED",
+                        List.of(),
+                        false,
+                        false
+                    );
+                }
+                target.generateWiringOnly(base, projectRoot, baseWiringRoot, blockKey);
+                try {
+                    baseWiring = ManifestParsers.parseWiringManifest(baseWiringManifestPath);
+                } catch (ManifestParseException e) {
+                    String line = "pr-check: MANIFEST_INVALID: " + e.reasonCode();
+                    return prFailure(
+                        CliCodes.EXIT_VALIDATION,
+                        List.of(line),
+                        "VALIDATION",
+                        CliCodes.MANIFEST_INVALID,
+                        "generated/base/wiring/" + blockKey + ".wiring.json",
+                        "Regenerate wiring metadata and rerun `bear pr-check`.",
+                        line,
+                        List.of(),
+                        false,
+                        false
+                    );
+                }
+            }
+
+            ArrayList<WiringManifest> governedManifests = new ArrayList<>();
+            governedManifests.add(headWiring);
+            if (baseWiring != null) {
+                governedManifests.add(baseWiring);
+            }
+            List<PortImplContainmentFinding> containmentFindings = PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
+                projectRoot,
+                governedManifests
+            );
+            if (!containmentFindings.isEmpty()) {
+                List<String> detailLines = new ArrayList<>();
+                for (PortImplContainmentFinding finding : containmentFindings) {
+                    String line = "pr-check: BOUNDARY_BYPASS: RULE=" + PORT_IMPL_BYPASS_RULE
+                        + ": " + finding.path()
+                        + ": KIND=PORT_IMPL_EXTERNAL_BINDING: " + finding.interfaceFqcn() + " <- " + finding.implClassFqcn();
+                    detailLines.add(line);
+                    stderrLines.add(line);
+                }
+                return prFailure(
+                    CliCodes.EXIT_BOUNDARY_BYPASS,
+                    stderrLines,
+                    "BOUNDARY_BYPASS",
+                    CliCodes.PORT_IMPL_OUTSIDE_GOVERNED_ROOT,
+                    containmentFindings.get(0).path(),
+                    "Move the port implementation under a governed source root (block root or blocks/_shared), or refactor so the app layer calls wrappers without implementing generated ports.",
+                    detailLines.get(0),
+                    List.of(),
+                    false,
+                    false
+                );
             }
 
             List<PrDelta> deltas = PrDeltaClassifier.computePrDeltas(base, head);
@@ -226,15 +336,42 @@ final class PrCheckCommandService {
                 false,
                 false
             );
+        } catch (BlockIndexValidationException e) {
+            String line = "index: VALIDATION_ERROR: " + e.getMessage();
+            return prFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.IR_VALIDATION,
+                e.path(),
+                "Fix `bear.blocks.yaml` and rerun `bear pr-check`.",
+                line,
+                List.of(),
+                false,
+                false
+            );
+        } catch (BlockIdentityResolutionException e) {
+            return prFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(e.line()),
+                "VALIDATION",
+                CliCodes.IR_VALIDATION,
+                e.path(),
+                e.remediation(),
+                e.line(),
+                List.of(),
+                false,
+                false
+            );
         } catch (IOException e) {
             return prFailure(
                 CliCodes.EXIT_IO,
-                List.of("pr-check: IO_ERROR: INTERNAL_IO: " + CliText.squash(e.getMessage())),
+                List.of("pr-check: IO_ERROR: INTERNAL_IO"),
                 "IO_ERROR",
                 CliCodes.IO_ERROR,
                 "internal",
                 "Ensure local filesystem paths are accessible, then rerun `bear pr-check`.",
-                "pr-check: IO_ERROR: INTERNAL_IO: " + CliText.squash(e.getMessage()),
+                "pr-check: IO_ERROR: INTERNAL_IO",
                 List.of(),
                 false,
                 false
@@ -268,7 +405,9 @@ final class PrCheckCommandService {
             );
         } finally {
             if (tempRoot != null) {
-                deleteRecursivelyBestEffort(tempRoot);
+                if (!Boolean.getBoolean("bear.prcheck.test.keepTemp")) {
+                    deleteRecursivelyBestEffort(tempRoot);
+                }
             }
         }
     }
@@ -345,6 +484,12 @@ final class PrCheckCommandService {
         if ("true".equals(System.getProperty(key))) {
             throw new IllegalStateException("INJECTED_INTERNAL_pr-check");
         }
+    }
+
+    static Path consumeLastTempRootForTest() {
+        Path value = lastTempRootForTest;
+        lastTempRootForTest = null;
+        return value;
     }
 
     private static void deleteRecursivelyBestEffort(Path root) {

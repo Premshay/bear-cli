@@ -5,7 +5,7 @@ For milestone status and backlog ordering, use `docs/context/program-board.md`.
 
 ## Last Updated
 
-2026-02-22
+2026-02-23
 
 ## Current Focus
 
@@ -21,12 +21,32 @@ P2 feature delivery:
 ## Next Concrete Task
 
 v1.3 follow-through:
-1. run demo smoke against `bear-account-demo` for hard-break containment (`compile --all`, `check --all`)
-2. verify `sync-bear-demo.ps1` package sync with removed check-rules policy file path
+1. run demo smoke against `bear-account-demo` for `pr-check` port-impl containment (`external adapter fail`, `_shared adapter pass`)
+2. sync updated package/docs guidance for `pr-check` wiring-only behavior and failure envelope
 3. continue command-service modularization cleanup with no contract drift
 4. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Implemented `pr-check` wiring-only staging + governed port-impl containment enforcement:
+  - kernel target contract now includes `generateWiringOnly(...)`.
+  - `JvmTarget` now emits wiring-only manifests without generating Java sources/tests/runtime trees.
+  - `pr-check` now uses fixed OS-temp internal layout:
+    - `<tempRoot>/work/base/base.bear.yaml`
+    - `<tempRoot>/generated/base/wiring/<blockKey>.wiring.json`
+    - `<tempRoot>/generated/head/wiring/<blockKey>.wiring.json`
+  - `pr-check` now enforces deterministic `PORT_IMPL_OUTSIDE_GOVERNED_ROOT` failures when classes implementing generated `*Port` interfaces are outside governed roots.
+  - internal IO fallback line for `pr-check` is now deterministic (`pr-check: IO_ERROR: INTERNAL_IO`) to avoid temp-path leakage.
+  - added scanner + CLI coverage:
+    - `PortImplContainmentScannerTest`
+    - new `BearCliTest` cases for failure, `_shared` pass, fixed temp layout, and wiring-only artifact shape.
+  - added kernel coverage:
+    - wiring-only output byte-identical to compile wiring
+    - wiring-only emits no Java source trees
+  - verified green:
+    - `.\gradlew.bat --no-daemon :kernel:test`
+    - `.\gradlew.bat --no-daemon :app:test`
+    - `.\gradlew.bat --no-daemon test`
 
 - Fixed relative `--project` handling for project test execution:
   - normalized `ProjectTestRunner.runProjectTests(...)` to use absolute normalized project roots before wrapper resolution/process launch.

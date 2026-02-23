@@ -99,6 +99,60 @@ class JvmTargetTest {
     }
 
     @Test
+    void generateWiringOnlyMatchesCompileWiringBytes(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        BearIr normalized = normalizer.normalize(ir);
+
+        Path compileProjectRoot = tempDir.resolve("compile-project");
+        target.compile(normalized, compileProjectRoot, "withdraw");
+        Path compileWiring = compileProjectRoot.resolve("build/generated/bear/wiring/withdraw.wiring.json");
+
+        Path wiringOnlyRoot = tempDir.resolve("wiring-only");
+        target.generateWiringOnly(normalized, compileProjectRoot, wiringOnlyRoot, "withdraw");
+        Path wiringOnly = wiringOnlyRoot.resolve("wiring/withdraw.wiring.json");
+
+        assertEquals(Files.readString(compileWiring), Files.readString(wiringOnly));
+    }
+
+    @Test
+    void generateWiringOnlyDoesNotEmitJavaSources(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        BearIr normalized = normalizer.normalize(ir);
+
+        target.generateWiringOnly(normalized, tempDir, tempDir.resolve("wiring-only"), "withdraw");
+
+        Path wiringOnlyRoot = tempDir.resolve("wiring-only");
+        assertTrue(Files.isRegularFile(wiringOnlyRoot.resolve("wiring/withdraw.wiring.json")));
+        assertFalse(Files.exists(wiringOnlyRoot.resolve("src")));
+        long javaCount;
+        try (var stream = Files.walk(wiringOnlyRoot)) {
+            javaCount = stream
+                .filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().endsWith(".java"))
+                .count();
+        }
+        assertEquals(0L, javaCount);
+    }
+
+    @Test
     void compileCreatesImplOnlyWhenMissing(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");

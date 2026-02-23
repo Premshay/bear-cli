@@ -165,6 +165,43 @@ public final class JvmTarget implements Target {
         }
     }
 
+    @Override
+    public void generateWiringOnly(BearIr ir, Path projectRoot, Path outputRoot, String blockKey) throws IOException {
+        Files.createDirectories(projectRoot);
+        Files.createDirectories(outputRoot);
+
+        String effectiveBlockKey = blockKey == null ? "" : blockKey.trim();
+        if (effectiveBlockKey.isEmpty()) {
+            throw new IllegalArgumentException("blockKey must be non-empty");
+        }
+
+        String blockName = toPascalCase(ir.block().name());
+        String packageSegment = sanitizePackageSegment(ir.block().name());
+        String generatedPackageName = "com.bear.generated." + packageSegment;
+        String implPackageName = "blocks." + packageSegment + ".impl";
+        String implPackagePath = implPackageName.replace('.', '/');
+
+        List<PortModel> ports = mapPorts(ir.block().effects().allow());
+        List<PortModel> logicPorts = logicPorts(ports, ir.block());
+
+        Path wiringDir = outputRoot.resolve("wiring");
+        Path wiringManifest = wiringDir.resolve(effectiveBlockKey + ".wiring.json");
+        writeIfDifferent(
+            wiringManifest,
+            renderWiringManifest(
+                projectRoot,
+                effectiveBlockKey,
+                generatedPackageName,
+                blockName,
+                implPackageName,
+                implPackagePath,
+                ports,
+                logicPorts,
+                ir.block()
+            )
+        );
+    }
+
     private String renderBearValue(String packageName) {
         return GENERATED_HEADER
             + "package " + packageName + ";\n\n"

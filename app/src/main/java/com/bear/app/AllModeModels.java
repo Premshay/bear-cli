@@ -119,6 +119,9 @@ record UndeclaredReachSurface(String label, Pattern pattern) {
 record BoundaryBypassFinding(String rule, String path, String detail) {
 }
 
+record PortImplContainmentFinding(String interfaceFqcn, String implClassFqcn, String path) {
+}
+
 record AllCheckOptions(
     Path repoRoot,
     Path blocksPath,

@@ -2643,6 +2643,97 @@ class BearCliTest {
     }
 
     @Test
+    void prCheckFailsWhenGeneratedPortImplLivesOutsideGovernedRoots(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        Files.createDirectories(repo.resolve("src/main/java/com/acme"));
+        Files.writeString(
+            repo.resolve("src/main/java/com/acme/AppPortAdapter.java"),
+            "package com.acme;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class AppPortAdapter implements LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+        gitCommitAll(repo, "add ir and external port adapter");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(6, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("pr-check: BOUNDARY_BYPASS: RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT"));
+        assertFalse(stderr.contains("bear-pr-check-"));
+        assertFailureEnvelope(
+            run.stderr,
+            "PORT_IMPL_OUTSIDE_GOVERNED_ROOT",
+            "src/main/java/com/acme/AppPortAdapter.java",
+            "Move the port implementation under a governed source root (block root or blocks/_shared), or refactor so the app layer calls wrappers without implementing generated ports."
+        );
+    }
+
+    @Test
+    void prCheckAllowsGeneratedPortImplInsideSharedGovernedRoot(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        Files.createDirectories(repo.resolve("src/main/java/blocks/_shared"));
+        Files.writeString(
+            repo.resolve("src/main/java/blocks/_shared/AppPortAdapter.java"),
+            "package blocks._shared;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class AppPortAdapter implements LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+        gitCommitAll(repo, "add ir and shared adapter");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(0, run.exitCode);
+        assertEquals("pr-check: OK: NO_BOUNDARY_EXPANSION\n", normalizeLf(run.stdout));
+    }
+
+    @Test
+    void prCheckUsesFixedTempLayoutWithWiringOnlyOutputs(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        gitCommitAll(repo, "add ir");
+
+        String key = "bear.prcheck.test.keepTemp";
+        String previous = System.getProperty(key);
+        Path stagedRoot = null;
+        try {
+            System.setProperty(key, "true");
+            CliRunResult run = runCli(new String[] {
+                "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+            });
+            assertEquals(0, run.exitCode);
+
+            stagedRoot = PrCheckCommandService.consumeLastTempRootForTest();
+            assertTrue(stagedRoot != null && Files.isDirectory(stagedRoot));
+            assertTrue(Files.isRegularFile(stagedRoot.resolve("work/base/base.bear.yaml")));
+            assertTrue(Files.isRegularFile(stagedRoot.resolve("generated/base/wiring/withdraw.wiring.json")));
+            assertTrue(Files.isRegularFile(stagedRoot.resolve("generated/head/wiring/withdraw.wiring.json")));
+
+            long javaCount;
+            try (var stream = Files.walk(stagedRoot)) {
+                javaCount = stream
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".java"))
+                    .count();
+            }
+            assertEquals(0L, javaCount);
+        } finally {
+            restoreSystemProperty(key, previous);
+            if (stagedRoot != null) {
+                deleteRecursively(stagedRoot);
+            }
+            PrCheckCommandService.consumeLastTempRootForTest();
+        }
+    }
+
+    @Test
     void prCheckTreatsMissingBaseIrAsBoundaryExpansion(@TempDir Path tempDir) throws Exception {
         Path repo = initGitRepo(tempDir.resolve("repo"));
         Files.writeString(repo.resolve("README.md"), "base\n", StandardCharsets.UTF_8);

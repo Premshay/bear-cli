@@ -169,7 +169,8 @@ final class AllModeAggregation {
             case 64 -> 3;
             case 2 -> 4;
             case 5 -> 5;
-            case 0 -> 6;
+            case 6 -> 6;
+            case 0 -> 7;
             default -> 1;
         };
     }
