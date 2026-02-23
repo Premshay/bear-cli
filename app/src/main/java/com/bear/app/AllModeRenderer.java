@@ -2,6 +2,7 @@ package com.bear.app;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 
 final class AllModeRenderer {
     private AllModeRenderer() {
@@ -43,6 +44,7 @@ final class AllModeRenderer {
     static List<String> renderPrAllOutput(List<BlockExecutionResult> results, RepoAggregationResult summary) {
         List<String> lines = new ArrayList<>();
         int boundaryCount = 0;
+        TreeSet<String> governanceSignals = new TreeSet<>();
         for (BlockExecutionResult result : results) {
             lines.add("BLOCK: " + result.name());
             lines.add("IR: " + result.ir());
@@ -63,6 +65,7 @@ final class AllModeRenderer {
             } else {
                 lines.add("DELTA: (no changes)");
             }
+            governanceSignals.addAll(result.governanceLines());
             if (result.status() == BlockStatus.FAIL && result.blockCode() != null) {
                 lines.add("CATEGORY: " + result.category());
                 lines.add("BLOCK_CODE: " + result.blockCode());
@@ -71,6 +74,13 @@ final class AllModeRenderer {
                 lines.add("BLOCK_REMEDIATION: " + result.blockRemediation());
             } else if (result.status() == BlockStatus.SKIP) {
                 lines.add("REASON: " + result.reason());
+            }
+            lines.add("");
+        }
+        if (summary.exitCode() == 0 && !governanceSignals.isEmpty()) {
+            lines.add("GOVERNANCE SIGNALS:");
+            for (String line : governanceSignals) {
+                lines.add("  " + line);
             }
             lines.add("");
         }

@@ -2878,6 +2878,35 @@ class BearCliTest {
     }
 
     @Test
+    void prCheckPrintsGovernanceSignalWhenMultiBlockPortImplIsAllowedByMarker(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        Files.createDirectories(repo.resolve("src/main/java/blocks/_shared"));
+        Files.writeString(
+            repo.resolve("src/main/java/blocks/_shared/MegaAdapter.java"),
+            "package blocks._shared;\n"
+                + "import com.bear.generated.deposit.DepositPort;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL\n"
+                + "public final class MegaAdapter implements LedgerPort, DepositPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+        gitCommitAll(repo, "add ir and allowed multi-block adapter");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        assertTrue(stdout.contains(
+            "pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: src/main/java/blocks/_shared/MegaAdapter.java: blocks._shared.MegaAdapter -> com.bear.generated.deposit,com.bear.generated.withdraw"
+        ));
+        assertTrue(stdout.endsWith("pr-check: OK: NO_BOUNDARY_EXPANSION\n"));
+        assertFalse(normalizeLf(run.stderr).contains("MULTI_BLOCK_PORT_IMPL_ALLOWED"));
+    }
+
+    @Test
     void prCheckFailsWhenMarkerIsUsedOutsideSharedForGeneratedPortImplementer(@TempDir Path tempDir) throws Exception {
         Path repo = initGitRepo(tempDir.resolve("repo"));
         writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
@@ -2946,6 +2975,41 @@ class BearCliTest {
             }
             PrCheckCommandService.consumeLastTempRootForTest();
         }
+    }
+
+    @Test
+    void prCheckAllPrintsAggregatedGovernanceSignalsBeforeSummaryOnSuccess(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        writeBlockIndex(repo, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: withdraw\n"
+            + "    ir: spec/withdraw.bear.yaml\n"
+            + "    projectRoot: .\n");
+        Files.createDirectories(repo.resolve("src/main/java/blocks/_shared"));
+        Files.writeString(
+            repo.resolve("src/main/java/blocks/_shared/MegaAdapter.java"),
+            "package blocks._shared;\n"
+                + "import com.bear.generated.deposit.DepositPort;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL\n"
+                + "public final class MegaAdapter implements LedgerPort, DepositPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+        gitCommitAll(repo, "add ir index and allowed multi-block adapter");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "--all", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(0, run.exitCode);
+        String stdout = normalizeLf(run.stdout);
+        int governanceIdx = stdout.indexOf("GOVERNANCE SIGNALS:");
+        int summaryIdx = stdout.indexOf("SUMMARY:");
+        assertTrue(governanceIdx >= 0);
+        assertTrue(summaryIdx > governanceIdx);
+        assertTrue(stdout.contains("MULTI_BLOCK_PORT_IMPL_ALLOWED"));
     }
 
     @Test

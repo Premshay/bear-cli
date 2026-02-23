@@ -42,6 +42,7 @@ Runtime distribution note:
 - `check`/`pr-check` also enforce multi-block adapter isolation:
   - one class implementing generated ports from multiple generated block packages fails by default
   - explicit opt-in exists only under `_shared` with exact marker `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above class declaration
+  - when opt-in is valid, `pr-check` may emit informational governance signal `MULTI_BLOCK_PORT_IMPL_ALLOWED` (non-failing) for explicit review
 
 Containment note (v1 preview):
 - if IR declares `block.impl.allowedDeps`, Java+Gradle projects must apply generated containment entrypoint:

@@ -23,6 +23,8 @@ bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only 
 
 - Delta lines to `stderr`:
   - `pr-delta: <CLASS>: <CATEGORY>: <CHANGE>: <KEY>`
+- Governance signal lines to `stdout` (informational, non-failing):
+  - `pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: <relative/path>: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
 - Port-impl containment lines (when violated):
   - `pr-check: BOUNDARY_BYPASS: RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: <relative/path>: KIND=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: <interfaceFqcn> -> <implClassFqcn>`
   - `pr-check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <relative/path>: KIND=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
@@ -32,6 +34,8 @@ bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only 
   - `stdout`: `pr-check: OK: NO_BOUNDARY_EXPANSION`
 - Deterministic sort precedence for class, category, change, key.
 - Port-impl containment findings are deterministically sorted by path, rule, then detail.
+- Governance signal lines are deterministically sorted by path, impl class, then package CSV.
+- `pr-check --all` success output may include an aggregated `GOVERNANCE SIGNALS:` section after block sections and before `SUMMARY`.
 - Multi-block marker contract:
   - marker text is exact: `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
   - valid only for files under `src/main/java/blocks/_shared/**`

@@ -237,6 +237,31 @@ class PortImplContainmentScannerTest {
     }
 
     @Test
+    void emitsAllowedSignalWhenMarkerIsValidInSharedRoot(@TempDir Path tempDir) throws Exception {
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/MegaAdapter.java",
+            "package blocks._shared;\n"
+                + "\n"
+                + "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL\n"
+                + "public final class MegaAdapter implements com.bear.generated.withdraw.LedgerPort, com.bear.generated.deposit.DepositPort {\n"
+                + "}\n"
+        );
+
+        List<MultiBlockPortImplAllowedSignal> signals = PortImplContainmentScanner.scanMultiBlockPortImplAllowedSignals(
+            tempDir,
+            List.of(
+                withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")),
+                depositManifest(List.of("src/main/java/blocks/deposit", "src/main/java/blocks/_shared"))
+            )
+        );
+        assertEquals(1, signals.size());
+        assertEquals("blocks._shared.MegaAdapter", signals.get(0).implClassFqcn());
+        assertEquals("com.bear.generated.deposit,com.bear.generated.withdraw", signals.get(0).generatedPackageCsv());
+        assertEquals("src/main/java/blocks/_shared/MegaAdapter.java", signals.get(0).path());
+    }
+
+    @Test
     void failsMultiBlockPortImplWhenMarkerIsOutsideFiveNonEmptyLines(@TempDir Path tempDir) throws Exception {
         writeJavaFile(
             tempDir,
@@ -262,6 +287,15 @@ class PortImplContainmentScannerTest {
         );
         assertEquals(1, findings.size());
         assertEquals(PortImplContainmentScanner.MULTI_BLOCK_PORT_IMPL_FORBIDDEN_KIND, findings.get(0).kind());
+
+        List<MultiBlockPortImplAllowedSignal> signals = PortImplContainmentScanner.scanMultiBlockPortImplAllowedSignals(
+            tempDir,
+            List.of(
+                withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")),
+                depositManifest(List.of("src/main/java/blocks/deposit", "src/main/java/blocks/_shared"))
+            )
+        );
+        assertTrue(signals.isEmpty());
     }
 
     @Test
@@ -283,6 +317,12 @@ class PortImplContainmentScannerTest {
         assertEquals(PortImplContainmentScanner.MARKER_MISUSED_OUTSIDE_SHARED_KIND, findings.get(0).kind());
         assertEquals("com.acme.AppPortAdapter", findings.get(0).implClassFqcn());
         assertEquals("", findings.get(0).generatedPackageCsv());
+
+        List<MultiBlockPortImplAllowedSignal> signals = PortImplContainmentScanner.scanMultiBlockPortImplAllowedSignals(
+            tempDir,
+            List.of(withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")))
+        );
+        assertTrue(signals.isEmpty());
     }
 
     @Test
@@ -330,6 +370,37 @@ class PortImplContainmentScannerTest {
         assertTrue(findings.get(0).path().endsWith("AAdapter.java"));
         assertTrue(findings.get(1).path().endsWith("BAdapter.java"));
         assertFalse(findings.get(0).implClassFqcn().isBlank());
+    }
+
+    @Test
+    void allowedSignalsAreSortedDeterministically(@TempDir Path tempDir) throws Exception {
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/BAdapter.java",
+            "package blocks._shared;\n"
+                + "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL\n"
+                + "public final class BAdapter implements com.bear.generated.withdraw.LedgerPort, com.bear.generated.deposit.DepositPort {\n"
+                + "}\n"
+        );
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/AAdapter.java",
+            "package blocks._shared;\n"
+                + "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL\n"
+                + "public final class AAdapter implements com.bear.generated.withdraw.LedgerPort, com.bear.generated.deposit.DepositPort {\n"
+                + "}\n"
+        );
+
+        List<MultiBlockPortImplAllowedSignal> signals = PortImplContainmentScanner.scanMultiBlockPortImplAllowedSignals(
+            tempDir,
+            List.of(
+                withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")),
+                depositManifest(List.of("src/main/java/blocks/deposit", "src/main/java/blocks/_shared"))
+            )
+        );
+        assertEquals(2, signals.size());
+        assertTrue(signals.get(0).path().endsWith("AAdapter.java"));
+        assertTrue(signals.get(1).path().endsWith("BAdapter.java"));
     }
 
     private static void writeJavaFile(Path root, String relPath, String content) throws Exception {

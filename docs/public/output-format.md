@@ -41,6 +41,10 @@ Contract:
 - `pr-check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <relative/path>: KIND=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
 - `pr-check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <relative/path>: KIND=MARKER_MISUSED_OUTSIDE_SHARED: <implClassFqcn>`
 
+`pr-check` governance signal lines (informational):
+
+- `pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: <relative/path>: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
+
 Common `check` policy lines:
 
 - `check: HYGIENE_UNEXPECTED_PATHS: <relative/path>`
@@ -63,6 +67,7 @@ Common `check` policy lines:
 
 `pr-check` delta lines are deterministically sorted by class, category, change, and key.
 `pr-check` port-impl containment findings are deterministically sorted by `path`, then `rule`, then `detail`.
+`pr-check` governance signal lines are deterministically sorted by `path`, then `implClassFqcn`, then `sortedGeneratedPackageCsv`.
 
 ## Related
 

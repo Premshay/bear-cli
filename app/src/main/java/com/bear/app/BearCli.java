@@ -1051,7 +1051,8 @@ public final class BearCli {
             remediation,
             null,
             base.classification(),
-            base.deltaLines()
+            base.deltaLines(),
+            base.governanceLines()
         );
     }
 
@@ -1096,7 +1097,8 @@ public final class BearCli {
                 null,
                 null,
                 classification,
-                result.deltaLines()
+                result.deltaLines(),
+                result.governanceLines()
             );
         }
         String classification = result.exitCode() == ExitCode.BOUNDARY_EXPANSION ? "BOUNDARY_EXPANDING" : null;
@@ -1113,7 +1115,8 @@ public final class BearCli {
             result.failureRemediation(),
             null,
             classification,
-            result.deltaLines()
+            result.deltaLines(),
+            result.governanceLines()
         );
     }
 

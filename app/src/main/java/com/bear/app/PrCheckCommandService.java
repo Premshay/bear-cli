@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
 final class PrCheckCommandService {
@@ -107,6 +108,7 @@ final class PrCheckCommandService {
                 );
             }
 
+            List<String> stdoutLines = new ArrayList<>();
             List<String> stderrLines = new ArrayList<>();
             BearIr base = null;
             WiringManifest baseWiring = null;
@@ -265,6 +267,28 @@ final class PrCheckCommandService {
                     false
                 );
             }
+            TreeSet<String> bypassPaths = new TreeSet<>();
+            for (BoundaryBypassFinding finding : containmentFindings) {
+                bypassPaths.add(finding.path());
+            }
+            List<String> governanceLines = new ArrayList<>();
+            List<MultiBlockPortImplAllowedSignal> allowedSignals = PortImplContainmentScanner.scanMultiBlockPortImplAllowedSignals(
+                projectRoot,
+                List.of(headWiring)
+            );
+            for (MultiBlockPortImplAllowedSignal signal : allowedSignals) {
+                if (bypassPaths.contains(signal.path())) {
+                    continue;
+                }
+                String line = "pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: "
+                    + signal.path()
+                    + ": "
+                    + signal.implClassFqcn()
+                    + " -> "
+                    + signal.generatedPackageCsv();
+                governanceLines.add(line);
+                stdoutLines.add(line);
+            }
 
             List<PrDelta> deltas = PrDeltaClassifier.computePrDeltas(base, head);
             List<String> deltaLines = new ArrayList<>();
@@ -291,9 +315,10 @@ final class PrCheckCommandService {
                 );
             }
 
+            stdoutLines.add("pr-check: OK: NO_BOUNDARY_EXPANSION");
             return new PrCheckResult(
                 CliCodes.EXIT_OK,
-                List.of("pr-check: OK: NO_BOUNDARY_EXPANSION"),
+                List.copyOf(stdoutLines),
                 stderrLines,
                 null,
                 null,
@@ -302,7 +327,8 @@ final class PrCheckCommandService {
                 null,
                 deltaLines,
                 false,
-                !deltaLines.isEmpty()
+                !deltaLines.isEmpty(),
+                List.copyOf(governanceLines)
             );
         } catch (ManifestParseException e) {
             String line = "pr-check: MANIFEST_INVALID: " + e.reasonCode();

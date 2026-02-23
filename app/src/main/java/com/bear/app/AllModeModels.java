@@ -32,8 +32,37 @@ record PrCheckResult(
     String detail,
     List<String> deltaLines,
     boolean hasBoundary,
-    boolean hasDeltas
+    boolean hasDeltas,
+    List<String> governanceLines
 ) {
+    PrCheckResult(
+        int exitCode,
+        List<String> stdoutLines,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail,
+        List<String> deltaLines,
+        boolean hasBoundary,
+        boolean hasDeltas
+    ) {
+        this(
+            exitCode,
+            stdoutLines,
+            stderrLines,
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail,
+            deltaLines,
+            hasBoundary,
+            hasDeltas,
+            List.of()
+        );
+    }
 }
 
 record FixResult(
@@ -79,8 +108,41 @@ record BlockExecutionResult(
     String blockRemediation,
     String reason,
     String classification,
-    List<String> deltaLines
+    List<String> deltaLines,
+    List<String> governanceLines
 ) {
+    BlockExecutionResult(
+        String name,
+        String ir,
+        String project,
+        BlockStatus status,
+        int exitCode,
+        String category,
+        String blockCode,
+        String blockPath,
+        String detail,
+        String blockRemediation,
+        String reason,
+        String classification,
+        List<String> deltaLines
+    ) {
+        this(
+            name,
+            ir,
+            project,
+            status,
+            exitCode,
+            category,
+            blockCode,
+            blockPath,
+            detail,
+            blockRemediation,
+            reason,
+            classification,
+            deltaLines,
+            List.of()
+        );
+    }
 }
 
 record RepoAggregationResult(
@@ -123,6 +185,9 @@ record PortImplContainmentFinding(String interfaceFqcn, String implClassFqcn, St
 }
 
 record MultiBlockPortImplFinding(String kind, String implClassFqcn, String generatedPackageCsv, String path) {
+}
+
+record MultiBlockPortImplAllowedSignal(String implClassFqcn, String generatedPackageCsv, String path) {
 }
 
 record AllCheckOptions(

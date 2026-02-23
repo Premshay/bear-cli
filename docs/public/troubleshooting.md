@@ -129,6 +129,15 @@ Fix:
 3. Remove marker usage outside `_shared`.
 4. Re-run `bear check` / `bear pr-check`.
 
+## `MULTI_BLOCK_PORT_IMPL_ALLOWED` (informational)
+
+Symptom: `pr-check` prints `pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: ...` and exits `0`.
+Meaning: multi-block generated-port implementation is explicitly allowed by valid `_shared` marker and surfaced for governance review.
+Action:
+
+1. Review whether the multi-block adapter is intentional.
+2. Keep current marker placement/rule compliance, or split adapters per generated package if isolation should be stricter.
+
 ## `UNDECLARED_REACH`
 
 Symptom: `check: UNDECLARED_REACH` and exit `6`.

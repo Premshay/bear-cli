@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AllModeRendererTest {
@@ -41,6 +42,81 @@ class AllModeRendererTest {
         assertTrue(output.contains("BOUNDARY_EXPANDING: 1"));
         assertTrue(output.contains("DELTA:"));
         assertTrue(output.contains("pr-delta: BOUNDARY_EXPANDING: PORTS: ADDED: ledger"));
+    }
+
+    @Test
+    void renderPrAllOutputPlacesGovernanceSignalsBeforeSummaryOnSuccess() {
+        List<BlockExecutionResult> results = List.of(
+            new BlockExecutionResult(
+                "alpha",
+                "spec/alpha.bear.yaml",
+                "services/alpha",
+                BlockStatus.PASS,
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "NO_CHANGES",
+                List.of(),
+                List.of("pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: src/main/java/blocks/_shared/MegaA.java: blocks._shared.MegaA -> com.bear.generated.alpha,com.bear.generated.beta")
+            ),
+            new BlockExecutionResult(
+                "beta",
+                "spec/beta.bear.yaml",
+                "services/beta",
+                BlockStatus.PASS,
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "NO_CHANGES",
+                List.of(),
+                List.of("pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: src/main/java/blocks/_shared/MegaB.java: blocks._shared.MegaB -> com.bear.generated.alpha,com.bear.generated.gamma")
+            )
+        );
+        RepoAggregationResult summary = new RepoAggregationResult(0, 2, 2, 2, 0, 0, false, 0, 0, 0);
+
+        String output = String.join("\n", AllModeRenderer.renderPrAllOutput(results, summary));
+
+        int governanceIndex = output.indexOf("GOVERNANCE SIGNALS:");
+        int summaryIndex = output.indexOf("SUMMARY:");
+        assertTrue(governanceIndex >= 0);
+        assertTrue(summaryIndex > governanceIndex);
+        assertTrue(output.contains("MegaA"));
+        assertTrue(output.contains("MegaB"));
+    }
+
+    @Test
+    void renderPrAllOutputOmitsGovernanceSignalsSectionOnFailure() {
+        List<BlockExecutionResult> results = List.of(
+            new BlockExecutionResult(
+                "alpha",
+                "spec/alpha.bear.yaml",
+                "services/alpha",
+                BlockStatus.FAIL,
+                5,
+                "BOUNDARY_EXPANSION",
+                "BOUNDARY_EXPANSION",
+                "spec/alpha.bear.yaml",
+                "detail",
+                "remediation",
+                null,
+                "BOUNDARY_EXPANDING",
+                List.of("pr-delta: BOUNDARY_EXPANDING: PORTS: ADDED: ledger"),
+                List.of("pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: src/main/java/blocks/_shared/MegaA.java: blocks._shared.MegaA -> com.bear.generated.alpha,com.bear.generated.beta")
+            )
+        );
+        RepoAggregationResult summary = new RepoAggregationResult(5, 1, 1, 0, 1, 0, false, 0, 0, 0);
+
+        String output = String.join("\n", AllModeRenderer.renderPrAllOutput(results, summary));
+
+        assertFalse(output.contains("GOVERNANCE SIGNALS:"));
     }
 
     @Test
