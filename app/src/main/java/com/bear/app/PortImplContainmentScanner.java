@@ -13,12 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class PortImplContainmentScanner {
     static final String AMBIGUOUS_PORT_OWNER_REASON_CODE = "AMBIGUOUS_PORT_OWNER";
+    static final String ALLOW_MULTI_BLOCK_PORT_IMPL_MARKER = "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL";
+    static final String MULTI_BLOCK_PORT_IMPL_FORBIDDEN_KIND = "MULTI_BLOCK_PORT_IMPL_FORBIDDEN";
+    static final String MARKER_MISUSED_OUTSIDE_SHARED_KIND = "MARKER_MISUSED_OUTSIDE_SHARED";
 
     private static final Pattern PACKAGE_DECL_PATTERN = Pattern.compile(
         "(?m)^\\s*package\\s+([A-Za-z_][A-Za-z0-9_\\.]*)\\s*;"
@@ -30,6 +32,8 @@ final class PortImplContainmentScanner {
         "\\b(?:class|record|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)\\b[^\\{;]*\\bimplements\\s+([^\\{]+)\\{",
         Pattern.DOTALL
     );
+    private static final int MARKER_WINDOW_NON_EMPTY_LINES = 5;
+    private static final String SHARED_GOVERNED_ROOT_PREFIX = "src/main/java/blocks/_shared/";
 
     private PortImplContainmentScanner() {
     }
@@ -101,6 +105,111 @@ final class PortImplContainmentScanner {
             Comparator.comparing(PortImplContainmentFinding::path)
                 .thenComparing(PortImplContainmentFinding::interfaceFqcn)
                 .thenComparing(PortImplContainmentFinding::implClassFqcn)
+        );
+        return findings;
+    }
+
+    static List<MultiBlockPortImplFinding> scanMultiBlockPortImplFindings(
+        Path projectRoot,
+        List<WiringManifest> manifests
+    ) throws IOException, ManifestParseException {
+        if (manifests == null || manifests.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, WiringManifest> ownerByGeneratedPackage = buildOwnerByGeneratedPackage(manifests);
+        if (ownerByGeneratedPackage.isEmpty()) {
+            return List.of();
+        }
+
+        Path srcMainJava = projectRoot.resolve("src/main/java").normalize();
+        if (!Files.isDirectory(srcMainJava)) {
+            return List.of();
+        }
+
+        ArrayList<Path> javaFiles = new ArrayList<>();
+        Files.walkFileTree(srcMainJava, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (attrs.isRegularFile() && file.getFileName().toString().endsWith(".java")) {
+                    javaFiles.add(file);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        javaFiles.sort(Comparator.comparing(path -> projectRoot.relativize(path).toString().replace('\\', '/')));
+
+        ArrayList<MultiBlockPortImplFinding> findings = new ArrayList<>();
+        for (Path file : javaFiles) {
+            String relPath = projectRoot.relativize(file).toString().replace('\\', '/');
+            String source = Files.readString(file, StandardCharsets.UTF_8);
+            String sanitized = BoundaryBypassScanner.stripJavaCommentsStringsAndChars(source);
+            String packageName = parsePackageName(sanitized);
+            Map<String, String> explicitImports = parseExplicitImports(sanitized);
+            boolean markerPresentInFile = containsAllowMultiBlockMarker(source);
+            boolean underSharedRoot = isUnderSharedGovernedRoot(relPath);
+
+            Matcher matcher = IMPLEMENTS_DECL_PATTERN.matcher(sanitized);
+            while (matcher.find()) {
+                String className = matcher.group(1).trim();
+                String interfacesRaw = matcher.group(2).trim();
+                if (interfacesRaw.isEmpty()) {
+                    continue;
+                }
+                String implClassFqcn = packageName.isBlank() ? className : packageName + "." + className;
+                TreeMap<String, String> generatedPackages = new TreeMap<>();
+                for (String token : splitInterfaces(interfacesRaw)) {
+                    String resolvedInterface = resolveInterfaceFqcn(token, explicitImports, packageName);
+                    if (resolvedInterface == null || !isGeneratedPortInterface(resolvedInterface)) {
+                        continue;
+                    }
+                    String generatedPackage = packageOfFqcn(resolvedInterface);
+                    if (generatedPackage == null) {
+                        continue;
+                    }
+                    WiringManifest owner = ownerByGeneratedPackage.get(generatedPackage);
+                    if (owner == null) {
+                        // Missing owner in this manifest scope is non-fatal by contract.
+                        continue;
+                    }
+                    generatedPackages.putIfAbsent(generatedPackage, generatedPackage);
+                }
+                if (generatedPackages.isEmpty()) {
+                    continue;
+                }
+
+                if (!underSharedRoot && markerPresentInFile) {
+                    findings.add(new MultiBlockPortImplFinding(
+                        MARKER_MISUSED_OUTSIDE_SHARED_KIND,
+                        implClassFqcn,
+                        "",
+                        relPath
+                    ));
+                    continue;
+                }
+
+                if (generatedPackages.size() <= 1) {
+                    continue;
+                }
+
+                if (underSharedRoot && hasAllowMarkerWithinWindow(source, matcher.start())) {
+                    continue;
+                }
+
+                findings.add(new MultiBlockPortImplFinding(
+                    MULTI_BLOCK_PORT_IMPL_FORBIDDEN_KIND,
+                    implClassFqcn,
+                    String.join(",", generatedPackages.keySet()),
+                    relPath
+                ));
+            }
+        }
+
+        findings.sort(
+            Comparator.comparing(MultiBlockPortImplFinding::path)
+                .thenComparing(MultiBlockPortImplFinding::kind)
+                .thenComparing(MultiBlockPortImplFinding::implClassFqcn)
+                .thenComparing(MultiBlockPortImplFinding::generatedPackageCsv)
         );
         return findings;
     }
@@ -271,6 +380,59 @@ final class PortImplContainmentScanner {
         }
         String simple = fqcn.substring(idx + 1);
         return simple.endsWith("Port");
+    }
+
+    private static boolean containsAllowMultiBlockMarker(String source) {
+        String normalized = normalizeNewlines(source);
+        String[] lines = normalized.split("\n", -1);
+        for (String line : lines) {
+            if (ALLOW_MULTI_BLOCK_PORT_IMPL_MARKER.equals(line.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasAllowMarkerWithinWindow(String source, int classDeclOffset) {
+        String normalized = normalizeNewlines(source);
+        String[] lines = normalized.split("\n", -1);
+        if (lines.length == 0) {
+            return false;
+        }
+        int classLineNumber = lineNumberAtOffset(source, classDeclOffset);
+        int classLineIndex = Math.max(0, Math.min(classLineNumber - 1, lines.length - 1));
+
+        int seenNonEmpty = 0;
+        for (int lineIndex = classLineIndex - 1; lineIndex >= 0 && seenNonEmpty < MARKER_WINDOW_NON_EMPTY_LINES; lineIndex--) {
+            String trimmed = lines[lineIndex].trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (ALLOW_MULTI_BLOCK_PORT_IMPL_MARKER.equals(trimmed)) {
+                return true;
+            }
+            seenNonEmpty++;
+        }
+        return false;
+    }
+
+    private static int lineNumberAtOffset(String source, int offset) {
+        int boundedOffset = Math.max(0, Math.min(offset, source.length()));
+        int line = 1;
+        for (int i = 0; i < boundedOffset; i++) {
+            if (source.charAt(i) == '\n') {
+                line++;
+            }
+        }
+        return line;
+    }
+
+    private static String normalizeNewlines(String value) {
+        return value.replace("\r\n", "\n").replace('\r', '\n');
+    }
+
+    private static boolean isUnderSharedGovernedRoot(String relPath) {
+        return relPath.startsWith(SHARED_GOVERNED_ROOT_PREFIX);
     }
 
     private static boolean isUnderAnyGovernedRoot(String relPath, List<String> governedRoots) {

@@ -374,6 +374,34 @@ class BoundaryBypassScannerTest {
         ));
     }
 
+    @Test
+    void scanBoundaryBypassDedupesMultiBlockRuleWhenOutsideGovernedRootAlreadyFails(@TempDir Path tempDir) throws Exception {
+        writeJavaFile(
+            tempDir,
+            "src/main/java/com/acme/MegaAdapter.java",
+            "package com.acme;\n"
+                + "public final class MegaAdapter implements com.bear.generated.withdraw.LedgerPort, com.bear.generated.deposit.DepositPort {\n"
+                + "}\n"
+        );
+        writeWorkingWithdrawImpl(tempDir);
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/deposit/impl/DepositImpl.java",
+            "package blocks.deposit.impl;\npublic final class DepositImpl { Object execute() { return null; } }\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(
+            tempDir,
+            List.of(withdrawManifestWithSharedRoot(), depositManifestWithSharedRoot())
+        );
+
+        long outsideCount = findings.stream()
+            .filter(f -> "PORT_IMPL_OUTSIDE_GOVERNED_ROOT".equals(f.rule()))
+            .count();
+        assertEquals(2L, outsideCount);
+        assertTrue(findings.stream().noneMatch(f -> "MULTI_BLOCK_PORT_IMPL_FORBIDDEN".equals(f.rule())));
+    }
+
     private static void writeWorkingWithdrawImpl(Path tempDir) throws Exception {
         Path impl = tempDir.resolve("src/main/java/blocks/withdraw/impl/WithdrawImpl.java");
         Files.createDirectories(impl.getParent());
@@ -446,6 +474,24 @@ class BoundaryBypassScannerTest {
             "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
             "src/main/java/blocks/withdraw",
             List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared"),
+            List.of("ledgerPort"),
+            List.of("ledgerPort"),
+            List.of(),
+            List.of(),
+            List.of()
+        );
+    }
+
+    private static WiringManifest depositManifestWithSharedRoot() {
+        return new WiringManifest(
+            "v2",
+            "deposit",
+            "com.bear.generated.deposit.Deposit",
+            "com.bear.generated.deposit.DepositLogic",
+            "blocks.deposit.impl.DepositImpl",
+            "src/main/java/blocks/deposit/impl/DepositImpl.java",
+            "src/main/java/blocks/deposit",
+            List.of("src/main/java/blocks/deposit", "src/main/java/blocks/_shared"),
             List.of("ledgerPort"),
             List.of("ledgerPort"),
             List.of(),

@@ -122,6 +122,9 @@ record BoundaryBypassFinding(String rule, String path, String detail) {
 record PortImplContainmentFinding(String interfaceFqcn, String implClassFqcn, String path) {
 }
 
+record MultiBlockPortImplFinding(String kind, String implClassFqcn, String generatedPackageCsv, String path) {
+}
+
 record AllCheckOptions(
     Path repoRoot,
     Path blocksPath,

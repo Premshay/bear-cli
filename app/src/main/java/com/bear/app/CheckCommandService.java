@@ -797,6 +797,9 @@ final class CheckCommandService {
         if ("PORT_IMPL_OUTSIDE_GOVERNED_ROOT".equals(rule)) {
             return "Move the port implementation under the owning block governed roots (block root or blocks/_shared) or refactor so app layer calls wrappers without implementing generated ports.";
         }
+        if ("MULTI_BLOCK_PORT_IMPL_FORBIDDEN".equals(rule)) {
+            return "Split generated-port adapters so each class implements one generated block package, or move the adapter under blocks/_shared and add `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above the class declaration.";
+        }
         return "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses.";
     }
 

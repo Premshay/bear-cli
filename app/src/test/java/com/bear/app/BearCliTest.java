@@ -1812,6 +1812,44 @@ class BearCliTest {
     }
 
     @Test
+    void checkBoundaryBypassFailsWhenMarkerIsUsedOutsideShared(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path adapter = tempDir.resolve("src/main/java/blocks/withdraw/adapters/LocalPortAdapter.java");
+        Files.createDirectories(adapter.getParent());
+        Files.writeString(
+            adapter,
+            "package blocks.withdraw.adapters;\n"
+                + "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class LocalPortAdapter implements LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(7, check.exitCode);
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.contains(
+            "check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: src/main/java/blocks/withdraw/adapters/LocalPortAdapter.java: KIND=MARKER_MISUSED_OUTSIDE_SHARED: blocks.withdraw.adapters.LocalPortAdapter"
+        ));
+        assertFailureEnvelope(
+            check.stderr,
+            "BOUNDARY_BYPASS",
+            "src/main/java/blocks/withdraw/adapters/LocalPortAdapter.java",
+            "Split generated-port adapters so each class implements one generated block package, or move the adapter under blocks/_shared and add `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above the class declaration."
+        );
+    }
+
+    @Test
     void checkBoundaryBypassEffectsMissingRequiredPortUsageFails(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
@@ -1842,6 +1880,62 @@ class BearCliTest {
             "BOUNDARY_BYPASS",
             "src/main/java/blocks/withdraw/impl/WithdrawImpl.java",
             "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses."
+        );
+    }
+
+    @Test
+    void checkAllBoundaryBypassFailsOnSharedMultiBlockPortImplementerWithoutMarker(@TempDir Path tempDir) throws Exception {
+        Path repo = tempDir.resolve("repo");
+        Path specDir = repo.resolve("spec");
+        Files.createDirectories(specDir);
+        Path alphaIr = specDir.resolve("alpha.bear.yaml");
+        Path betaIr = specDir.resolve("beta.bear.yaml");
+        Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
+        Files.writeString(betaIr, fixtureIrForBlockName("beta"), StandardCharsets.UTF_8);
+
+        Path serviceRoot = repo.resolve("service");
+        Files.createDirectories(serviceRoot);
+        assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", serviceRoot.toString() }).exitCode);
+        assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", serviceRoot.toString() }).exitCode);
+        writeWorkingBlockImpl(serviceRoot, "alpha");
+        writeWorkingBlockImpl(serviceRoot, "beta");
+        writeProjectWrapper(
+            serviceRoot,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path adapter = serviceRoot.resolve("src/main/java/blocks/_shared/MegaAdapter.java");
+        Files.createDirectories(adapter.getParent());
+        Files.writeString(
+            adapter,
+            "package blocks._shared;\n"
+                + "public final class MegaAdapter implements com.bear.generated.alpha.LedgerPort, com.bear.generated.beta.LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        writeBlockIndex(repo, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: service\n"
+            + "  - name: beta\n"
+            + "    ir: spec/beta.bear.yaml\n"
+            + "    projectRoot: service\n");
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", repo.toString() });
+        assertEquals(7, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains(
+            "check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: src/main/java/blocks/_shared/MegaAdapter.java: KIND=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: blocks._shared.MegaAdapter -> com.bear.generated.alpha,com.bear.generated.beta"
+        ));
+        assertFailureEnvelope(
+            run.stderr,
+            "REPO_MULTI_BLOCK_FAILED",
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
         );
     }
 
@@ -2781,6 +2875,38 @@ class BearCliTest {
         });
         assertEquals(0, run.exitCode);
         assertEquals("pr-check: OK: NO_BOUNDARY_EXPANSION\n", normalizeLf(run.stdout));
+    }
+
+    @Test
+    void prCheckFailsWhenMarkerIsUsedOutsideSharedForGeneratedPortImplementer(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        writeFixtureIr(repo.resolve("spec/withdraw.bear.yaml"));
+        Files.createDirectories(repo.resolve("src/main/java/blocks/withdraw/adapters"));
+        Files.writeString(
+            repo.resolve("src/main/java/blocks/withdraw/adapters/LocalPortAdapter.java"),
+            "package blocks.withdraw.adapters;\n"
+                + "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class LocalPortAdapter implements LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+        gitCommitAll(repo, "add ir and marker misuse");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(7, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("pr-check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN"));
+        assertTrue(stderr.contains("KIND=MARKER_MISUSED_OUTSIDE_SHARED: blocks.withdraw.adapters.LocalPortAdapter"));
+        assertFalse(stderr.contains("bear-pr-check-"));
+        assertFailureEnvelope(
+            run.stderr,
+            "BOUNDARY_BYPASS",
+            "src/main/java/blocks/withdraw/adapters/LocalPortAdapter.java",
+            "Split generated-port adapters so each class implements one generated block package, or move the adapter under blocks/_shared and add `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above the class declaration."
+        );
     }
 
     @Test

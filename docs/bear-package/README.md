@@ -39,6 +39,9 @@ Runtime distribution note:
 - governed impl containment is always on: execute-body logic must stay inside manifest `governedSourceRoots`
 - `governedSourceRoots` is deterministic: block root first, reserved `src/main/java/blocks/_shared` second
 - `pr-check` also enforces generated-port adapter containment: implementations of `com.bear.generated.*Port` must live under governed roots (block root or `_shared`)
+- `check`/`pr-check` also enforce multi-block adapter isolation:
+  - one class implementing generated ports from multiple generated block packages fails by default
+  - explicit opt-in exists only under `_shared` with exact marker `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above class declaration
 
 Containment note (v1 preview):
 - if IR declares `block.impl.allowedDeps`, Java+Gradle projects must apply generated containment entrypoint:

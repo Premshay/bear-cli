@@ -114,6 +114,21 @@ Fix:
    - shared governed root (`src/main/java/blocks/_shared/...`)
 2. Re-run `bear pr-check`.
 
+## `MULTI_BLOCK_PORT_IMPL_FORBIDDEN`
+
+Symptom: `check`/`pr-check` failure with exit `7`, `CODE=BOUNDARY_BYPASS`, and `RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN`.
+Likely cause:
+- one class implements generated ports from multiple generated block packages without valid `_shared` marker, or
+- marker is used outside `_shared`.
+Fix:
+
+1. Split adapters so each class implements ports from one generated block package, or
+2. if multi-block adapter is intentional, keep it under `src/main/java/blocks/_shared/**` and place marker:
+   - `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
+   - within 5 non-empty lines above class declaration.
+3. Remove marker usage outside `_shared`.
+4. Re-run `bear check` / `bear pr-check`.
+
 ## `UNDECLARED_REACH`
 
 Symptom: `check: UNDECLARED_REACH` and exit `6`.

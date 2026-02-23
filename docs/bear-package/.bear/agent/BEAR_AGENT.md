@@ -42,11 +42,13 @@ Purpose:
 26. For each logic-required effect port, impl code must use the corresponding port parameter directly, pass it through to a helper call, or explicitly suppress with exact same-file line `// BEAR:PORT_USED <portParamName>`; wrapper-owned semantic ports must not be used/suppressed from impl code.
 27. Keep execute-path business logic inside governed impl/block-root code; do not delegate execution logic from governed impls to non-governed external packages.
 28. Do not implement generated `com.bear.generated.*Port` interfaces outside governed roots; place such adapters only under the block root or `src/main/java/blocks/_shared`.
-29. If `check` writes `build/bear/check.blocked.marker` (`PROJECT_TEST_LOCK`/`PROJECT_TEST_BOOTSTRAP`), treat it as advisory and continue fixing root cause; use `bear unblock --project <path>` to clear stale marker when needed.
-30. Do not patch `build.gradle` manually as first response to lock/bootstrap failures; first use BEAR deterministic retry/fallback and BEAR-owned generated wiring.
-31. Agent guidance must remain package-local: rely on `.bear/agent/**` plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**`), not non-shipped repo docs.
-32. If using reflection/hygiene policy allowlists, keep exact repo-relative path entries in `.bear/policy/*.txt` sorted, unique, and non-glob.
-33. You may use git history/branches/stashes for context in real projects, but BEAR decisions and outputs must remain grounded in the current working tree plus current IR/index contracts.
+29. Do not collapse multiple generated block packages into one adapter class unless explicitly intended under `_shared`; if intentional, marker must be exact `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above class declaration.
+30. Marker `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` is invalid outside `src/main/java/blocks/_shared/**` and will fail boundary bypass checks.
+31. If `check` writes `build/bear/check.blocked.marker` (`PROJECT_TEST_LOCK`/`PROJECT_TEST_BOOTSTRAP`), treat it as advisory and continue fixing root cause; use `bear unblock --project <path>` to clear stale marker when needed.
+32. Do not patch `build.gradle` manually as first response to lock/bootstrap failures; first use BEAR deterministic retry/fallback and BEAR-owned generated wiring.
+33. Agent guidance must remain package-local: rely on `.bear/agent/**` plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**`), not non-shipped repo docs.
+34. If using reflection/hygiene policy allowlists, keep exact repo-relative path entries in `.bear/policy/*.txt` sorted, unique, and non-glob.
+35. You may use git history/branches/stashes for context in real projects, but BEAR decisions and outputs must remain grounded in the current working tree plus current IR/index contracts.
 
 ## Policy Contract (Check)
 

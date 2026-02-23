@@ -25,11 +25,17 @@ bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only 
   - `pr-delta: <CLASS>: <CATEGORY>: <CHANGE>: <KEY>`
 - Port-impl containment lines (when violated):
   - `pr-check: BOUNDARY_BYPASS: RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: <relative/path>: KIND=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: <interfaceFqcn> -> <implClassFqcn>`
+  - `pr-check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <relative/path>: KIND=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
+  - `pr-check: BOUNDARY_BYPASS: RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <relative/path>: KIND=MARKER_MISUSED_OUTSIDE_SHARED: <implClassFqcn>`
 - Boundary verdict:
   - `stderr`: `pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED`
   - `stdout`: `pr-check: OK: NO_BOUNDARY_EXPANSION`
 - Deterministic sort precedence for class, category, change, key.
 - Port-impl containment findings are deterministically sorted by path, rule, then detail.
+- Multi-block marker contract:
+  - marker text is exact: `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
+  - valid only for files under `src/main/java/blocks/_shared/**`
+  - marker must be within 5 non-empty lines above class declaration
 - Non-zero exits append failure footer as last three `stderr` lines.
 
 Implementation note:
@@ -60,6 +66,7 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 
 - [troubleshooting.md#boundary_expansion](troubleshooting.md#boundary_expansion)
 - [troubleshooting.md#port_impl_outside_governed_root](troubleshooting.md#port_impl_outside_governed_root)
+- [troubleshooting.md#multi_block_port_impl_forbidden](troubleshooting.md#multi_block_port_impl_forbidden)
 - [troubleshooting.md#io_git](troubleshooting.md#io_git)
 - [troubleshooting.md#ir_validation](troubleshooting.md#ir_validation)
 

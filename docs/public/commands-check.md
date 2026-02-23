@@ -60,6 +60,10 @@ Key line formats:
 - placeholder impl stubs (`RULE=IMPL_PLACEHOLDER`)
 - governed impl containment boundary violations (`RULE=IMPL_CONTAINMENT_BYPASS`)
 - generated `com.bear.generated.*Port` implementations outside owning governed roots (`RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`)
+- generated `com.bear.generated.*Port` multi-block implementers without valid `_shared` marker (`RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
+
+Rationale:
+- generated port implementations are boundary authority; this rule preserves block isolation by preventing mega-adapters from collapsing multiple generated block packages into one class.
 
 Containment scanner contract (always-on):
 - scope: governed impl files from wiring manifests only

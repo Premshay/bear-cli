@@ -54,17 +54,28 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `Multi-block port implementer guard` (default forbid one class implementing generated `*Port` from multiple owning blocks; explicit `_shared` marker exception only)
-2. `Demo done-gate hardening` (require both `check --all` and `pr-check --all --base <ref>` evidence in agent workflow/docs)
-3. `Wiring drift diagnostics` (deterministic changed/missing/added wiring file list + single remediation)
-4. `Declared allowed deps containment` (stabilization/operational hardening)
-5. `_shared` allowedDeps policy (path-scoped shared policy, no IR schema changes; queued after core allowedDeps stabilization)
-6. Generated structural tests and cross-target parity follow-up
-7. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
+1. `Demo done-gate hardening` (require both `check --all` and `pr-check --all --base <ref>` evidence in agent workflow/docs)
+2. `Wiring drift diagnostics` (deterministic changed/missing/added wiring file list + single remediation)
+3. `Declared allowed deps containment` (stabilization/operational hardening)
+4. `_shared` allowedDeps policy (path-scoped shared policy, no IR schema changes; queued after core allowedDeps stabilization)
+5. Generated structural tests and cross-target parity follow-up
+6. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
+
+## Recently Completed (P2)
+
+1. `Multi-block port implementer guard` (`MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
+   - added structural bypass rule for classes implementing generated `*Port` interfaces across multiple generated block packages.
+   - marker exception contract finalized:
+     - exact marker line `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
+     - only valid under `src/main/java/blocks/_shared/**`
+     - must appear within 5 non-empty lines above class declaration.
+   - marker misuse outside `_shared` fails deterministically (`KIND=MARKER_MISUSED_OUTSIDE_SHARED`).
+   - dedupe lock: when `PORT_IMPL_OUTSIDE_GOVERNED_ROOT` exists for a file, multi-block findings for that file are suppressed.
+   - enforced via `check`/`check --all`/`pr-check` in bypass lane (`exit=7`, `CODE=BOUNDARY_BYPASS`).
 
 ## Next Feature Specs (Locked)
 
-### 1) Multi-block port implementer guard (`P2` next)
+### 1) Multi-block port implementer guard (`P2` completed)
 
 Goal:
 - prevent structural collapse where one adapter class implements generated ports owned by multiple blocks.
@@ -88,15 +99,15 @@ Rule:
 
 Exception marker:
 - exact line text: `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
-- marker must be in the same file and appear immediately above the class declaration line.
-- marker is valid only under `src/main/java/blocks/_shared/**`; elsewhere it is ignored.
+- marker must be in the same file and appear within 5 non-empty lines above class declaration.
+- marker is valid only under `src/main/java/blocks/_shared/**`; elsewhere it is a deterministic failure (`KIND=MARKER_MISUSED_OUTSIDE_SHARED`).
 
 Failure envelope:
 - `exit=7`
 - `CODE=BOUNDARY_BYPASS`
 - `RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN`
 - `PATH=<repo-relative source file>`
-- `DETAIL=KIND=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <implClassFqcn> -> <ownerBlockKeyCsv>`
+- `DETAIL=KIND=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
 - remediation: move adapters so each class serves one owning block, or place intentional cross-block adapter under `_shared` with explicit marker.
 
 Determinism:

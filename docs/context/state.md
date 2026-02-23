@@ -14,16 +14,34 @@ P2 feature delivery:
 - post-hard-break follow-through and next feature queue lock
 - preserve structural governance focus (no endpoint-per-block policy, no style policing)
 - prioritize containment hardening where it increases block-boundary signal
+- keep deterministic bypass signaling clean (high-signal first finding, low-noise secondary findings)
 
 ## Next Concrete Task
 
 next feature sequence (one-by-one):
-1. implement `MULTI_BLOCK_PORT_IMPL_FORBIDDEN` with explicit `_shared` marker exception
-2. update agent/demo workflow done-gate to require both `check --all` and `pr-check --all --base <ref>`
-3. implement deterministic wiring drift diagnostics (exact changed/missing/added files)
-4. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
+1. update agent/demo workflow done-gate to require both `check --all` and `pr-check --all --base <ref>`
+2. implement deterministic wiring drift diagnostics (exact changed/missing/added files)
+3. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Implemented `MULTI_BLOCK_PORT_IMPL_FORBIDDEN` structural guard in boundary-bypass pipeline:
+  - scanner now detects classes implementing generated ports from multiple generated block packages.
+  - explicit marker contract enforced:
+    - marker text must be exact `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
+    - valid only under `src/main/java/blocks/_shared/**`
+    - valid only within 5 non-empty lines above class declaration.
+  - marker misuse outside `_shared` now fails deterministically (`KIND=MARKER_MISUSED_OUTSIDE_SHARED`).
+  - dedupe contract implemented: if `PORT_IMPL_OUTSIDE_GOVERNED_ROOT` exists for a file, multi-block findings for that file are suppressed.
+  - remediation routing updated for both `check` and `pr-check`.
+  - docs updated:
+    - `docs/public/commands-check.md`
+    - `docs/public/commands-pr-check.md`
+    - `docs/public/output-format.md`
+    - `docs/public/troubleshooting.md`
+    - `docs/context/user-guide.md`
+  - verification:
+    - `.\gradlew.bat --no-daemon :app:test` (green)
 
 - Updated planning context to reflect agreed next-feature order:
   - queued `Multi-block port implementer guard` as highest-signal structural follow-up.

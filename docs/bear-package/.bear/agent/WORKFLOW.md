@@ -144,6 +144,12 @@ Canonical rule:
   - for `RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`, move generated port adapters under owning governed roots:
     - owning block root (`src/main/java/blocks/<block>/...`)
     - shared governed root (`src/main/java/blocks/_shared/...`)
+  - for `RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN`:
+    - split adapters so one class implements generated ports from one generated block package, or
+    - keep intentional cross-block adapter only under `src/main/java/blocks/_shared/**` with exact marker
+      - `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
+      - marker must be within 5 non-empty lines above class declaration
+    - marker outside `_shared` is invalid and must be removed or relocated
   - use generated `Wrapper.of(<ports...>)` for production wiring
   - keep `(ports..., Logic)` constructor for tests/advanced injection
   - wire generated entrypoints with non-null ports
@@ -168,6 +174,7 @@ Canonical rule:
   - block root (`src/main/java/blocks/<block>/...`)
   - shared governed root (`src/main/java/blocks/_shared/...`)
 - do not keep generated-port adapter implementations in app-layer packages
+- if `CODE=BOUNDARY_BYPASS` and `RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN`, split by generated block package or use valid `_shared` marker contract above
 
 9. `74` IO/git failure:
 - fix path/ref/permission/repo state

@@ -330,13 +330,14 @@ Expected classification:
 `bear check` enforces:
 - deterministic generated-artifact drift gate
 - covered undeclared-reach gate for direct HTTP bypass surfaces
-- boundary-bypass seam gate (`DIRECT_IMPL_USAGE`, `NULL_PORT_WIRING`, `EFFECTS_BYPASS`, `IMPL_CONTAINMENT_BYPASS`, `PORT_IMPL_OUTSIDE_GOVERNED_ROOT`)
+- boundary-bypass seam gate (`DIRECT_IMPL_USAGE`, `NULL_PORT_WIRING`, `EFFECTS_BYPASS`, `IMPL_CONTAINMENT_BYPASS`, `PORT_IMPL_OUTSIDE_GOVERNED_ROOT`, `MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
 - project tests (only after drift and undeclared-reach pass)
 
 `bear pr-check` enforces:
 - deterministic base-vs-head boundary-delta visibility
 - explicit boundary-expansion verdict for CI/review
 - generated-port adapter containment: `com.bear.generated.*Port` implementations must stay under governed roots
+- block-isolation guard: one class cannot implement generated ports from multiple generated block packages unless explicitly marked inside `_shared`
 
 Planned after preview:
 - broader undeclared-reach coverage classes

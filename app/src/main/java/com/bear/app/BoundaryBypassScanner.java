@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 
 final class BoundaryBypassScanner {
     private static final String PORT_IMPL_BYPASS_RULE = "PORT_IMPL_OUTSIDE_GOVERNED_ROOT";
+    private static final String MULTI_BLOCK_PORT_IMPL_RULE = "MULTI_BLOCK_PORT_IMPL_FORBIDDEN";
     private static final Pattern DIRECT_IMPL_IMPORT_PATTERN = Pattern.compile(
         "\\bimport\\s+blocks(?:\\.[A-Za-z_][A-Za-z0-9_]*)*\\.impl\\.[A-Za-z_][A-Za-z0-9_]*Impl\\s*;"
     );
@@ -239,20 +240,48 @@ final class BoundaryBypassScanner {
         Path projectRoot,
         List<WiringManifest> manifests
     ) throws IOException, ManifestParseException {
-        List<PortImplContainmentFinding> findings = PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
+        List<PortImplContainmentFinding> outsideRootFindings = PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
             projectRoot,
             manifests
         );
-        if (findings.isEmpty()) {
-            return List.of();
-        }
         ArrayList<BoundaryBypassFinding> bypassFindings = new ArrayList<>();
-        for (PortImplContainmentFinding finding : findings) {
+        TreeSet<String> outsideRootViolationPaths = new TreeSet<>();
+        for (PortImplContainmentFinding finding : outsideRootFindings) {
+            outsideRootViolationPaths.add(finding.path());
             bypassFindings.add(new BoundaryBypassFinding(
                 PORT_IMPL_BYPASS_RULE,
                 finding.path(),
                 "KIND=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: " + finding.interfaceFqcn() + " -> " + finding.implClassFqcn()
             ));
+        }
+
+        List<MultiBlockPortImplFinding> multiBlockFindings = PortImplContainmentScanner.scanMultiBlockPortImplFindings(
+            projectRoot,
+            manifests
+        );
+        for (MultiBlockPortImplFinding finding : multiBlockFindings) {
+            // Dedupe by contract: outside-governed-root takes precedence for the same file.
+            if (outsideRootViolationPaths.contains(finding.path())) {
+                continue;
+            }
+            if (PortImplContainmentScanner.MARKER_MISUSED_OUTSIDE_SHARED_KIND.equals(finding.kind())) {
+                bypassFindings.add(new BoundaryBypassFinding(
+                    MULTI_BLOCK_PORT_IMPL_RULE,
+                    finding.path(),
+                    "KIND=MARKER_MISUSED_OUTSIDE_SHARED: " + finding.implClassFqcn()
+                ));
+                continue;
+            }
+            bypassFindings.add(new BoundaryBypassFinding(
+                MULTI_BLOCK_PORT_IMPL_RULE,
+                finding.path(),
+                "KIND=MULTI_BLOCK_PORT_IMPL_FORBIDDEN: " + finding.implClassFqcn()
+                    + " -> " + finding.generatedPackageCsv()
+            ));
+        }
+
+        if (bypassFindings.isEmpty()) {
+            return List.of();
         }
         bypassFindings.sort(
             Comparator.comparing(BoundaryBypassFinding::path)
