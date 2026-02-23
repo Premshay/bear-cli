@@ -11,27 +11,25 @@ For milestone status and backlog ordering, use `docs/context/program-board.md`.
 
 P2 feature delivery:
 - active milestone is `P2`
-- CLI hardening v1.3 slice: semantic-port consistency fix, governed impl containment, and `compile --all`
-- v1.2 Final Lock++ semantic hardening (wrapper-owned idempotency + invariants)
-- Windows Gradle reliability hardening v1 (deterministic retry/fallback, bounded stale self-heal, robust unblock)
-- deterministic marker-first invariant classification and manifest semantic validation
-- documentation alignment for enforcement-by-construction philosophy and semantic scope boundaries
-- preserve strict command contract compatibility (stdout/stderr ordering, exit buckets, failure envelope)
+- hard-break structural bypass lane (`exit=7`, `CODE=BOUNDARY_BYPASS`) across `check`/`check --all`/`pr-check`
+- strict v2 governed roots contract with mandatory reserved `_shared` root
+- owning-root containment for generated `com.bear.generated.*Port` implementations
+- deterministic `pr-check` wiring-only staging in OS temp with fixed internal layout and no temp-path leakage
+- docs/package sync and full regression green
 
 ## Next Concrete Task
 
-v1.3 follow-through:
-1. run demo smoke against `bear-account-demo` for `pr-check` port-impl containment (`external adapter fail`, `_shared adapter pass`)
-2. sync updated package/docs guidance for `pr-check` wiring-only behavior and failure envelope
-3. continue command-service modularization cleanup with no contract drift
-4. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
+post-hard-break follow-through:
+1. keep demo smoke coverage for `check` and `pr-check` containment scenarios (`outside-root fail`, block-root/shared-root pass)
+2. continue command-service modularization cleanup with no contract drift
+3. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
 
 - Synced remaining `pr-check` public/operator docs to current behavior:
-  - updated `docs/public/commands-pr-check.md` for dual governance role (IR delta + port-impl containment), `exit 6`, and deterministic wiring-only temp staging note.
-  - updated `docs/public/exit-codes.md` registry/command matrix/rank to include `pr-check` exit `6`.
-  - updated `docs/context/user-guide.md` `pr-check` behavior and quick-exit table for `CODE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`.
+  - updated `docs/public/commands-pr-check.md` for dual governance role (IR delta + port-impl containment), `exit 7`, and deterministic wiring-only temp staging note.
+  - updated `docs/public/exit-codes.md` registry/command matrix/rank to include structural bypass lane `exit=7`.
+  - updated `docs/context/user-guide.md` `pr-check` behavior and quick-exit table for `CODE=BOUNDARY_BYPASS` + `RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`.
   - updated `docs/public/output-format.md` with `pr-check` boundary-bypass line format + deterministic ordering note.
   - updated `docs/public/troubleshooting.md` with `PORT_IMPL_OUTSIDE_GOVERNED_ROOT` remediation section.
   - updated `docs/public/ENFORCEMENT.md` to include `pr-check` generated-port containment signaling.
@@ -45,7 +43,7 @@ v1.3 follow-through:
     - `<tempRoot>/work/base/base.bear.yaml`
     - `<tempRoot>/generated/base/wiring/<blockKey>.wiring.json`
     - `<tempRoot>/generated/head/wiring/<blockKey>.wiring.json`
-  - `pr-check` now enforces deterministic `PORT_IMPL_OUTSIDE_GOVERNED_ROOT` failures when classes implementing generated `*Port` interfaces are outside governed roots.
+  - `pr-check` now enforces deterministic `BOUNDARY_BYPASS` failures (`RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`) when classes implementing generated `*Port` interfaces are outside governed roots.
   - internal IO fallback line for `pr-check` is now deterministic (`pr-check: IO_ERROR: INTERNAL_IO`) to avoid temp-path leakage.
   - added scanner + CLI coverage:
     - `PortImplContainmentScannerTest`
@@ -68,7 +66,7 @@ v1.3 follow-through:
 
 - Implemented BEAR v1.3.x hard-break containment upgrade:
   - wiring manifests now require `governedSourceRoots` (v2-only wiring contract for containment).
-  - kernel emits deterministic `governedSourceRoots` (`blockRootSourceDir`, optional `src/main/java/blocks/_shared` when directory exists).
+  - kernel emits deterministic `governedSourceRoots` (`blockRootSourceDir`, mandatory reserved `src/main/java/blocks/_shared` at index `1`).
   - check/check-all enforce containment against `governedSourceRoots` and scan containment only inside governed impl `execute(...)` bodies.
   - removed containment policy toggle path; `check-rules` policy support is no longer part of check flows.
   - docs/package guidance updated for always-on execute-scoped containment and `_shared` convention.

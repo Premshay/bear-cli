@@ -7,9 +7,11 @@
 - `3`: drift failure (`check`)
 - `4`: project test failure or timeout (`check`)
 - `5`: boundary expansion detected (`pr-check`)
-- `6`: boundary policy failure (`check` and `pr-check`)
-  - `check`: `UNDECLARED_REACH`, `BOUNDARY_BYPASS`, `HYGIENE_UNEXPECTED_PATHS`
-  - `pr-check`: `PORT_IMPL_OUTSIDE_GOVERNED_ROOT`
+- `6`: reach/hygiene policy failure (`check`)
+  - `check`: `UNDECLARED_REACH`, `HYGIENE_UNEXPECTED_PATHS`
+- `7`: structural bypass policy failure (`check` and `pr-check`)
+  - `check`: `BOUNDARY_BYPASS`
+  - `pr-check`: `BOUNDARY_BYPASS`
 - `64`: usage or argument failure
 - `70`: internal or unexpected failure
 - `74`: IO or git failure
@@ -19,19 +21,19 @@
 - `validate`: `0,2,64,70,74`
 - `compile`: `0,2,64,70,74`
 - `fix`: `0,2,64,70,74`
-- `check`: `0,2,3,4,6,64,70,74`
+- `check`: `0,2,3,4,6,7,64,70,74`
 - `unblock`: `0,64,70,74`
-- `pr-check`: `0,2,5,6,64,70,74`
+- `pr-check`: `0,2,5,7,64,70,74`
 
 ## `--all` aggregation
 
 `check --all`, `compile --all`, `fix --all`, and `pr-check --all` aggregate by severity rank, not numeric max.
 This severity ranking is part of the frozen Preview contract.
 
-- `check --all` rank: `70 > 74 > 64 > 2 > 3 > 6 > 4 > 0`
+- `check --all` rank: `70 > 74 > 64 > 2 > 3 > 7 > 6 > 4 > 0`
 - `compile --all` rank: `70 > 74 > 64 > 2 > 0`
 - `fix --all` rank: `70 > 74 > 64 > 2 > 0`
-- `pr-check --all` rank: `70 > 74 > 64 > 2 > 5 > 6 > 0`
+- `pr-check --all` rank: `70 > 74 > 64 > 2 > 7 > 5 > 0`
 
 Global non-zero footer in aggregated failures uses:
 

@@ -10,7 +10,7 @@ final class CliCodes {
     static final int EXIT_TEST_FAILURE = 4;
     static final int EXIT_BOUNDARY_EXPANSION = 5;
     static final int EXIT_UNDECLARED_REACH = 6;
-    static final int EXIT_BOUNDARY_BYPASS = 6;
+    static final int EXIT_BOUNDARY_BYPASS = 7;
     static final int EXIT_USAGE = 64;
     static final int EXIT_IO = 74;
     static final int EXIT_INTERNAL = 70;

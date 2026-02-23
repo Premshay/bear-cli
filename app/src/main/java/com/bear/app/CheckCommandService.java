@@ -362,7 +362,7 @@ final class CheckCommandService {
                     "BOUNDARY_BYPASS",
                     CliCodes.BOUNDARY_BYPASS,
                     bypassFindings.get(0).path(),
-                    "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses.",
+                    boundaryBypassRemediation(bypassFindings.get(0).rule()),
                     diagnostics.get(diagnostics.size() - 1)
                 );
             }
@@ -503,6 +503,17 @@ final class CheckCommandService {
                 e.path(),
                 e.remediation(),
                 e.line()
+            );
+        } catch (ManifestParseException e) {
+            String line = "check: MANIFEST_INVALID: " + e.reasonCode();
+            return checkFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.MANIFEST_INVALID,
+                "build/generated/bear/wiring",
+                "Regenerate wiring manifests with governed binding fields and rerun `bear check`.",
+                line
             );
         } catch (PolicyValidationException e) {
             String line = "policy: VALIDATION_ERROR: " + e.getMessage();
@@ -777,8 +788,16 @@ final class CheckCommandService {
             || "INVALID_STRING_ARRAY".equals(code)
             || "UNSUPPORTED_WIRING_SCHEMA_VERSION".equals(code)
             || "INVALID_GOVERNED_SOURCE_ROOTS".equals(code)
+            || PortImplContainmentScanner.AMBIGUOUS_PORT_OWNER_REASON_CODE.equals(code)
             || "INVALID_ROOT_PATH_blockRootSourceDir".equals(code)
             || "INVALID_ROOT_PATH_governedSourceRoots".equals(code);
+    }
+
+    private static String boundaryBypassRemediation(String rule) {
+        if ("PORT_IMPL_OUTSIDE_GOVERNED_ROOT".equals(rule)) {
+            return "Move the port implementation under the owning block governed roots (block root or blocks/_shared) or refactor so app layer calls wrappers without implementing generated ports.";
+        }
+        return "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses.";
     }
 
     private static void writeCheckBlockedMarker(Path projectRoot, String reason, String detail) throws IOException {

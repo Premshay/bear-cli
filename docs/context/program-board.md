@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-02-22
+2026-02-23
 
 ## Current Milestone
 
@@ -43,7 +43,7 @@ Status summary:
    Status: `DONE`
 8. Self-hosting baseline (clean-clone style normal wrapper flow, no bespoke ritual).  
    Status: `DONE`
-9. Single preview exit-code registry (`0,2,3,4,5,6,64,70,74`).  
+9. Single preview exit-code registry (`0,2,3,4,5,6,7,64,70,74`).  
    Status: `DONE`
 10. Failure-envelope compliance coverage across validation/drift/test/usage/IO/git/internal paths.  
     Status: `DONE`
@@ -54,10 +54,9 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `Boundary hardening v1.3.x hard-break` (`governedSourceRoots`, execute-only containment, no check-rules toggle; demo validation + sync pending)
-2. `Declared allowed deps containment` (stabilization/operational hardening)
-3. Generated structural tests and cross-target parity follow-up
-4. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
+1. `Declared allowed deps containment` (stabilization/operational hardening)
+2. Generated structural tests and cross-target parity follow-up
+3. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
 
 ## Backlog Buckets (P1/P2/P3)
 

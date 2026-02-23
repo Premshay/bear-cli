@@ -131,7 +131,7 @@ Canonical rule:
 - rerun check
 - do not run `bear fix` for `TEST_FAILURE` or `IO_ERROR`
 
-4. `6` boundary-bypass or undeclared reach:
+4. `7` boundary-bypass:
 - for `CODE=BOUNDARY_BYPASS`:
   - remove direct impl usage from `src/main/**`
   - remove classloading reflection APIs (`Class.forName`, `loadClass`) unless exact-path allowlisted
@@ -140,31 +140,36 @@ Canonical rule:
     - `src/main/java/module-info.java` (`provides ... with ...`)
   - remove generated impl placeholder bodies (`RULE=IMPL_PLACEHOLDER`)
   - for `RULE=IMPL_CONTAINMENT_BYPASS`, keep execute-path logic inside governed block-root source paths (no external package delegation)
-    - containment allow roots are manifest `governedSourceRoots` (`blockRootSourceDir` first, optional `_shared` second)
+    - containment allow roots are manifest `governedSourceRoots` (`blockRootSourceDir` first, reserved `src/main/java/blocks/_shared` second)
+  - for `RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`, move generated port adapters under owning governed roots:
+    - owning block root (`src/main/java/blocks/<block>/...`)
+    - shared governed root (`src/main/java/blocks/_shared/...`)
   - use generated `Wrapper.of(<ports...>)` for production wiring
   - keep `(ports..., Logic)` constructor for tests/advanced injection
   - wire generated entrypoints with non-null ports
   - ensure declared logic-required effect ports are used
   - do not suppress wrapper-owned semantic ports (`// BEAR:PORT_USED ...` is invalid for those)
+
+5. `6` undeclared reach or strict hygiene:
 - for `CODE=UNDECLARED_REACH`, declare required port/op in IR, compile, and route through generated port interface
 - for `CODE=HYGIENE_UNEXPECTED_PATHS` (strict mode), remove unexpected seed paths or allowlist exact path in `.bear/policy/hygiene-allowlist.txt`
 
-5. `4` project tests failed:
+6. `4` project tests failed:
 - fix implementation/tests
 - if `CODE=INVARIANT_VIOLATION`, treat marker details as authoritative semantic failure from wrapper checks (fresh/replay)
 - if compiler reports unreachable code in `*Impl.java`, replace the generated stub body entirely (do not append logic below placeholder return/throw)
 - verify `*Impl.java` stays in `src/main/java/blocks/<pkg-segment>/impl/` (package `blocks.<pkg-segment>.impl`) unless BEAR compile regenerated a different path
 
-6. `5` boundary expansion (`pr-check`):
+7. `5` boundary expansion (`pr-check`):
 - confirm expansion is intentional and reviewable
 
-7. `6` boundary bypass (`pr-check`):
-- if `CODE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`, move generated port adapters under governed roots:
+8. `7` boundary bypass (`pr-check`):
+- if `CODE=BOUNDARY_BYPASS` and `RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`, move generated port adapters under governed roots:
   - block root (`src/main/java/blocks/<block>/...`)
   - shared governed root (`src/main/java/blocks/_shared/...`)
 - do not keep generated-port adapter implementations in app-layer packages
 
-8. `74` IO/git failure:
+9. `74` IO/git failure:
 - fix path/ref/permission/repo state
 - if lock/bootstrap marker exists (`build/bear/check.blocked.marker`), clear with:
   - `bear unblock --project <repoRoot>`

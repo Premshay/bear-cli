@@ -59,6 +59,7 @@ Key line formats:
 - null port wiring and effect-port bypass checks on governed wrappers/impls
 - placeholder impl stubs (`RULE=IMPL_PLACEHOLDER`)
 - governed impl containment boundary violations (`RULE=IMPL_CONTAINMENT_BYPASS`)
+- generated `com.bear.generated.*Port` implementations outside owning governed roots (`RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`)
 
 Containment scanner contract (always-on):
 - scope: governed impl files from wiring manifests only
@@ -88,7 +89,7 @@ Wiring manifest requirement:
 - required containment fields include `blockRootSourceDir` and `governedSourceRoots`.
 - `governedSourceRoots` ordering is deterministic in this slice:
   - first: `blockRootSourceDir`
-  - optional second: `src/main/java/blocks/_shared`
+  - mandatory second: `src/main/java/blocks/_shared` (reserved governed root)
 - stale/non-v2/malformed wiring manifests fail deterministically with `CODE=MANIFEST_INVALID` (exit `2`); rerun `bear compile`.
 
 For lock/bootstrap test-runner failures, detail lines append deterministic diagnostics:
@@ -108,7 +109,8 @@ Troubleshooting guardrail:
 - `2` validation/config failure (`IR_VALIDATION`, `POLICY_INVALID`, `MANIFEST_INVALID`)
 - `3` drift failure
 - `4` project test failure or timeout
-- `6` boundary policy failure (`UNDECLARED_REACH`, `BOUNDARY_BYPASS`, or `HYGIENE_UNEXPECTED_PATHS`)
+- `6` reach/hygiene policy failure (`UNDECLARED_REACH` or `HYGIENE_UNEXPECTED_PATHS`)
+- `7` structural bypass policy failure (`BOUNDARY_BYPASS`)
 - `64` usage failure
 - `70` internal failure
 - `74` IO failure

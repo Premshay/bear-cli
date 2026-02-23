@@ -20,6 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class BoundaryBypassScanner {
+    private static final String PORT_IMPL_BYPASS_RULE = "PORT_IMPL_OUTSIDE_GOVERNED_ROOT";
     private static final Pattern DIRECT_IMPL_IMPORT_PATTERN = Pattern.compile(
         "\\bimport\\s+blocks(?:\\.[A-Za-z_][A-Za-z0-9_]*)*\\.impl\\.[A-Za-z_][A-Za-z0-9_]*Impl\\s*;"
     );
@@ -75,7 +76,8 @@ final class BoundaryBypassScanner {
     private BoundaryBypassScanner() {
     }
 
-    static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests) throws IOException {
+    static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests)
+        throws IOException, ManifestParseException {
         return scanBoundaryBypass(projectRoot, manifests, Set.of());
     }
 
@@ -83,7 +85,7 @@ final class BoundaryBypassScanner {
         Path projectRoot,
         List<WiringManifest> manifests,
         Set<String> reflectionAllowlist
-    ) throws IOException {
+    ) throws IOException, ManifestParseException {
         if (manifests.isEmpty()) {
             return List.of();
         }
@@ -223,12 +225,41 @@ final class BoundaryBypassScanner {
             }
         }
 
+        findings.addAll(scanPortImplContainmentBypass(projectRoot, manifests));
+
         findings.sort(
             Comparator.comparing(BoundaryBypassFinding::path)
                 .thenComparing(BoundaryBypassFinding::rule)
                 .thenComparing(BoundaryBypassFinding::detail)
         );
         return findings;
+    }
+
+    static List<BoundaryBypassFinding> scanPortImplContainmentBypass(
+        Path projectRoot,
+        List<WiringManifest> manifests
+    ) throws IOException, ManifestParseException {
+        List<PortImplContainmentFinding> findings = PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
+            projectRoot,
+            manifests
+        );
+        if (findings.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<BoundaryBypassFinding> bypassFindings = new ArrayList<>();
+        for (PortImplContainmentFinding finding : findings) {
+            bypassFindings.add(new BoundaryBypassFinding(
+                PORT_IMPL_BYPASS_RULE,
+                finding.path(),
+                "KIND=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: " + finding.interfaceFqcn() + " -> " + finding.implClassFqcn()
+            ));
+        }
+        bypassFindings.sort(
+            Comparator.comparing(BoundaryBypassFinding::path)
+                .thenComparing(BoundaryBypassFinding::rule)
+                .thenComparing(BoundaryBypassFinding::detail)
+        );
+        return bypassFindings;
     }
 
     static boolean isBoundaryScanExcluded(String relPath) {

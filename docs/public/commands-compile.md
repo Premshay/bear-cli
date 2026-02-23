@@ -50,7 +50,7 @@ Failure:
 Compile always preserves user-owned impl files and regenerates BEAR-owned artifacts deterministically.
 Generated v2 wiring manifests include containment roots:
 - `blockRootSourceDir`
-- `governedSourceRoots` (always includes block root; includes `src/main/java/blocks/_shared` when present)
+- `governedSourceRoots` (always includes block root and reserved root `src/main/java/blocks/_shared`)
 
 ## Exit codes emitted
 

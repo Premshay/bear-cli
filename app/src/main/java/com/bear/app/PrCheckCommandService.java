@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 final class PrCheckCommandService {
-    private static final String PORT_IMPL_BYPASS_RULE = "PORT_IMPL_OUTSIDE_GOVERNED_ROOT";
     private static final String TEMP_BASE_IR_RELATIVE = "work/base/base.bear.yaml";
     private static final String TEMP_BASE_WIRING_ROOT_RELATIVE = "generated/base";
     private static final String TEMP_HEAD_WIRING_ROOT_RELATIVE = "generated/head";
@@ -240,21 +239,16 @@ final class PrCheckCommandService {
                 }
             }
 
-            ArrayList<WiringManifest> governedManifests = new ArrayList<>();
-            governedManifests.add(headWiring);
-            if (baseWiring != null) {
-                governedManifests.add(baseWiring);
-            }
-            List<PortImplContainmentFinding> containmentFindings = PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
+            List<BoundaryBypassFinding> containmentFindings = BoundaryBypassScanner.scanPortImplContainmentBypass(
                 projectRoot,
-                governedManifests
+                List.of(headWiring)
             );
             if (!containmentFindings.isEmpty()) {
                 List<String> detailLines = new ArrayList<>();
-                for (PortImplContainmentFinding finding : containmentFindings) {
-                    String line = "pr-check: BOUNDARY_BYPASS: RULE=" + PORT_IMPL_BYPASS_RULE
+                for (BoundaryBypassFinding finding : containmentFindings) {
+                    String line = "pr-check: BOUNDARY_BYPASS: RULE=" + finding.rule()
                         + ": " + finding.path()
-                        + ": KIND=PORT_IMPL_EXTERNAL_BINDING: " + finding.interfaceFqcn() + " <- " + finding.implClassFqcn();
+                        + ": " + finding.detail();
                     detailLines.add(line);
                     stderrLines.add(line);
                 }
@@ -262,9 +256,9 @@ final class PrCheckCommandService {
                     CliCodes.EXIT_BOUNDARY_BYPASS,
                     stderrLines,
                     "BOUNDARY_BYPASS",
-                    CliCodes.PORT_IMPL_OUTSIDE_GOVERNED_ROOT,
+                    CliCodes.BOUNDARY_BYPASS,
                     containmentFindings.get(0).path(),
-                    "Move the port implementation under a governed source root (block root or blocks/_shared), or refactor so the app layer calls wrappers without implementing generated ports.",
+                    "Move the port implementation under the owning block governed roots (block root or blocks/_shared) or refactor so app layer calls wrappers without implementing generated ports.",
                     detailLines.get(0),
                     List.of(),
                     false,
@@ -309,6 +303,20 @@ final class PrCheckCommandService {
                 deltaLines,
                 false,
                 !deltaLines.isEmpty()
+            );
+        } catch (ManifestParseException e) {
+            String line = "pr-check: MANIFEST_INVALID: " + e.reasonCode();
+            return prFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.MANIFEST_INVALID,
+                "generated/head/wiring",
+                "Regenerate wiring metadata and rerun `bear pr-check`.",
+                line,
+                List.of(),
+                false,
+                false
             );
         } catch (PrCheckGitException e) {
             return prFailure(

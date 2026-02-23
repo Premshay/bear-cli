@@ -741,10 +741,7 @@ public final class JvmTarget implements Target {
             .replace('\\', '/');
         List<String> governedSourceRoots = new ArrayList<>();
         governedSourceRoots.add(blockRootSourceDir);
-        Path sharedRoot = projectRoot.resolve("src/main/java/blocks/_shared");
-        if (Files.isDirectory(sharedRoot)) {
-            governedSourceRoots.add("src/main/java/blocks/_shared");
-        }
+        governedSourceRoots.add("src/main/java/blocks/_shared");
 
         StringBuilder out = new StringBuilder();
         out.append("{");

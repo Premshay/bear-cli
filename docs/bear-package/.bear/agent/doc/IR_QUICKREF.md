@@ -163,5 +163,5 @@ Policy files used by `check`:
 Generated wiring note:
 - logic wrappers expose `Wrapper.of(<ports...>)` for default production wiring.
 - keep constructor `(ports..., Logic)` for tests/advanced injection only.
-- governed impl execute-body logic must remain inside manifest `governedSourceRoots`; no delegation to non-governed external packages.
+- governed impl execute-body logic must remain inside manifest `governedSourceRoots` (block root first, reserved `_shared` second); no delegation to non-governed external packages.
 - implementations of generated `com.bear.generated.*Port` interfaces must also remain inside governed roots (block root or `_shared`).

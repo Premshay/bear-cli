@@ -64,7 +64,7 @@ class JvmTargetTest {
         assertTrue(wiring.contains("\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\""));
         assertTrue(wiring.contains("\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\""));
         assertTrue(wiring.contains("\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\""));
-        assertTrue(wiring.contains("\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\"]"));
+        assertTrue(wiring.contains("\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\",\"src/main/java/blocks/_shared\"]"));
         assertTrue(wiring.contains("\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"]"));
         assertTrue(wiring.contains("\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"]"));
         assertTrue(wiring.contains("\"logicRequiredPorts\":[\"ledgerPort\"]"));
@@ -75,7 +75,7 @@ class JvmTargetTest {
     }
 
     @Test
-    void compileIncludesSharedGovernedRootWhenDirectoryExists(@TempDir Path tempDir) throws Exception {
+    void compileAlwaysIncludesSharedGovernedRoot(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
 
@@ -88,7 +88,6 @@ class JvmTargetTest {
         validator.validate(ir);
         BearIr normalized = normalizer.normalize(ir);
 
-        Files.createDirectories(tempDir.resolve("src/main/java/blocks/_shared"));
         target.compile(normalized, tempDir, "withdraw");
 
         Path wiringPath = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");

@@ -105,7 +105,7 @@ Fix:
 
 ## `PORT_IMPL_OUTSIDE_GOVERNED_ROOT`
 
-Symptom: `pr-check` failure with exit `6` and `CODE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`.
+Symptom: `pr-check` failure with exit `7`, `CODE=BOUNDARY_BYPASS`, and `RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`.
 Likely cause: a class in `src/main/java/**` implements generated `com.bear.generated.*Port` outside governed roots.
 Fix:
 
@@ -126,7 +126,7 @@ Fix:
 
 ## `BOUNDARY_BYPASS`
 
-Symptom: `check: BOUNDARY_BYPASS` and exit `6`.
+Symptom: `check: BOUNDARY_BYPASS` (or `pr-check: BOUNDARY_BYPASS`) and exit `7`.
 Likely cause: seam or containment rule violation.
 Fix:
 

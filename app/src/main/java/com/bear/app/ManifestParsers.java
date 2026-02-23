@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -88,17 +89,29 @@ final class ManifestParsers {
         if (roots.isEmpty()) {
             throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
         }
-        if (roots.size() > 2) {
+        if (roots.size() < 2) {
             throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
         }
+        HashSet<String> seen = new HashSet<>();
         for (String root : roots) {
             validateRepoRelativeRootPath(root, "governedSourceRoots");
+            if (!seen.add(root)) {
+                throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
+            }
         }
         if (!blockRootSourceDir.equals(roots.get(0))) {
             throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
         }
-        if (roots.size() == 2 && !SHARED_GOVERNED_ROOT.equals(roots.get(1))) {
+        if (!SHARED_GOVERNED_ROOT.equals(roots.get(1))) {
             throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
+        }
+        if (roots.size() > 2) {
+            ArrayList<String> tail = new ArrayList<>(roots.subList(2, roots.size()));
+            ArrayList<String> sortedTail = new ArrayList<>(tail);
+            sortedTail.sort(String::compareTo);
+            if (!tail.equals(sortedTail)) {
+                throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
+            }
         }
     }
 

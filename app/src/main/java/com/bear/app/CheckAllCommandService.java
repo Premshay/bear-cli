@@ -234,7 +234,7 @@ final class CheckAllCommandService {
                             CliCodes.BOUNDARY_BYPASS,
                             first.path(),
                             firstLine,
-                            "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses."
+                            boundaryBypassRemediation(first.rule())
                         ));
                     }
                     continue;
@@ -460,6 +460,7 @@ final class CheckAllCommandService {
             || "INVALID_STRING_ARRAY".equals(code)
             || "UNSUPPORTED_WIRING_SCHEMA_VERSION".equals(code)
             || "INVALID_GOVERNED_SOURCE_ROOTS".equals(code)
+            || PortImplContainmentScanner.AMBIGUOUS_PORT_OWNER_REASON_CODE.equals(code)
             || "INVALID_ROOT_PATH_blockRootSourceDir".equals(code)
             || "INVALID_ROOT_PATH_governedSourceRoots".equals(code);
     }
@@ -477,5 +478,12 @@ final class CheckAllCommandService {
 
     private static String markerWriteFailureSuffix(IOException error) {
         return "; markerWrite=failed:" + CliText.squash(error.getMessage());
+    }
+
+    private static String boundaryBypassRemediation(String rule) {
+        if ("PORT_IMPL_OUTSIDE_GOVERNED_ROOT".equals(rule)) {
+            return "Move the port implementation under the owning block governed roots (block root or blocks/_shared) or refactor so app layer calls wrappers without implementing generated ports.";
+        }
+        return "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses.";
     }
 }

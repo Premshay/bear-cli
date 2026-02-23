@@ -1412,7 +1412,7 @@ class BearCliTest {
         );
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, check.exitCode);
+        assertEquals(7, check.exitCode);
         String stderr = normalizeLf(check.stderr);
         assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=DIRECT_IMPL_USAGE: src/main/java/com/example/Bypass.java:"));
         assertFailureEnvelope(
@@ -1448,7 +1448,7 @@ class BearCliTest {
         );
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, check.exitCode);
+        assertEquals(7, check.exitCode);
         String stderr = normalizeLf(check.stderr);
         assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=DIRECT_IMPL_USAGE: src/main/java/com/example/Bypass.java: KIND=REFLECTION_CLASSLOADING: Class.forName(...)"));
     }
@@ -1501,7 +1501,7 @@ class BearCliTest {
         );
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, check.exitCode);
+        assertEquals(7, check.exitCode);
         String stderr = normalizeLf(check.stderr);
         assertTrue(stderr.contains(
             "check: BOUNDARY_BYPASS: RULE=DIRECT_IMPL_USAGE: src/main/resources/META-INF/services/com.bear.generated.withdraw.WithdrawLogic: KIND=IMPL_SERVICE_BINDING: com.bear.generated.withdraw.WithdrawLogic -> blocks.withdraw.impl.WithdrawImpl"
@@ -1534,7 +1534,7 @@ class BearCliTest {
         );
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, check.exitCode);
+        assertEquals(7, check.exitCode);
         String stderr = normalizeLf(check.stderr);
         assertTrue(stderr.contains(
             "check: BOUNDARY_BYPASS: RULE=DIRECT_IMPL_USAGE: src/main/java/module-info.java: KIND=IMPL_MODULE_BINDING: com.bear.generated.withdraw.WithdrawLogic -> blocks.withdraw.impl.WithdrawImpl"
@@ -1616,7 +1616,7 @@ class BearCliTest {
         );
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, check.exitCode);
+        assertEquals(7, check.exitCode);
         String stderr = normalizeLf(check.stderr);
         assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=IMPL_CONTAINMENT_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: KIND=IMPL_EXTERNAL_CALL: com.example.domain.WalletDomain"));
         assertFailureEnvelope(
@@ -1681,7 +1681,7 @@ class BearCliTest {
         );
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, check.exitCode);
+        assertEquals(7, check.exitCode);
         String stderr = normalizeLf(check.stderr);
         assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=NULL_PORT_WIRING: src/main/java/com/example/Wiring.java:"));
         assertFailureEnvelope(
@@ -1723,6 +1723,95 @@ class BearCliTest {
     }
 
     @Test
+    void checkBoundaryBypassGeneratedPortImplOutsideGovernedRootsFails(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path adapter = tempDir.resolve("src/main/java/com/example/AppPortAdapter.java");
+        Files.createDirectories(adapter.getParent());
+        Files.writeString(
+            adapter,
+            "package com.example;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class AppPortAdapter implements LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(7, check.exitCode);
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: src/main/java/com/example/AppPortAdapter.java: KIND=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: com.bear.generated.withdraw.LedgerPort -> com.example.AppPortAdapter"));
+        assertFailureEnvelope(
+            check.stderr,
+            "BOUNDARY_BYPASS",
+            "src/main/java/com/example/AppPortAdapter.java",
+            "Move the port implementation under the owning block governed roots (block root or blocks/_shared) or refactor so app layer calls wrappers without implementing generated ports."
+        );
+    }
+
+    @Test
+    void checkBoundaryBypassGeneratedPortImplInsideBlockRootPasses(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path adapter = tempDir.resolve("src/main/java/blocks/withdraw/adapters/LocalPortAdapter.java");
+        Files.createDirectories(adapter.getParent());
+        Files.writeString(
+            adapter,
+            "package blocks.withdraw.adapters;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class LocalPortAdapter implements LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+    }
+
+    @Test
+    void checkBoundaryBypassGeneratedPortImplInsideSharedRootPasses(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path adapter = tempDir.resolve("src/main/java/blocks/_shared/SharedPortAdapter.java");
+        Files.createDirectories(adapter.getParent());
+        Files.writeString(
+            adapter,
+            "package blocks._shared;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class SharedPortAdapter implements LedgerPort {\n"
+                + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+    }
+
+    @Test
     void checkBoundaryBypassEffectsMissingRequiredPortUsageFails(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
@@ -1745,7 +1834,7 @@ class BearCliTest {
         );
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, check.exitCode);
+        assertEquals(7, check.exitCode);
         String stderr = normalizeLf(check.stderr);
         assertTrue(stderr.contains("check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: missing required effect port usage: ledgerPort"));
         assertFailureEnvelope(
@@ -1806,7 +1895,7 @@ class BearCliTest {
             StandardCharsets.UTF_8
         );
         CliRunResult semanticSuppression = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, semanticSuppression.exitCode);
+        assertEquals(7, semanticSuppression.exitCode);
         assertTrue(
             normalizeLf(semanticSuppression.stderr).contains(
                 "check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: semantic port suppression forbidden: idempotencyPort"
@@ -1824,7 +1913,7 @@ class BearCliTest {
             StandardCharsets.UTF_8
         );
         CliRunResult malformedSuppression = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-        assertEquals(6, malformedSuppression.exitCode);
+        assertEquals(7, malformedSuppression.exitCode);
         assertTrue(
             normalizeLf(malformedSuppression.stderr).contains(
                 "check: BOUNDARY_BYPASS: RULE=EFFECTS_BYPASS: src/main/java/blocks/withdraw/impl/WithdrawImpl.java: missing required effect port usage: ledgerPort"
@@ -1975,7 +2064,7 @@ class BearCliTest {
         );
 
         CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
-        assertEquals(6, run.exitCode);
+        assertEquals(7, run.exitCode);
         String stderr = normalizeLf(run.stderr);
         assertTrue(stderr.contains("RULE=IMPL_CONTAINMENT_BYPASS"));
         assertTrue(stderr.contains("KIND=IMPL_EXTERNAL_CALL: com.example.domain.WalletDomain"));
@@ -2660,15 +2749,15 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] {
             "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
         });
-        assertEquals(6, run.exitCode);
+        assertEquals(7, run.exitCode);
         String stderr = normalizeLf(run.stderr);
         assertTrue(stderr.contains("pr-check: BOUNDARY_BYPASS: RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT"));
         assertFalse(stderr.contains("bear-pr-check-"));
         assertFailureEnvelope(
             run.stderr,
-            "PORT_IMPL_OUTSIDE_GOVERNED_ROOT",
+            "BOUNDARY_BYPASS",
             "src/main/java/com/acme/AppPortAdapter.java",
-            "Move the port implementation under a governed source root (block root or blocks/_shared), or refactor so the app layer calls wrappers without implementing generated ports."
+            "Move the port implementation under the owning block governed roots (block root or blocks/_shared) or refactor so app layer calls wrappers without implementing generated ports."
         );
     }
 
@@ -3364,7 +3453,7 @@ class BearCliTest {
 
         Path wiring = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
         String content = Files.readString(wiring, StandardCharsets.UTF_8);
-        content = content.replace("\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\"],", "");
+        content = content.replace("\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\",\"src/main/java/blocks/_shared\"],", "");
         Files.writeString(wiring, content, StandardCharsets.UTF_8);
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });

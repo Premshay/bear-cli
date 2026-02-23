@@ -54,13 +54,13 @@ class ManifestParsersTest {
         Path wiring = tempDir.resolve("x.wiring.json");
         Files.writeString(
             wiring,
-            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\"],\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"],\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"],\"logicRequiredPorts\":[\"ledgerPort\"],\"wrapperOwnedSemanticPorts\":[\"idempotencyPort\"],\"wrapperOwnedSemanticChecks\":[\"IDEMPOTENCY\",\"INVARIANTS\"]}"
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\",\"src/main/java/blocks/_shared\"],\"requiredEffectPorts\":[\"idempotencyPort\",\"ledgerPort\"],\"constructorPortParams\":[\"idempotencyPort\",\"ledgerPort\"],\"logicRequiredPorts\":[\"ledgerPort\"],\"wrapperOwnedSemanticPorts\":[\"idempotencyPort\"],\"wrapperOwnedSemanticChecks\":[\"IDEMPOTENCY\",\"INVARIANTS\"]}"
         );
 
         WiringManifest parsed = ManifestParsers.parseWiringManifest(wiring);
         assertEquals(List.of("ledgerPort"), parsed.logicRequiredPorts());
         assertEquals("src/main/java/blocks/withdraw", parsed.blockRootSourceDir());
-        assertEquals(List.of("src/main/java/blocks/withdraw"), parsed.governedSourceRoots());
+        assertEquals(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared"), parsed.governedSourceRoots());
         assertEquals(List.of("idempotencyPort"), parsed.wrapperOwnedSemanticPorts());
         assertEquals(List.of("IDEMPOTENCY", "INVARIANTS"), parsed.wrapperOwnedSemanticChecks());
     }
@@ -93,6 +93,18 @@ class ManifestParsersTest {
     }
 
     @Test
+    void parseWiringManifestV2RequiresSharedRootAsSecondEntry(@TempDir Path tempDir) throws Exception {
+        Path wiring = tempDir.resolve("x.wiring.json");
+        Files.writeString(
+            wiring,
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\"],\"requiredEffectPorts\":[\"ledgerPort\"],\"constructorPortParams\":[\"ledgerPort\"],\"logicRequiredPorts\":[],\"wrapperOwnedSemanticPorts\":[],\"wrapperOwnedSemanticChecks\":[]}"
+        );
+
+        ManifestParseException ex = assertThrows(ManifestParseException.class, () -> ManifestParsers.parseWiringManifest(wiring));
+        assertEquals("INVALID_GOVERNED_SOURCE_ROOTS", ex.reasonCode());
+    }
+
+    @Test
     void parseWiringManifestV2RequiresGovernedRoots(@TempDir Path tempDir) throws Exception {
         Path wiring = tempDir.resolve("x.wiring.json");
         Files.writeString(
@@ -102,6 +114,50 @@ class ManifestParsersTest {
 
         ManifestParseException ex = assertThrows(ManifestParseException.class, () -> ManifestParsers.parseWiringManifest(wiring));
         assertEquals("MISSING_KEY_governedSourceRoots", ex.reasonCode());
+    }
+
+    @Test
+    void parseWiringManifestV2AllowsSortedTailRoots(@TempDir Path tempDir) throws Exception {
+        Path wiring = tempDir.resolve("x.wiring.json");
+        Files.writeString(
+            wiring,
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\",\"src/main/java/blocks/_shared\",\"src/main/java/shared/a\",\"src/main/java/shared/b\"],\"requiredEffectPorts\":[\"ledgerPort\"],\"constructorPortParams\":[\"ledgerPort\"],\"logicRequiredPorts\":[],\"wrapperOwnedSemanticPorts\":[],\"wrapperOwnedSemanticChecks\":[]}"
+        );
+
+        WiringManifest parsed = ManifestParsers.parseWiringManifest(wiring);
+        assertEquals(
+            List.of(
+                "src/main/java/blocks/withdraw",
+                "src/main/java/blocks/_shared",
+                "src/main/java/shared/a",
+                "src/main/java/shared/b"
+            ),
+            parsed.governedSourceRoots()
+        );
+    }
+
+    @Test
+    void parseWiringManifestV2RejectsUnsortedTailRoots(@TempDir Path tempDir) throws Exception {
+        Path wiring = tempDir.resolve("x.wiring.json");
+        Files.writeString(
+            wiring,
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\",\"src/main/java/blocks/_shared\",\"src/main/java/shared/b\",\"src/main/java/shared/a\"],\"requiredEffectPorts\":[\"ledgerPort\"],\"constructorPortParams\":[\"ledgerPort\"],\"logicRequiredPorts\":[],\"wrapperOwnedSemanticPorts\":[],\"wrapperOwnedSemanticChecks\":[]}"
+        );
+
+        ManifestParseException ex = assertThrows(ManifestParseException.class, () -> ManifestParsers.parseWiringManifest(wiring));
+        assertEquals("INVALID_GOVERNED_SOURCE_ROOTS", ex.reasonCode());
+    }
+
+    @Test
+    void parseWiringManifestV2RejectsDuplicateRoots(@TempDir Path tempDir) throws Exception {
+        Path wiring = tempDir.resolve("x.wiring.json");
+        Files.writeString(
+            wiring,
+            "{\"schemaVersion\":\"v2\",\"blockKey\":\"withdraw\",\"entrypointFqcn\":\"com.bear.generated.withdraw.Withdraw\",\"logicInterfaceFqcn\":\"com.bear.generated.withdraw.WithdrawLogic\",\"implFqcn\":\"blocks.withdraw.impl.WithdrawImpl\",\"implSourcePath\":\"src/main/java/blocks/withdraw/impl/WithdrawImpl.java\",\"blockRootSourceDir\":\"src/main/java/blocks/withdraw\",\"governedSourceRoots\":[\"src/main/java/blocks/withdraw\",\"src/main/java/blocks/_shared\",\"src/main/java/blocks/_shared\"],\"requiredEffectPorts\":[\"ledgerPort\"],\"constructorPortParams\":[\"ledgerPort\"],\"logicRequiredPorts\":[],\"wrapperOwnedSemanticPorts\":[],\"wrapperOwnedSemanticChecks\":[]}"
+        );
+
+        ManifestParseException ex = assertThrows(ManifestParseException.class, () -> ManifestParsers.parseWiringManifest(wiring));
+        assertEquals("INVALID_GOVERNED_SOURCE_ROOTS", ex.reasonCode());
     }
 
     @Test

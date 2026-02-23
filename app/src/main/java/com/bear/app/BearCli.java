@@ -1387,7 +1387,8 @@ public final class BearCli {
         return UndeclaredReachScanner.isUndeclaredReachExcluded(relPath);
     }
 
-    private static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests) throws IOException {
+    private static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests)
+        throws IOException, ManifestParseException {
         return BoundaryBypassScanner.scanBoundaryBypass(projectRoot, manifests);
     }
 
@@ -1706,7 +1707,7 @@ public final class BearCli {
         private static final int TEST_FAILURE = 4;
         private static final int BOUNDARY_EXPANSION = 5;
         private static final int UNDECLARED_REACH = 6;
-        private static final int BOUNDARY_BYPASS = 6;
+        private static final int BOUNDARY_BYPASS = 7;
         private static final int USAGE = 64;
         private static final int IO = 74;
         private static final int INTERNAL = 70;

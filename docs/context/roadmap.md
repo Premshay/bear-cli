@@ -85,7 +85,7 @@ Preview contract (must ship):
 8. Self-hosting baseline:
    - BEAR commands run in clean clone with normal wrapper flow and no bespoke ritual
 9. Single exit-code registry for preview:
-   - `0,2,3,4,5,6,64,70,74`
+   - `0,2,3,4,5,6,7,64,70,74`
 10. Failure-envelope compliance coverage for validation/drift/test/usage/IO/git/internal paths.
 
 Preview demo scope:

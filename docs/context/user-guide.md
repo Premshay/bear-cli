@@ -185,7 +185,7 @@ Behavior:
 - fails with validation (`MANIFEST_INVALID`) when wiring semantics are inconsistent
   - v2 wiring manifests are required for containment checks
   - required v2 semantic/containment fields must be present (`logicRequiredPorts`, `wrapperOwnedSemanticPorts`, `wrapperOwnedSemanticChecks`, `blockRootSourceDir`, `governedSourceRoots`)
-  - `governedSourceRoots` order is deterministic: block root first, optional `src/main/java/blocks/_shared` second
+  - `governedSourceRoots` order is deterministic: block root first, mandatory reserved `src/main/java/blocks/_shared` second
   - wrapper-owned semantic ports must not overlap logic-required ports
 - runs project tests only after no-drift result
 - invariant marker-first classification:
@@ -240,8 +240,9 @@ Use when:
 
 Behavior:
 - exits `5` when boundary expansion is detected in IR delta classification
-- exits `6` when boundary bypass is detected (`CODE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`)
+- exits `7` when structural bypass is detected (`CODE=BOUNDARY_BYPASS`)
   - triggered when implementations of generated `com.bear.generated.*Port` interfaces are outside governed roots
+  - rationale: generated port implementations are boundary authority and must remain in governed roots; app-layer generated-port adapters are bypasses
 - exits `0` for no-boundary-expansion and no-boundary-bypass outcomes
 - uses deterministic temp staging + wiring-only generation for manifest analysis (no full compile dependency in project tree)
 
@@ -289,9 +290,9 @@ Disallowed:
 - `3` drift failure
 - `4` project test failure (including timeout)
 - `5` boundary expansion detected in `pr-check`
-- `6` boundary bypass detected in `pr-check` (`CODE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`)
 - `6` undeclared reach detected in `check` (`CODE=UNDECLARED_REACH`)
-- `6` boundary bypass detected in `check` (`CODE=BOUNDARY_BYPASS`)
+- `6` strict-hygiene unexpected paths in `check` (`CODE=HYGIENE_UNEXPECTED_PATHS`)
+- `7` boundary bypass detected in `check`/`pr-check` (`CODE=BOUNDARY_BYPASS`)
 - `64` usage/argument failure
 - `70` internal/unexpected failure
 - `74` IO/git failure
@@ -329,7 +330,7 @@ Expected classification:
 `bear check` enforces:
 - deterministic generated-artifact drift gate
 - covered undeclared-reach gate for direct HTTP bypass surfaces
-- boundary-bypass seam gate (`DIRECT_IMPL_USAGE`, `NULL_PORT_WIRING`, `EFFECTS_BYPASS`)
+- boundary-bypass seam gate (`DIRECT_IMPL_USAGE`, `NULL_PORT_WIRING`, `EFFECTS_BYPASS`, `IMPL_CONTAINMENT_BYPASS`, `PORT_IMPL_OUTSIDE_GOVERNED_ROOT`)
 - project tests (only after drift and undeclared-reach pass)
 
 `bear pr-check` enforces:

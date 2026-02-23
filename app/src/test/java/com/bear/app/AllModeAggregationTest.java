@@ -37,6 +37,27 @@ class AllModeAggregationTest {
     }
 
     @Test
+    void aggregateCheckResultsPrefersStructuralBypassOverReachAndTests() {
+        RepoAggregationResult summary = AllModeAggregation.aggregateCheckResults(List.of(
+            block("a", BlockStatus.FAIL, 4),
+            block("b", BlockStatus.FAIL, 6),
+            block("c", BlockStatus.FAIL, 7)
+        ), false, 0, 0, 0);
+
+        assertEquals(7, summary.exitCode());
+    }
+
+    @Test
+    void aggregatePrResultsPrefersStructuralBypassOverBoundaryExpansion() {
+        RepoAggregationResult summary = AllModeAggregation.aggregatePrResults(List.of(
+            block("a", BlockStatus.FAIL, 5),
+            block("b", BlockStatus.FAIL, 7)
+        ));
+
+        assertEquals(7, summary.exitCode());
+    }
+
+    @Test
     void aggregateFixResultsTracksFailFastFlag() {
         RepoAggregationResult summary = AllModeAggregation.aggregateFixResults(List.of(
             block("a", BlockStatus.FAIL, 2),

@@ -24,12 +24,12 @@ bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only 
 - Delta lines to `stderr`:
   - `pr-delta: <CLASS>: <CATEGORY>: <CHANGE>: <KEY>`
 - Port-impl containment lines (when violated):
-  - `pr-check: BOUNDARY_BYPASS: RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: <relative/path>: KIND=PORT_IMPL_EXTERNAL_BINDING: <interfaceFqcn> <- <implClassFqcn>`
+  - `pr-check: BOUNDARY_BYPASS: RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: <relative/path>: KIND=PORT_IMPL_OUTSIDE_GOVERNED_ROOT: <interfaceFqcn> -> <implClassFqcn>`
 - Boundary verdict:
   - `stderr`: `pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED`
   - `stdout`: `pr-check: OK: NO_BOUNDARY_EXPANSION`
 - Deterministic sort precedence for class, category, change, key.
-- Port-impl containment findings are deterministically sorted by interface FQCN, impl class FQCN, and path.
+- Port-impl containment findings are deterministically sorted by path, rule, then detail.
 - Non-zero exits append failure footer as last three `stderr` lines.
 
 Implementation note:
@@ -40,7 +40,7 @@ Implementation note:
 
 - `0` no boundary-expanding deltas
 - `5` boundary-expanding deltas found
-- `6` boundary bypass (`CODE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`)
+- `7` structural bypass (`CODE=BOUNDARY_BYPASS`)
 - `2` validation failure
 - `64` usage failure
 - `70` internal failure

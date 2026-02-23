@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PortImplContainmentScannerTest {
@@ -39,6 +40,24 @@ class PortImplContainmentScannerTest {
             "src/main/java/com/acme/AppPortAdapter.java",
             "package com.acme;\n"
                 + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class AppPortAdapter implements LedgerPort {\n"
+                + "}\n"
+        );
+
+        List<PortImplContainmentFinding> findings = PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
+            tempDir,
+            List.of(withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")))
+        );
+        assertEquals(1, findings.size());
+        assertEquals("com.bear.generated.withdraw.LedgerPort", findings.get(0).interfaceFqcn());
+    }
+
+    @Test
+    void detectsSamePackageGeneratedPortImplementationOutsideGovernedRoots(@TempDir Path tempDir) throws Exception {
+        writeJavaFile(
+            tempDir,
+            "src/main/java/com/bear/generated/withdraw/AppPortAdapter.java",
+            "package com.bear.generated.withdraw;\n"
                 + "public final class AppPortAdapter implements LedgerPort {\n"
                 + "}\n"
         );
@@ -112,6 +131,62 @@ class PortImplContainmentScannerTest {
             List.of(withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")))
         );
         assertTrue(findings.isEmpty());
+    }
+
+    @Test
+    void ignoresGeneratedPortWhenOwnerManifestMissingFromScope(@TempDir Path tempDir) throws Exception {
+        writeJavaFile(
+            tempDir,
+            "src/main/java/com/acme/AppPortAdapter.java",
+            "package com.acme;\n"
+                + "import com.bear.generated.missing.LedgerPort;\n"
+                + "public final class AppPortAdapter implements LedgerPort {\n"
+                + "}\n"
+        );
+
+        List<PortImplContainmentFinding> findings = PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
+            tempDir,
+            List.of(withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")))
+        );
+        assertTrue(findings.isEmpty());
+    }
+
+    @Test
+    void throwsManifestInvalidWhenGeneratedPortOwnerIsAmbiguous(@TempDir Path tempDir) throws Exception {
+        writeJavaFile(
+            tempDir,
+            "src/main/java/com/acme/AppPortAdapter.java",
+            "package com.acme;\n"
+                + "import com.bear.generated.withdraw.LedgerPort;\n"
+                + "public final class AppPortAdapter implements LedgerPort {\n"
+                + "}\n"
+        );
+
+        ManifestParseException ex = assertThrows(
+            ManifestParseException.class,
+            () -> PortImplContainmentScanner.scanPortImplOutsideGovernedRoots(
+                tempDir,
+                List.of(
+                    withdrawManifest(List.of("src/main/java/blocks/withdraw", "src/main/java/blocks/_shared")),
+                    new WiringManifest(
+                        "v2",
+                        "withdraw-2",
+                        "com.bear.generated.withdraw.Withdraw2",
+                        "com.bear.generated.withdraw.Withdraw2Logic",
+                        "blocks.withdraw.two.impl.Withdraw2Impl",
+                        "src/main/java/blocks/withdraw/two/impl/Withdraw2Impl.java",
+                        "src/main/java/blocks/withdraw/two",
+                        List.of("src/main/java/blocks/withdraw/two", "src/main/java/blocks/_shared"),
+                        List.of("ledgerPort"),
+                        List.of("ledgerPort"),
+                        List.of("ledgerPort"),
+                        List.of(),
+                        List.of()
+                    )
+                )
+            )
+        );
+        assertEquals(PortImplContainmentScanner.AMBIGUOUS_PORT_OWNER_REASON_CODE, ex.reasonCode());
     }
 
     private static void writeJavaFile(Path root, String relPath, String content) throws Exception {

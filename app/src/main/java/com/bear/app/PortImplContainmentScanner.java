@@ -12,12 +12,14 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class PortImplContainmentScanner {
+    static final String AMBIGUOUS_PORT_OWNER_REASON_CODE = "AMBIGUOUS_PORT_OWNER";
+
     private static final Pattern PACKAGE_DECL_PATTERN = Pattern.compile(
         "(?m)^\\s*package\\s+([A-Za-z_][A-Za-z0-9_\\.]*)\\s*;"
     );
@@ -35,23 +37,13 @@ final class PortImplContainmentScanner {
     static List<PortImplContainmentFinding> scanPortImplOutsideGovernedRoots(
         Path projectRoot,
         List<WiringManifest> manifests
-    ) throws IOException {
+    ) throws IOException, ManifestParseException {
         if (manifests == null || manifests.isEmpty()) {
             return List.of();
         }
-        TreeSet<String> governedRoots = new TreeSet<>();
-        for (WiringManifest manifest : manifests) {
-            if (manifest.governedSourceRoots() == null) {
-                continue;
-            }
-            for (String root : manifest.governedSourceRoots()) {
-                String normalized = normalizeRepoPath(root);
-                if (normalized != null && !normalized.isBlank()) {
-                    governedRoots.add(normalized);
-                }
-            }
-        }
-        if (governedRoots.isEmpty()) {
+
+        Map<String, WiringManifest> ownerByGeneratedPackage = buildOwnerByGeneratedPackage(manifests);
+        if (ownerByGeneratedPackage.isEmpty()) {
             return List.of();
         }
 
@@ -89,11 +81,16 @@ final class PortImplContainmentScanner {
                 }
                 String implClassFqcn = packageName.isBlank() ? className : packageName + "." + className;
                 for (String token : splitInterfaces(interfacesRaw)) {
-                    String resolvedInterface = resolveInterfaceFqcn(token, explicitImports);
+                    String resolvedInterface = resolveInterfaceFqcn(token, explicitImports, packageName);
                     if (resolvedInterface == null || !isGeneratedPortInterface(resolvedInterface)) {
                         continue;
                     }
-                    if (!isUnderAnyGovernedRoot(relPath, governedRoots)) {
+                    WiringManifest owner = ownerByGeneratedPackage.get(packageOfFqcn(resolvedInterface));
+                    if (owner == null) {
+                        // Missing owner in this manifest scope is non-fatal by contract.
+                        continue;
+                    }
+                    if (!isUnderAnyGovernedRoot(relPath, owner.governedSourceRoots())) {
                         findings.add(new PortImplContainmentFinding(resolvedInterface, implClassFqcn, relPath));
                     }
                 }
@@ -101,11 +98,40 @@ final class PortImplContainmentScanner {
         }
 
         findings.sort(
-            Comparator.comparing(PortImplContainmentFinding::interfaceFqcn)
+            Comparator.comparing(PortImplContainmentFinding::path)
+                .thenComparing(PortImplContainmentFinding::interfaceFqcn)
                 .thenComparing(PortImplContainmentFinding::implClassFqcn)
-                .thenComparing(PortImplContainmentFinding::path)
         );
         return findings;
+    }
+
+    private static Map<String, WiringManifest> buildOwnerByGeneratedPackage(List<WiringManifest> manifests)
+        throws ManifestParseException {
+        TreeMap<String, WiringManifest> ownerByGeneratedPackage = new TreeMap<>();
+        for (WiringManifest manifest : manifests) {
+            String entrypointPackage = packageOfFqcn(manifest.entrypointFqcn());
+            if (entrypointPackage == null || entrypointPackage.isBlank()) {
+                continue;
+            }
+            WiringManifest existing = ownerByGeneratedPackage.get(entrypointPackage);
+            if (existing == null) {
+                ownerByGeneratedPackage.put(entrypointPackage, manifest);
+                continue;
+            }
+            if (!sameOwnerIdentity(existing, manifest)) {
+                throw new ManifestParseException(AMBIGUOUS_PORT_OWNER_REASON_CODE);
+            }
+        }
+        return ownerByGeneratedPackage;
+    }
+
+    private static boolean sameOwnerIdentity(WiringManifest left, WiringManifest right) {
+        return safe(left.blockKey()).equals(safe(right.blockKey()))
+            && safe(left.entrypointFqcn()).equals(safe(right.entrypointFqcn()));
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private static String parsePackageName(String source) {
@@ -207,14 +233,32 @@ final class PortImplContainmentScanner {
         return out.toString();
     }
 
-    private static String resolveInterfaceFqcn(String token, Map<String, String> explicitImports) {
+    private static String resolveInterfaceFqcn(String token, Map<String, String> explicitImports, String packageName) {
         if (token.isBlank()) {
             return null;
         }
         if (token.contains(".")) {
             return token;
         }
-        return explicitImports.get(token);
+        String imported = explicitImports.get(token);
+        if (imported != null) {
+            return imported;
+        }
+        if (packageName.isBlank()) {
+            return null;
+        }
+        return packageName + "." + token;
+    }
+
+    private static String packageOfFqcn(String fqcn) {
+        if (fqcn == null) {
+            return null;
+        }
+        int idx = fqcn.lastIndexOf('.');
+        if (idx <= 0) {
+            return null;
+        }
+        return fqcn.substring(0, idx);
     }
 
     private static boolean isGeneratedPortInterface(String fqcn) {
@@ -229,9 +273,16 @@ final class PortImplContainmentScanner {
         return simple.endsWith("Port");
     }
 
-    private static boolean isUnderAnyGovernedRoot(String relPath, Set<String> governedRoots) {
+    private static boolean isUnderAnyGovernedRoot(String relPath, List<String> governedRoots) {
+        if (governedRoots == null || governedRoots.isEmpty()) {
+            return false;
+        }
         for (String root : governedRoots) {
-            if (relPath.equals(root) || relPath.startsWith(root + "/")) {
+            String normalizedRoot = normalizeRepoPath(root);
+            if (normalizedRoot == null || normalizedRoot.isBlank()) {
+                continue;
+            }
+            if (relPath.equals(normalizedRoot) || relPath.startsWith(normalizedRoot + "/")) {
                 return true;
             }
         }

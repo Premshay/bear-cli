@@ -69,7 +69,7 @@ When running `bear check` or `bear check --all`:
 - in production code, prefer generated `Wrapper.of(<ports...>)`; keep `(ports..., Logic)` constructor for tests/advanced injection.
 8. Containment rule:
 - execute-body containment is always on (no policy toggle).
-- allowed source roots come from manifest `governedSourceRoots` (`blockRootSourceDir` first; optional `_shared` second).
+- allowed source roots come from manifest `governedSourceRoots` (`blockRootSourceDir` first; reserved `src/main/java/blocks/_shared` second).
 - unresolved call targets do not fail containment in v1.3.
 9. Strict hygiene rule:
 - unexpected seed paths fail with `CODE=HYGIENE_UNEXPECTED_PATHS` unless allowlisted.
