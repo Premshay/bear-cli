@@ -11,20 +11,26 @@ For milestone status and backlog ordering, use `docs/context/program-board.md`.
 
 P2 feature delivery:
 - active milestone is `P2`
-- hard-break structural bypass lane (`exit=7`, `CODE=BOUNDARY_BYPASS`) across `check`/`check --all`/`pr-check`
-- strict v2 governed roots contract with mandatory reserved `_shared` root
-- owning-root containment for generated `com.bear.generated.*Port` implementations
-- deterministic `pr-check` wiring-only staging in OS temp with fixed internal layout and no temp-path leakage
-- docs/package sync and full regression green
+- post-hard-break follow-through and next feature queue lock
+- preserve structural governance focus (no endpoint-per-block policy, no style policing)
+- prioritize containment hardening where it increases block-boundary signal
 
 ## Next Concrete Task
 
-post-hard-break follow-through:
-1. keep demo smoke coverage for `check` and `pr-check` containment scenarios (`outside-root fail`, block-root/shared-root pass)
-2. continue command-service modularization cleanup with no contract drift
-3. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
+next feature sequence (one-by-one):
+1. implement `MULTI_BLOCK_PORT_IMPL_FORBIDDEN` with explicit `_shared` marker exception
+2. update agent/demo workflow done-gate to require both `check --all` and `pr-check --all --base <ref>`
+3. implement deterministic wiring drift diagnostics (exact changed/missing/added files)
+4. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Updated planning context to reflect agreed next-feature order:
+  - queued `Multi-block port implementer guard` as highest-signal structural follow-up.
+  - queued demo done-gate hardening (`check --all` + `pr-check --all`) as mandatory evidence.
+  - queued deterministic wiring drift diagnostics ahead of broader allowedDeps expansion.
+  - explicitly recorded no endpoint-per-block enforcement decision in program board.
+  - locked exact next-feature contracts in `docs/context/program-board.md` (`Next Feature Specs (Locked)`) so future sessions can implement without reinterpretation.
 
 - Synced remaining `pr-check` public/operator docs to current behavior:
   - updated `docs/public/commands-pr-check.md` for dual governance role (IR delta + port-impl containment), `exit 7`, and deterministic wiring-only temp staging note.
