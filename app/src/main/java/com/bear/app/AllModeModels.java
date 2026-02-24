@@ -155,8 +155,35 @@ record RepoAggregationResult(
     boolean failFastTriggered,
     int rootReachFailed,
     int rootTestFailed,
-    int rootTestSkippedDueToReach
+    int rootTestSkippedDueToReach,
+    List<String> repoDeltaLines
 ) {
+    RepoAggregationResult(
+        int exitCode,
+        int total,
+        int checked,
+        int passed,
+        int failed,
+        int skipped,
+        boolean failFastTriggered,
+        int rootReachFailed,
+        int rootTestFailed,
+        int rootTestSkippedDueToReach
+    ) {
+        this(
+            exitCode,
+            total,
+            checked,
+            passed,
+            failed,
+            skipped,
+            failFastTriggered,
+            rootReachFailed,
+            rootTestFailed,
+            rootTestSkippedDueToReach,
+            List.of()
+        );
+    }
 }
 
 record CheckBlockedState(boolean blocked, String reason, String detail) {
@@ -366,6 +393,7 @@ final class ManifestParseException extends Exception {
 enum ProjectTestStatus {
     PASSED,
     FAILED,
+    SHARED_DEPS_VIOLATION,
     INVARIANT_VIOLATION,
     TIMEOUT,
     LOCKED,
@@ -378,6 +406,7 @@ record ProjectTestResult(
     String attemptTrail,
     String firstLockLine,
     String firstBootstrapLine,
+    String firstSharedDepsViolationLine,
     String cacheMode,
     boolean fallbackToUserCache
 ) {

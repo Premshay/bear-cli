@@ -37,6 +37,9 @@ Contract:
 `pr-check` delta lines:
 
 - `pr-delta: <CLASS>: <CATEGORY>: <CHANGE>: <KEY>`
+- shared-policy key form:
+  - `<projectRoot>:_shared:<groupId:artifactId>@<version>`
+  - changed version form: `@<old>-><new>`
 
 `pr-check` boundary-bypass lines:
 
@@ -47,6 +50,12 @@ Contract:
 `pr-check` governance signal lines (informational):
 
 - `pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: <relative/path>: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
+
+`pr-check --all` repo-level shared-policy section:
+
+- `REPO DELTA:`
+- `  pr-delta: ...`
+- placement: after block sections, before `SUMMARY:`
 
 Common `check` policy lines:
 
@@ -72,6 +81,7 @@ Common `check` policy lines:
 `pr-check` delta lines are deterministically sorted by class, category, change, and key.
 `pr-check` port-impl containment findings are deterministically sorted by `path`, then `rule`, then `detail`.
 `pr-check` governance signal lines are deterministically sorted by `path`, then `implClassFqcn`, then `sortedGeneratedPackageCsv`.
+`pr-check --all` `REPO DELTA:` lines are deterministically sorted lexicographically and rendered once per repo aggregation.
 
 Wiring drift diagnostics:
 - one line per `(reason, path)` for wiring files (no duplicate path variants).

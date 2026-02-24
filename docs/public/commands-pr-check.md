@@ -28,6 +28,9 @@ bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only 
 
 - Delta lines to `stderr`:
   - `pr-delta: <CLASS>: <CATEGORY>: <CHANGE>: <KEY>`
+  - includes `_shared` policy deltas keyed as:
+    - `<projectRoot>:_shared:<groupId:artifactId>@<version>`
+    - changed version form: `@<old>-><new>`
 - Governance signal lines to `stdout` (informational, non-failing):
   - `pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: <relative/path>: <implClassFqcn> -> <sortedGeneratedPackageCsv>`
 - Port-impl containment lines (when violated):
@@ -38,9 +41,13 @@ bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only 
   - `stderr`: `pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED`
   - `stdout`: `pr-check: OK: NO_BOUNDARY_EXPANSION`
 - Deterministic sort precedence for class, category, change, key.
+- Shared-policy delta classing is frozen:
+  - `ADDED` / `CHANGED` => `BOUNDARY_EXPANDING`
+  - `REMOVED` => `ORDINARY`
 - Port-impl containment findings are deterministically sorted by path, rule, then detail.
 - Governance signal lines are deterministically sorted by path, impl class, then package CSV.
 - `pr-check --all` success output may include an aggregated `GOVERNANCE SIGNALS:` section after block sections and before `SUMMARY`.
+- `pr-check --all` may include a single repo-level `REPO DELTA:` section (before `SUMMARY`) for shared-policy deltas; these lines are emitted once per project root (no per-block duplication).
 - Multi-block marker contract:
   - marker text is exact: `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
   - valid only for files under `src/main/java/blocks/_shared/**`
@@ -56,7 +63,7 @@ Implementation note:
 - `0` no boundary-expanding deltas
 - `5` boundary-expanding deltas found
 - `7` structural bypass (`CODE=BOUNDARY_BYPASS`)
-- `2` validation failure
+- `2` validation failure (including shared policy parse/schema failure: `CODE=POLICY_INVALID`, `PATH=spec/_shared.policy.yaml`)
 - `64` usage failure
 - `70` internal failure
 - `74` IO or git failure

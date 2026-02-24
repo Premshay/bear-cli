@@ -5,6 +5,8 @@ import com.bear.kernel.ir.BearIrNormalizer;
 import com.bear.kernel.ir.BearIrParser;
 import com.bear.kernel.ir.BearIrValidationException;
 import com.bear.kernel.ir.BearIrValidator;
+import com.bear.kernel.policy.SharedAllowedDepsPolicyException;
+import com.bear.kernel.policy.SharedAllowedDepsPolicyParser;
 import com.bear.kernel.target.JvmTarget;
 
 import java.io.IOException;
@@ -31,6 +33,8 @@ final class CheckCommandService {
     private static final String CONTAINMENT_REQUIRED_PATH = "build/generated/bear/config/containment-required.json";
     private static final String CONTAINMENT_SKIP_REASON = "no_selected_blocks_with_impl_allowedDeps";
     private static final String CONTAINMENT_MARKER_DIR = "build/bear/containment";
+    private static final String SHARED_POLICY_PATH = "spec/_shared.policy.yaml";
+    private static final String SHARED_SOURCE_ROOT = "src/main/java/blocks/_shared";
     private static final int WIRING_DETAIL_LIMIT = 20;
     private static final String RUNTIME_LEGACY_PREFIX = "runtime/src/main/java/com/bear/generated/runtime/";
     private static final String RUNTIME_CANONICAL_PREFIX = "src/main/java/com/bear/generated/runtime/";
@@ -88,7 +92,7 @@ final class CheckCommandService {
             BearIr normalized = normalizer.normalize(ir);
             boolean considerContainmentSurfaces = considerContainmentSurfacesOverride != null
                 ? considerContainmentSurfacesOverride
-                : hasAllowedDeps(normalized);
+                : hasAllowedDeps(normalized) || sharedContainmentInScope(projectRoot);
             BlockIdentityResolution identity = expectedBlockKey == null
                 ? BlockIdentityResolver.resolveSingleCommandIdentity(irFile, projectRoot, normalized.block().name())
                 : BlockIdentityResolver.resolveIndexIdentity(
@@ -481,6 +485,28 @@ final class CheckCommandService {
                     ioLine
                 );
             }
+            if (testResult.status() == ProjectTestStatus.SHARED_DEPS_VIOLATION) {
+                String sharedLine = testResult.firstSharedDepsViolationLine() != null
+                    ? testResult.firstSharedDepsViolationLine()
+                    : ProjectTestRunner.firstSharedDepsViolationLine(testResult.output());
+                String violationLine = "check: CONTAINMENT_REQUIRED: SHARED_DEPS_VIOLATION: "
+                    + projectRoot.toString().replace('\\', '/')
+                    + ":_shared";
+                if (sharedLine != null && !sharedLine.isBlank()) {
+                    violationLine += ": " + sharedLine;
+                }
+                diagnostics.add(violationLine);
+                diagnostics.addAll(CliText.tailLines(testResult.output()));
+                return checkFailure(
+                    CliCodes.EXIT_IO,
+                    diagnostics,
+                    "CONTAINMENT",
+                    CliCodes.CONTAINMENT_NOT_VERIFIED,
+                    SHARED_POLICY_PATH,
+                    "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun Gradle containment build/check.",
+                    violationLine
+                );
+            }
             if (testResult.status() == ProjectTestStatus.FAILED) {
                 diagnostics.add("check: TEST_FAILED: project tests failed");
                 diagnostics.addAll(CliText.tailLines(testResult.output()));
@@ -644,6 +670,25 @@ final class CheckCommandService {
         if (!considerContainmentSurfaces) {
             return null;
         }
+        Path sharedPolicyPath = projectRoot.resolve(SHARED_POLICY_PATH);
+        if (Files.isRegularFile(sharedPolicyPath)) {
+            SharedAllowedDepsPolicyParser parser = new SharedAllowedDepsPolicyParser();
+            try {
+                parser.parse(sharedPolicyPath);
+            } catch (SharedAllowedDepsPolicyException e) {
+                String line = "check: POLICY_INVALID: " + e.reasonCode();
+                diagnostics.add(line);
+                return checkFailure(
+                    CliCodes.EXIT_VALIDATION,
+                    diagnostics,
+                    "VALIDATION",
+                    CliCodes.POLICY_INVALID,
+                    SHARED_POLICY_PATH,
+                    "Fix `spec/_shared.policy.yaml` (version/scope/schema and pinned allowedDeps) and rerun `bear check`.",
+                    line
+                );
+            }
+        }
         Path gradlew = projectRoot.resolve("gradlew");
         Path gradlewBat = projectRoot.resolve("gradlew.bat");
         boolean hasWrapper = Files.isRegularFile(gradlew) || Files.isRegularFile(gradlewBat);
@@ -656,7 +701,7 @@ final class CheckCommandService {
                 "CONTAINMENT",
                 CliCodes.CONTAINMENT_UNSUPPORTED_TARGET,
                 "project.root",
-                "Allowed dependency containment in P2 requires Java+Gradle with wrapper at project root; remove `impl.allowedDeps` or use supported target, then rerun `bear check`.",
+                "Containment enforcement in P2 requires Java+Gradle with wrapper at project root; remove `impl.allowedDeps`/`spec/_shared.policy.yaml` scope usage or use supported target, then rerun `bear check`.",
                 line
             );
         }
@@ -780,6 +825,24 @@ final class CheckCommandService {
         return ir.block().impl() != null
             && ir.block().impl().allowedDeps() != null
             && !ir.block().impl().allowedDeps().isEmpty();
+    }
+
+    static boolean sharedContainmentInScope(Path projectRoot) {
+        return Files.isRegularFile(projectRoot.resolve(SHARED_POLICY_PATH)) || hasSharedJavaSources(projectRoot);
+    }
+
+    private static boolean hasSharedJavaSources(Path projectRoot) {
+        Path sharedRoot = projectRoot.resolve(SHARED_SOURCE_ROOT);
+        if (!Files.isDirectory(sharedRoot)) {
+            return false;
+        }
+        try (var stream = Files.walk(sharedRoot)) {
+            return stream
+                .filter(Files::isRegularFile)
+                .anyMatch(path -> path.getFileName().toString().endsWith(".java"));
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     static boolean blockDeclaresAllowedDeps(Path irFile) {

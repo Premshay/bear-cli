@@ -54,13 +54,23 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `_shared` allowedDeps policy (path-scoped shared policy, no IR schema changes; next after core containment hardening)
-2. Generated structural tests and cross-target parity follow-up
-3. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
+1. Generated structural tests and cross-target parity follow-up
+2. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
 
 ## Recently Completed (P2)
 
-1. `Wiring drift diagnostics` (deterministic canonical wiring paths + bounded detail)
+1. `_shared` allowedDeps policy (path-scoped, containment-enforced, no IR schema changes)
+   - added strict kernel-owned parser for `spec/_shared.policy.yaml` (`version: v1`, `scope: shared`, deterministic normalized deps).
+   - `_shared` containment scope is active per `projectRoot` when policy exists or `_shared` Java sources exist (in addition to selected `impl.allowedDeps` blocks).
+   - missing `_shared` policy in-scope defaults to JDK-only allowlist.
+   - generated containment index/markers include `_shared` only when in scope.
+   - `pr-check` now classifies shared-policy deltas:
+     - add/change => `BOUNDARY_EXPANDING`
+     - remove => `ORDINARY`
+   - `pr-check --all` renders shared-policy deltas once in repo-level `REPO DELTA:` section before `SUMMARY`.
+   - shared containment compile violations are mapped to containment lane (`exit 74`, `CODE=CONTAINMENT_NOT_VERIFIED`) with shared-policy-specific remediation.
+
+2. `Wiring drift diagnostics` (deterministic canonical wiring paths + bounded detail)
    - wiring drift now reports canonical repo-relative paths:
      - `build/generated/bear/wiring/<blockKey>.wiring.json`
    - drift output no longer emits duplicate wiring path variants.
@@ -68,12 +78,12 @@ Preview standing note:
    - wiring drift detail ordering is frozen (`MISSING_BASELINE > REMOVED > CHANGED > ADDED`) and capped to 20 entries with deterministic overflow suffix.
    - exit taxonomy/envelopes/CLI surface unchanged.
 
-2. `General agent done-gate hardening` (`check --all` + `pr-check --all --base <ref>`)
+3. `General agent done-gate hardening` (`check --all` + `pr-check --all --base <ref>`)
    - package agent workflow now requires dual-gate completion evidence before reporting done.
    - public command/context docs aligned to require both local gates as completion evidence.
    - CI remains authoritative remote `pr-check`; local `pr-check` required for fast governance feedback.
 
-3. `Multi-block port implementer guard` (`MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
+4. `Multi-block port implementer guard` (`MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
    - added structural bypass rule for classes implementing generated `*Port` interfaces across multiple generated block packages.
    - marker exception contract finalized:
      - exact marker line `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
@@ -83,8 +93,8 @@ Preview standing note:
    - dedupe lock: when `PORT_IMPL_OUTSIDE_GOVERNED_ROOT` exists for a file, multi-block findings for that file are suppressed.
    - enforced via `check`/`check --all`/`pr-check` in bypass lane (`exit=7`, `CODE=BOUNDARY_BYPASS`).
 
-4. `Declared allowed deps containment strict marker semantics` (selection-gated)
-   - containment verification now runs only when selected blocks for a `projectRoot` include at least one `impl.allowedDeps` block.
+5. `Declared allowed deps containment strict marker semantics` (selection-gated)
+   - baseline selection-gated containment semantics shipped first; later extended by `_shared` policy/source scope in item `1` above.
    - skip mode is non-failing for containment artifacts/markers and emits deterministic info only when required index exists+parses+non-empty.
    - aggregate marker strictness:
      - `build/bear/containment/applied.marker` must match required hash and canonical `blocks=` CSV.
@@ -166,12 +176,13 @@ Contract:
 - keep one canonical remediation step (`bear fix` or compile/regenerate path) in envelope.
 - do not change exit taxonomy for drift.
 
-### 4) `_shared` allowedDeps policy (`P2`, queued after core allowedDeps stabilization)
+### 4) `_shared` allowedDeps policy (`P2` completed)
 
 Direction lock:
 - no IR schema changes in this slice.
-- path-scoped shared policy under `spec/_shared.policy.yaml` is acceptable follow-up design.
-- treat as boundary/governance surface change in `pr-check`.
+- path-scoped shared policy is implemented at `spec/_shared.policy.yaml`.
+- shared policy add/change are boundary-expanding in `pr-check`; removal is ordinary.
+- `pr-check --all` renders shared-policy deltas once in `REPO DELTA:` before `SUMMARY`.
 
 ## Backlog Buckets (P1/P2/P3)
 

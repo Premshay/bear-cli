@@ -98,6 +98,105 @@ class JvmTargetTest {
     }
 
     @Test
+    void compileIncludesSharedContainmentUnitWhenPolicyExists(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        Path policy = tempDir.resolve("spec/_shared.policy.yaml");
+        Files.createDirectories(policy.getParent());
+        Files.writeString(
+            policy,
+            ""
+                + "version: v1\n"
+                + "scope: shared\n"
+                + "impl:\n"
+                + "  allowedDeps:\n"
+                + "    - maven: com.fasterxml.jackson.core:jackson-databind\n"
+                + "      version: 2.17.2\n"
+        );
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        target.compile(normalizer.normalize(ir), tempDir, "withdraw");
+
+        String index = Files.readString(tempDir.resolve("build/generated/bear/config/containment-required.json"));
+        assertTrue(index.contains("\"blockKey\":\"_shared\""));
+        assertTrue(Files.isRegularFile(tempDir.resolve("build/generated/bear/config/allowed-deps/_shared.json")));
+    }
+
+    @Test
+    void compileIncludesSharedContainmentUnitWhenSharedSourcesExist(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        Path sharedSource = tempDir.resolve("src/main/java/blocks/_shared/SharedOnly.java");
+        Files.createDirectories(sharedSource.getParent());
+        Files.writeString(sharedSource, "package blocks._shared;\npublic final class SharedOnly {}\n");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        target.compile(normalizer.normalize(ir), tempDir, "withdraw");
+
+        String index = Files.readString(tempDir.resolve("build/generated/bear/config/containment-required.json"));
+        assertTrue(index.contains("\"blockKey\":\"_shared\""));
+        String sharedConfig = Files.readString(tempDir.resolve("build/generated/bear/config/allowed-deps/_shared.json"));
+        assertTrue(sharedConfig.contains("\"allowedDeps\":[]"));
+    }
+
+    @Test
+    void compileOmitsSharedContainmentUnitWhenOutOfScope(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        target.compile(normalizer.normalize(ir), tempDir, "withdraw");
+
+        String index = Files.readString(tempDir.resolve("build/generated/bear/config/containment-required.json"));
+        assertFalse(index.contains("\"blockKey\":\"_shared\""));
+        assertFalse(Files.exists(tempDir.resolve("build/generated/bear/config/allowed-deps/_shared.json")));
+    }
+
+    @Test
+    void compileContainmentGradleEntrypointWiresSharedClasspathContracts(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        Path sharedSource = tempDir.resolve("src/main/java/blocks/_shared/SharedOnly.java");
+        Files.createDirectories(sharedSource.getParent());
+        Files.writeString(sharedSource, "package blocks._shared;\npublic final class SharedOnly {}\n");
+
+        BearIrParser parser = new BearIrParser();
+        BearIrValidator validator = new BearIrValidator();
+        BearIrNormalizer normalizer = new BearIrNormalizer();
+        JvmTarget target = new JvmTarget();
+
+        BearIr ir = parser.parse(fixture);
+        validator.validate(ir);
+        target.compile(normalizer.normalize(ir), tempDir, "withdraw");
+
+        String entrypoint = Files.readString(tempDir.resolve("build/generated/bear/gradle/bear-containment.gradle"));
+        assertTrue(entrypoint.contains("def isSharedUnit = (blockKey == '_shared')"));
+        assertTrue(entrypoint.contains("file(\"$buildDir/bear/shared-classes/_shared\")"));
+        assertTrue(entrypoint.contains("dependsOn(compileTaskName)"));
+        assertTrue(entrypoint.contains("classpath = classpath + files(outputDir)"));
+        assertTrue(entrypoint.contains("testSourceSet.compileClasspath += files(outputDir)"));
+        assertTrue(entrypoint.contains("testSourceSet.runtimeClasspath += files(outputDir)"));
+    }
+
+    @Test
     void generateWiringOnlyMatchesCompileWiringBytes(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");

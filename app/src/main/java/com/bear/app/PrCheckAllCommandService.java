@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 
 final class PrCheckAllCommandService {
     private PrCheckAllCommandService() {
@@ -89,10 +90,29 @@ final class PrCheckAllCommandService {
             );
         }
 
+        TreeMap<String, PrCheckCommandService.SharedPolicyDeltaComputation> sharedByRoot = new TreeMap<>();
+        for (BlockIndexEntry block : selected) {
+            if (!block.enabled()) {
+                continue;
+            }
+            sharedByRoot.computeIfAbsent(
+                block.projectRoot(),
+                root -> PrCheckCommandService.computeSharedPolicyDeltasForProjectRoot(
+                    options.repoRoot().resolve(root).normalize(),
+                    options.baseRef(),
+                    root
+                )
+            );
+        }
         List<BlockExecutionResult> blockResults = new ArrayList<>();
         for (BlockIndexEntry block : selected) {
             if (!block.enabled()) {
                 blockResults.add(BearCli.skipBlock(block, "DISABLED"));
+                continue;
+            }
+            PrCheckCommandService.SharedPolicyDeltaComputation sharedComputation = sharedByRoot.get(block.projectRoot());
+            if (sharedComputation != null && sharedComputation.failureResult() != null) {
+                blockResults.add(BearCli.toPrBlockResult(block, sharedComputation.failureResult()));
                 continue;
             }
             String mappingError = BearCli.validateIndexIrNameMatch(
@@ -118,11 +138,61 @@ final class PrCheckAllCommandService {
                 ));
                 continue;
             }
-            PrCheckResult prResult = PrCheckCommandService.executePrCheck(options.repoRoot(), block.ir(), options.baseRef());
+            PrCheckResult prResult = PrCheckCommandService.executePrCheck(
+                options.repoRoot(),
+                block.ir(),
+                options.baseRef(),
+                false,
+                block.projectRoot()
+            );
             blockResults.add(BearCli.toPrBlockResult(block, prResult));
         }
 
-        RepoAggregationResult summary = AllModeAggregation.aggregatePrResults(blockResults);
+        List<String> repoDeltaLines = new ArrayList<>();
+        int aggregatedExitCode = CliCodes.EXIT_OK;
+        int aggregatedRank = AllModeAggregation.severityRankPr(aggregatedExitCode);
+        for (PrCheckCommandService.SharedPolicyDeltaComputation computation : sharedByRoot.values()) {
+            if (computation.failureResult() != null) {
+                int candidateRank = AllModeAggregation.severityRankPr(computation.failureResult().exitCode());
+                if (candidateRank < aggregatedRank) {
+                    aggregatedRank = candidateRank;
+                    aggregatedExitCode = computation.failureResult().exitCode();
+                }
+                continue;
+            }
+            for (PrDelta delta : computation.deltas()) {
+                repoDeltaLines.add(
+                    "pr-delta: " + delta.clazz().label + ": " + delta.category().label + ": " + delta.change().label + ": " + delta.key()
+                );
+            }
+            if (computation.hasBoundary()) {
+                int candidateRank = AllModeAggregation.severityRankPr(CliCodes.EXIT_BOUNDARY_EXPANSION);
+                if (candidateRank < aggregatedRank) {
+                    aggregatedRank = candidateRank;
+                    aggregatedExitCode = CliCodes.EXIT_BOUNDARY_EXPANSION;
+                }
+            }
+        }
+        repoDeltaLines.sort(String::compareTo);
+
+        RepoAggregationResult summaryBase = AllModeAggregation.aggregatePrResults(blockResults);
+        int finalExitCode = summaryBase.exitCode();
+        if (AllModeAggregation.severityRankPr(aggregatedExitCode) < AllModeAggregation.severityRankPr(finalExitCode)) {
+            finalExitCode = aggregatedExitCode;
+        }
+        RepoAggregationResult summary = new RepoAggregationResult(
+            finalExitCode,
+            summaryBase.total(),
+            summaryBase.checked(),
+            summaryBase.passed(),
+            summaryBase.failed(),
+            summaryBase.skipped(),
+            summaryBase.failFastTriggered(),
+            summaryBase.rootReachFailed(),
+            summaryBase.rootTestFailed(),
+            summaryBase.rootTestSkippedDueToReach(),
+            List.copyOf(repoDeltaLines)
+        );
         List<String> lines = AllModeRenderer.renderPrAllOutput(blockResults, summary);
         if (summary.exitCode() == CliCodes.EXIT_OK) {
             CliText.printLines(out, lines);

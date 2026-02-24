@@ -47,10 +47,15 @@ Runtime distribution note:
 Containment note (v1 preview):
 - if IR declares `block.impl.allowedDeps`, Java+Gradle projects must apply generated containment entrypoint:
   - `build/generated/bear/gradle/bear-containment.gradle`
-- `bear check` verifies containment only when selected blocks in that `projectRoot` include at least one `impl.allowedDeps` block.
+- containment verification is active per `projectRoot` when any is true:
+  - selected blocks include at least one `impl.allowedDeps` block
+  - `spec/_shared.policy.yaml` exists
+  - `src/main/java/blocks/_shared/**` contains `.java` sources
+- `_shared` policy is path-scoped at `spec/_shared.policy.yaml`; if missing while `_shared` is in scope, default allowlist is JDK-only (`allowedDeps=[]`).
 - when verification is active, `bear check` requires:
   - aggregate marker `build/bear/containment/applied.marker` with matching `hash=` and canonical `blocks=` set.
   - per-block marker `build/bear/containment/<blockKey>.applied.marker` for each required block key (`block=` + `hash=` must match).
+- `_shared` allowlist mismatches are reported as containment-not-verified and remediate by updating `spec/_shared.policy.yaml` (pinned dep) or removing external `_shared` dependency usage.
 - `bear check` does not invoke Gradle automatically.
 
 Semantic context included in package docs:

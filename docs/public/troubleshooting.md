@@ -20,6 +20,7 @@ Likely cause: malformed policy contract file.
 Files covered:
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
+- `spec/_shared.policy.yaml`
 
 Fix:
 
@@ -108,6 +109,7 @@ Symptom: `check` outputs:
 
 Meaning:
 - selected block set for this invocation does not declare `impl.allowedDeps`,
+- `_shared` policy and `_shared` Java-source scope are not active for this selected set,
 - containment-required index exists with non-empty required block set,
 - containment verification surfaces are intentionally not enforced for this selected set.
 
@@ -122,10 +124,16 @@ Symptom: `check: CONTAINMENT_REQUIRED: ...` with exit `74`.
 Likely cause:
 - aggregate marker missing/stale (`build/bear/containment/applied.marker`), or
 - per-block marker missing/stale (`build/bear/containment/<blockKey>.applied.marker`).
+- `_shared` containment compile failed against path-scoped allowlist (`SHARED_DEPS_VIOLATION`).
 Fix:
 
 1. Run Gradle build once to refresh containment markers for the current generated containment requirement.
 2. Re-run `bear check`.
+
+For `_shared` deps violations:
+1. Add the dependency with pinned version in `spec/_shared.policy.yaml`, or
+2. remove external dependency usage from `src/main/java/blocks/_shared/**`,
+3. rerun Gradle containment build/check.
 
 Marker strictness:
 - aggregate marker must match both `hash=<sha256(containment-required.json)>` and canonical `blocks=<csv>` from required set.
@@ -135,6 +143,9 @@ Marker strictness:
 
 Symptom: `pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED` and exit `5`.
 Likely cause: IR change widened boundary contract.
+Shared-policy note:
+- `_shared` policy add/change deltas are boundary-expanding.
+- `_shared` policy removal deltas are ordinary.
 Fix:
 
 1. Review `pr-delta:` lines.

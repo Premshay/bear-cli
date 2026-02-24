@@ -61,13 +61,22 @@ Key line formats:
   - `check: INFO: CONTAINMENT_SURFACES_SKIPPED_FOR_SELECTION: projectRoot=<root>: reason=no_selected_blocks_with_impl_allowedDeps`
 
 Containment verification semantics:
-- containment verification runs only when selected blocks for the invocation include at least one block with `impl.allowedDeps` in that `projectRoot`.
+- containment verification runs per `projectRoot` when any is true:
+  - selected block set includes at least one block with `impl.allowedDeps`, or
+  - `spec/_shared.policy.yaml` exists, or
+  - `src/main/java/blocks/_shared/**` contains at least one `.java` source file.
 - in skip mode (`considerContainmentSurfaces=false`), containment index/marker state does not fail the command.
 - when containment verification is active:
   - generated containment artifacts (`build/generated/bear/config/containment-required.json`, `build/generated/bear/gradle/bear-containment.gradle`) fail in drift lane (`exit 3`) with compile remediation.
   - handshake markers fail in containment-not-verified lane (`exit 74`):
     - aggregate marker: `build/bear/containment/applied.marker` must match both required hash and canonical `blocks=` CSV.
     - per-block markers: `build/bear/containment/<blockKey>.applied.marker` must exist and match `block=<blockKey>` + required hash.
+  - `_shared` policy is path-scoped:
+    - file: `spec/_shared.policy.yaml`
+    - if missing while `_shared` sources are in scope, `_shared` uses JDK-only default allowlist (`allowedDeps=[]`)
+  - `_shared` containment compile violations are surfaced in containment lane (`exit 74`) with remediation to:
+    - add pinned dependency to `spec/_shared.policy.yaml`, or
+    - remove external dependency usage from `src/main/java/blocks/_shared/**`.
 
 `BOUNDARY_BYPASS` seam coverage for governed logic includes:
 - direct governed impl usage in Java source (`src/main/**`)

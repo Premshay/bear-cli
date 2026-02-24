@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 
 final class ProjectTestRunner {
     private static final String INVARIANT_MARKER_PREFIX = "BEAR_INVARIANT_VIOLATION|";
+    private static final String SHARED_DEPS_VIOLATION_MARKER_PREFIX = "BEAR_SHARED_DEPS_VIOLATION|";
     private static final List<String> INVARIANT_MARKER_KEYS =
         List.of("block", "kind", "field", "observed", "rule");
     private static final long RETRY_BACKOFF_MILLIS = 200L;
@@ -194,6 +195,9 @@ final class ProjectTestRunner {
         if (isGradleWrapperBootstrapIoOutput(output, gradleUserHome)) {
             return ProjectTestStatus.BOOTSTRAP_IO;
         }
+        if (firstSharedDepsViolationLine(output) != null) {
+            return ProjectTestStatus.SHARED_DEPS_VIOLATION;
+        }
         if (isInvariantViolationOutput(output)) {
             return ProjectTestStatus.INVARIANT_VIOLATION;
         }
@@ -208,6 +212,7 @@ final class ProjectTestRunner {
             attemptTrail,
             firstLockLineAcrossAttempts(attempts),
             firstBootstrapLineAcrossAttempts(attempts),
+            firstSharedDepsViolationLineAcrossAttempts(attempts),
             cacheModeForLabel(latest.label()),
             fallbackToUserCache(attempts)
         );
@@ -245,6 +250,16 @@ final class ProjectTestRunner {
     private static String firstBootstrapLineAcrossAttempts(List<ProjectTestAttempt> attempts) {
         for (ProjectTestAttempt attempt : attempts) {
             String line = firstGradleBootstrapIoLine(attempt.output(), attempt.gradleUserHome());
+            if (line != null) {
+                return line;
+            }
+        }
+        return null;
+    }
+
+    private static String firstSharedDepsViolationLineAcrossAttempts(List<ProjectTestAttempt> attempts) {
+        for (ProjectTestAttempt attempt : attempts) {
+            String line = firstSharedDepsViolationLine(attempt.output());
             if (line != null) {
                 return line;
             }
@@ -602,6 +617,16 @@ final class ProjectTestRunner {
 
     static boolean isInvariantViolationOutput(String output) {
         return firstInvariantViolationLine(output) != null;
+    }
+
+    static String firstSharedDepsViolationLine(String output) {
+        for (String line : CliText.normalizeLf(output).lines().toList()) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith(SHARED_DEPS_VIOLATION_MARKER_PREFIX)) {
+                return trimmed;
+            }
+        }
+        return null;
     }
 
     static String firstInvariantViolationLine(String output) {

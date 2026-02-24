@@ -5,6 +5,9 @@ import com.bear.kernel.ir.BearIrNormalizer;
 import com.bear.kernel.ir.BearIrParser;
 import com.bear.kernel.ir.BearIrValidationException;
 import com.bear.kernel.ir.BearIrValidator;
+import com.bear.kernel.policy.SharedAllowedDepsPolicy;
+import com.bear.kernel.policy.SharedAllowedDepsPolicyException;
+import com.bear.kernel.policy.SharedAllowedDepsPolicyParser;
 import com.bear.kernel.target.JvmTarget;
 
 import java.io.IOException;
@@ -15,6 +18,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 
@@ -22,12 +27,23 @@ final class PrCheckCommandService {
     private static final String TEMP_BASE_IR_RELATIVE = "work/base/base.bear.yaml";
     private static final String TEMP_BASE_WIRING_ROOT_RELATIVE = "generated/base";
     private static final String TEMP_HEAD_WIRING_ROOT_RELATIVE = "generated/head";
+    private static final String SHARED_POLICY_RELATIVE_PATH = SharedAllowedDepsPolicy.DEFAULT_RELATIVE_PATH;
     private static volatile Path lastTempRootForTest;
 
     private PrCheckCommandService() {
     }
 
     static PrCheckResult executePrCheck(Path projectRoot, String repoRelativePath, String baseRef) {
+        return executePrCheck(projectRoot, repoRelativePath, baseRef, true, ".");
+    }
+
+    static PrCheckResult executePrCheck(
+        Path projectRoot,
+        String repoRelativePath,
+        String baseRef,
+        boolean includeSharedPolicyDeltas,
+        String projectRootLabel
+    ) {
         Path tempRoot = null;
         try {
             lastTempRootForTest = null;
@@ -290,7 +306,19 @@ final class PrCheckCommandService {
                 stdoutLines.add(line);
             }
 
-            List<PrDelta> deltas = PrDeltaClassifier.computePrDeltas(base, head);
+            List<PrDelta> deltas = new ArrayList<>(PrDeltaClassifier.computePrDeltas(base, head));
+            if (includeSharedPolicyDeltas) {
+                SharedPolicyDeltaComputation sharedDeltaComputation = computeSharedPolicyDeltas(projectRoot, mergeBase, projectRootLabel);
+                if (sharedDeltaComputation.failureResult() != null) {
+                    return sharedDeltaComputation.failureResult();
+                }
+                deltas.addAll(sharedDeltaComputation.deltas());
+            }
+            deltas.sort(Comparator
+                .comparing((PrDelta delta) -> delta.clazz().order)
+                .thenComparing(delta -> delta.category().order)
+                .thenComparing(delta -> delta.change().order)
+                .thenComparing(PrDelta::key));
             List<String> deltaLines = new ArrayList<>();
             for (PrDelta delta : deltas) {
                 String line = "pr-delta: " + delta.clazz().label + ": " + delta.category().label + ": " + delta.change().label + ": " + delta.key();
@@ -489,6 +517,273 @@ final class PrCheckCommandService {
         return "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses.";
     }
 
+    static SharedPolicyDeltaComputation computeSharedPolicyDeltasForProjectRoot(
+        Path projectRoot,
+        String baseRef,
+        String projectRootLabel
+    ) {
+        try {
+            GitResult isRepoResult = runGitForPrCheck(projectRoot, List.of("rev-parse", "--is-inside-work-tree"), "git.repo");
+            if (isRepoResult.exitCode() != 0 || !"true".equals(isRepoResult.stdout().trim())) {
+                return SharedPolicyDeltaComputation.failure(prFailure(
+                    CliCodes.EXIT_IO,
+                    List.of("pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot),
+                    "IO_ERROR",
+                    CliCodes.IO_GIT,
+                    "git.repo",
+                    "Run `bear pr-check` from a git working tree with a valid project path.",
+                    "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
+                    List.of(),
+                    false,
+                    false
+                ));
+            }
+            GitResult mergeBaseResult = runGitForPrCheck(projectRoot, List.of("merge-base", "HEAD", baseRef), "git.baseRef");
+            if (mergeBaseResult.exitCode() != 0) {
+                return SharedPolicyDeltaComputation.failure(prFailure(
+                    CliCodes.EXIT_IO,
+                    List.of("pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef),
+                    "IO_ERROR",
+                    CliCodes.IO_GIT,
+                    "git.baseRef",
+                    "Ensure base ref exists and is fetchable, then rerun `bear pr-check`.",
+                    "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
+                    List.of(),
+                    false,
+                    false
+                ));
+            }
+            String mergeBase = mergeBaseResult.stdout().trim();
+            if (mergeBase.isBlank()) {
+                return SharedPolicyDeltaComputation.failure(prFailure(
+                    CliCodes.EXIT_IO,
+                    List.of("pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base"),
+                    "IO_ERROR",
+                    CliCodes.IO_GIT,
+                    "git.baseRef",
+                    "Ensure base ref resolves to a merge base with HEAD, then rerun `bear pr-check`.",
+                    "pr-check: IO_ERROR: MERGE_BASE_EMPTY: unable to resolve merge base",
+                    List.of(),
+                    false,
+                    false
+                ));
+            }
+            return computeSharedPolicyDeltas(projectRoot, mergeBase, projectRootLabel);
+        } catch (PrCheckGitException e) {
+            return SharedPolicyDeltaComputation.failure(prFailure(
+                CliCodes.EXIT_IO,
+                List.of(e.legacyLine()),
+                "IO_ERROR",
+                CliCodes.IO_GIT,
+                e.pathLocator(),
+                "Resolve git invocation/base-reference issues and rerun `bear pr-check`.",
+                e.legacyLine(),
+                List.of(),
+                false,
+                false
+            ));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return SharedPolicyDeltaComputation.failure(prFailure(
+                CliCodes.EXIT_IO,
+                List.of("pr-check: IO_ERROR: INTERRUPTED"),
+                "IO_ERROR",
+                CliCodes.IO_GIT,
+                "git.repo",
+                "Retry `bear pr-check`; if interruption persists, rerun in a stable shell/CI environment.",
+                "pr-check: IO_ERROR: INTERRUPTED",
+                List.of(),
+                false,
+                false
+            ));
+        }
+    }
+
+    private static SharedPolicyDeltaComputation computeSharedPolicyDeltas(
+        Path projectRoot,
+        String mergeBase,
+        String projectRootLabel
+    ) {
+        SharedAllowedDepsPolicyParser policyParser = new SharedAllowedDepsPolicyParser();
+        String label = (projectRootLabel == null || projectRootLabel.isBlank()) ? "." : projectRootLabel;
+        SharedAllowedDepsPolicy headPolicy;
+        try {
+            headPolicy = policyParser.parse(projectRoot.resolve(SHARED_POLICY_RELATIVE_PATH));
+        } catch (SharedAllowedDepsPolicyException e) {
+            String line = "pr-check: POLICY_INVALID: " + e.reasonCode();
+            return SharedPolicyDeltaComputation.failure(prFailure(
+                CliCodes.EXIT_VALIDATION,
+                List.of(line),
+                "VALIDATION",
+                CliCodes.POLICY_INVALID,
+                SHARED_POLICY_RELATIVE_PATH,
+                "Fix `spec/_shared.policy.yaml` (version/scope/schema and pinned allowedDeps) and rerun `bear pr-check`.",
+                line,
+                List.of(),
+                false,
+                false
+            ));
+        } catch (IOException e) {
+            return SharedPolicyDeltaComputation.failure(prFailure(
+                CliCodes.EXIT_IO,
+                List.of("pr-check: IO_ERROR: INTERNAL_IO"),
+                "IO_ERROR",
+                CliCodes.IO_ERROR,
+                "internal",
+                "Ensure local filesystem paths are accessible, then rerun `bear pr-check`.",
+                "pr-check: IO_ERROR: INTERNAL_IO",
+                List.of(),
+                false,
+                false
+            ));
+        }
+
+        SharedAllowedDepsPolicy basePolicy = SharedAllowedDepsPolicy.empty();
+        try {
+            GitResult catFileResult = runGitForPrCheck(
+                projectRoot,
+                List.of("cat-file", "-e", mergeBase + ":" + SHARED_POLICY_RELATIVE_PATH),
+                SHARED_POLICY_RELATIVE_PATH
+            );
+            if (catFileResult.exitCode() != 0) {
+                GitResult existsResult = runGitForPrCheck(
+                    projectRoot,
+                    List.of("ls-tree", "--name-only", mergeBase, "--", SHARED_POLICY_RELATIVE_PATH),
+                    SHARED_POLICY_RELATIVE_PATH
+                );
+                if (existsResult.exitCode() != 0) {
+                    return SharedPolicyDeltaComputation.failure(prFailure(
+                        CliCodes.EXIT_IO,
+                        List.of("pr-check: IO_ERROR: BASE_POLICY_LOOKUP_FAILED: " + SHARED_POLICY_RELATIVE_PATH),
+                        "IO_ERROR",
+                        CliCodes.IO_GIT,
+                        SHARED_POLICY_RELATIVE_PATH,
+                        "Ensure base ref and shared policy path are readable in git history, then rerun `bear pr-check`.",
+                        "pr-check: IO_ERROR: BASE_POLICY_LOOKUP_FAILED: " + SHARED_POLICY_RELATIVE_PATH,
+                        List.of(),
+                        false,
+                        false
+                    ));
+                }
+            } else {
+                GitResult showResult = runGitForPrCheck(
+                    projectRoot,
+                    List.of("show", mergeBase + ":" + SHARED_POLICY_RELATIVE_PATH),
+                    SHARED_POLICY_RELATIVE_PATH
+                );
+                if (showResult.exitCode() != 0) {
+                    return SharedPolicyDeltaComputation.failure(prFailure(
+                        CliCodes.EXIT_IO,
+                        List.of("pr-check: IO_ERROR: BASE_POLICY_READ_FAILED: " + SHARED_POLICY_RELATIVE_PATH),
+                        "IO_ERROR",
+                        CliCodes.IO_GIT,
+                        SHARED_POLICY_RELATIVE_PATH,
+                        "Ensure base shared policy snapshot is readable from git history, then rerun `bear pr-check`.",
+                        "pr-check: IO_ERROR: BASE_POLICY_READ_FAILED: " + SHARED_POLICY_RELATIVE_PATH,
+                        List.of(),
+                        false,
+                        false
+                    ));
+                }
+                try {
+                    basePolicy = policyParser.parseContent(showResult.stdout(), SHARED_POLICY_RELATIVE_PATH + "@base");
+                } catch (SharedAllowedDepsPolicyException e) {
+                    String line = "pr-check: POLICY_INVALID: " + e.reasonCode();
+                    return SharedPolicyDeltaComputation.failure(prFailure(
+                        CliCodes.EXIT_VALIDATION,
+                        List.of(line),
+                        "VALIDATION",
+                        CliCodes.POLICY_INVALID,
+                        SHARED_POLICY_RELATIVE_PATH,
+                        "Fix `spec/_shared.policy.yaml` (version/scope/schema and pinned allowedDeps) and rerun `bear pr-check`.",
+                        line,
+                        List.of(),
+                        false,
+                        false
+                    ));
+                }
+            }
+        } catch (PrCheckGitException e) {
+            return SharedPolicyDeltaComputation.failure(prFailure(
+                CliCodes.EXIT_IO,
+                List.of(e.legacyLine()),
+                "IO_ERROR",
+                CliCodes.IO_GIT,
+                e.pathLocator(),
+                "Resolve git invocation/base-reference issues and rerun `bear pr-check`.",
+                e.legacyLine(),
+                List.of(),
+                false,
+                false
+            ));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return SharedPolicyDeltaComputation.failure(prFailure(
+                CliCodes.EXIT_IO,
+                List.of("pr-check: IO_ERROR: INTERRUPTED"),
+                "IO_ERROR",
+                CliCodes.IO_GIT,
+                "git.repo",
+                "Retry `bear pr-check`; if interruption persists, rerun in a stable shell/CI environment.",
+                "pr-check: IO_ERROR: INTERRUPTED",
+                List.of(),
+                false,
+                false
+            ));
+        }
+
+        List<PrDelta> deltas = computeSharedPolicyPrDeltas(basePolicy.asMap(), headPolicy.asMap(), label);
+        return SharedPolicyDeltaComputation.success(deltas);
+    }
+
+    private static List<PrDelta> computeSharedPolicyPrDeltas(
+        Map<String, String> base,
+        Map<String, String> head,
+        String projectRootLabel
+    ) {
+        TreeSet<String> coordinates = new TreeSet<>();
+        coordinates.addAll(base.keySet());
+        coordinates.addAll(head.keySet());
+        ArrayList<PrDelta> deltas = new ArrayList<>();
+        for (String ga : coordinates) {
+            String keyPrefix = projectRootLabel + ":_shared:" + ga;
+            boolean inBase = base.containsKey(ga);
+            boolean inHead = head.containsKey(ga);
+            if (!inBase) {
+                deltas.add(new PrDelta(
+                    PrClass.BOUNDARY_EXPANDING,
+                    PrCategory.ALLOWED_DEPS,
+                    PrChange.ADDED,
+                    keyPrefix + "@" + head.get(ga)
+                ));
+                continue;
+            }
+            if (!inHead) {
+                deltas.add(new PrDelta(
+                    PrClass.ORDINARY,
+                    PrCategory.ALLOWED_DEPS,
+                    PrChange.REMOVED,
+                    keyPrefix + "@" + base.get(ga)
+                ));
+                continue;
+            }
+            if (!base.get(ga).equals(head.get(ga))) {
+                deltas.add(new PrDelta(
+                    PrClass.BOUNDARY_EXPANDING,
+                    PrCategory.ALLOWED_DEPS,
+                    PrChange.CHANGED,
+                    keyPrefix + "@" + base.get(ga) + "->" + head.get(ga)
+                ));
+            }
+        }
+        deltas.sort(Comparator
+            .comparing((PrDelta delta) -> delta.clazz().order)
+            .thenComparing(delta -> delta.category().order)
+            .thenComparing(delta -> delta.change().order)
+            .thenComparing(PrDelta::key));
+        return List.copyOf(deltas);
+    }
+
     private static GitResult runGit(Path projectRoot, List<String> gitArgs) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>();
         command.add("git");
@@ -534,6 +829,17 @@ final class PrCheckCommandService {
         Path value = lastTempRootForTest;
         lastTempRootForTest = null;
         return value;
+    }
+
+    record SharedPolicyDeltaComputation(List<PrDelta> deltas, boolean hasBoundary, PrCheckResult failureResult) {
+        static SharedPolicyDeltaComputation success(List<PrDelta> deltas) {
+            boolean hasBoundary = deltas.stream().anyMatch(delta -> delta.clazz() == PrClass.BOUNDARY_EXPANDING);
+            return new SharedPolicyDeltaComputation(List.copyOf(deltas), hasBoundary, null);
+        }
+
+        static SharedPolicyDeltaComputation failure(PrCheckResult result) {
+            return new SharedPolicyDeltaComputation(List.of(), false, result);
+        }
     }
 
     private static void deleteRecursivelyBestEffort(Path root) {

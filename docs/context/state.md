@@ -14,17 +14,40 @@ P2 feature delivery:
 - post-hard-break follow-through with explicit dual-gate agent completion evidence
 - preserve structural governance focus (no endpoint-per-block policy, no style policing)
 - declared deps containment strict marker semantics are now implemented with selection gating
-- prioritize `_shared` policy follow-up next
+- `_shared` allowedDeps policy contract is now implemented and under validation/docs sync
 - keep deterministic diagnostics high-signal and directly actionable
 
 ## Next Concrete Task
 
 next feature sequence (one-by-one):
-1. implement `_shared` allowedDeps policy contract after core deps stabilization
+1. close remaining P2 follow-ups (generated structural tests + cross-target parity)
 2. keep containment-lane smoke fixtures handy for future regressions (`exit 3` drift lane vs `exit 74` verification lane)
 3. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Implemented P2 `_shared` allowedDeps policy (final lock v2):
+  - added kernel-owned parser/normalizer for `spec/_shared.policy.yaml` with strict schema validation.
+  - integrated `_shared` as conditional containment unit in kernel generation:
+    - in scope when policy exists or `_shared` has `.java` sources
+    - omitted when out of scope
+    - deterministic `_shared` config/index emission
+  - generated containment Gradle entrypoint now includes `_shared` compile/classpath wiring and emits deterministic shared-violation marker line.
+  - `check` / `check --all` containment gating now includes `_shared` policy/source scope in addition to selected `impl.allowedDeps`.
+  - shared containment compile failures map to containment lane (`exit 74`, `CONTAINMENT_NOT_VERIFIED`) with shared-policy remediation (policy update or `_shared` dep removal).
+  - `pr-check` / `pr-check --all` now include shared-policy deltas:
+    - add/change => `BOUNDARY_EXPANDING`
+    - remove => `ORDINARY`
+    - malformed policy => `exit 2`, `CODE=POLICY_INVALID`, `PATH=spec/_shared.policy.yaml`
+    - `pr-check --all` renders shared policy changes once in `REPO DELTA:` before `SUMMARY`.
+  - tests added/updated:
+    - kernel parser tests (`SharedAllowedDepsPolicyParserTest`)
+    - kernel generation tests for `_shared` inclusion/omission and Gradle wiring (`JvmTargetTest`)
+    - app tests for containment gating (`_shared` policy/source/empty dir), shared violation mapping, and shared-policy pr-check deltas
+    - renderer/project-test runner coverage for repo delta placement and shared marker parsing.
+  - verification in-session:
+    - `.\gradlew.bat --no-daemon :kernel:test` (green)
+    - `.\gradlew.bat --no-daemon :app:test` (green)
 
 - Implemented `Wiring drift diagnostics` feature (deterministic, no semantics change):
   - canonical wiring drift path contract now uses repo-relative on-disk paths:

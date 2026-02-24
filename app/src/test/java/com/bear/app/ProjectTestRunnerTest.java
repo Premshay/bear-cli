@@ -58,6 +58,16 @@ class ProjectTestRunnerTest {
     }
 
     @Test
+    void sharedDepsViolationMarkerParsingIsDeterministic() {
+        String valid = "BEAR_SHARED_DEPS_VIOLATION|unit=_shared|task=compileBearImpl__shared";
+        assertTrue(ProjectTestRunner.firstSharedDepsViolationLine("line\n" + valid + "\nline2") != null);
+        assertEquals(valid, ProjectTestRunner.firstSharedDepsViolationLine("prefix\n" + valid + "\nline2"));
+
+        String wrongPrefix = "BEAR_SHARED_DEPS|unit=_shared|task=compileBearImpl__shared";
+        assertNull(ProjectTestRunner.firstSharedDepsViolationLine(wrongPrefix));
+    }
+
+    @Test
     void timeoutSecondsUsesPropertyWithSafeFallbacks() {
         String key = "bear.check.testTimeoutSeconds";
         String previous = System.getProperty(key);

@@ -240,6 +240,9 @@ Use when:
 
 Behavior:
 - exits `5` when boundary expansion is detected in IR delta classification
+- shared-policy deltas (`spec/_shared.policy.yaml`) are included:
+  - add/change => boundary-expanding
+  - remove => ordinary
 - exits `7` when structural bypass is detected (`CODE=BOUNDARY_BYPASS`)
   - triggered when implementations of generated `com.bear.generated.*Port` interfaces are outside governed roots
   - rationale: generated port implementations are boundary authority and must remain in governed roots; app-layer generated-port adapters are bypasses
@@ -256,6 +259,9 @@ Optional flags:
 - `--blocks <path>`
 - `--only <name1,name2,...>`
 - `--strict-orphans`
+
+Rendering note:
+- `pr-check --all` may print a repo-level `REPO DELTA:` section before `SUMMARY:` for shared-policy deltas (aggregated once per project root, no per-block duplication).
 
 ## Non-zero failure envelope
 
@@ -359,15 +365,26 @@ impl:
 Governance:
 - `bear pr-check` classifies allowed-deps add/version-change as `BOUNDARY_EXPANDING`
 - allowed-deps removal is `ORDINARY`
+- `_shared` policy deltas follow same classing:
+  - add/change => `BOUNDARY_EXPANDING`
+  - remove => `ORDINARY`
 
 Enforcement (`bear check`):
 - supported target: Java+Gradle with wrapper
+- containment scope per `projectRoot` is active when any is true:
+  - selected block set includes an `impl.allowedDeps` block
+  - `spec/_shared.policy.yaml` exists
+  - `src/main/java/blocks/_shared/**` contains `.java`
 - requires generated containment artifacts:
   - `build/generated/bear/gradle/bear-containment.gradle`
   - `build/generated/bear/config/containment-required.json`
   - `build/bear/containment/applied.marker`
 - marker hash must match containment index hash
 - `bear check` does not invoke Gradle; run Gradle build/test once after compile to refresh marker
+- `_shared` path-scoped policy:
+  - file: `spec/_shared.policy.yaml`
+  - if policy is missing while `_shared` sources are in scope, default is JDK-only (`allowedDeps=[]`)
+  - shared allowlist mismatch is reported as containment-not-verified with remediation to update `spec/_shared.policy.yaml` or remove external `_shared` dep usage
 
 Non-Gradle projects:
 - `pr-check` governance still works

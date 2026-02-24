@@ -823,7 +823,7 @@ class BearCliTest {
             check.stderr,
             "CONTAINMENT_UNSUPPORTED_TARGET",
             "project.root",
-            "Allowed dependency containment in P2 requires Java+Gradle with wrapper at project root; remove `impl.allowedDeps` or use supported target, then rerun `bear check`."
+            "Containment enforcement in P2 requires Java+Gradle with wrapper at project root; remove `impl.allowedDeps`/`spec/_shared.policy.yaml` scope usage or use supported target, then rerun `bear check`."
         );
     }
 
@@ -1092,6 +1092,131 @@ class BearCliTest {
     }
 
     @Test
+    void checkContainmentInScopeFromSharedPolicyOnlyRequiresMarkers(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Path policy = tempDir.resolve("spec/_shared.policy.yaml");
+        Files.createDirectories(policy.getParent());
+        Files.writeString(
+            policy,
+            ""
+                + "version: v1\n"
+                + "scope: shared\n"
+                + "impl:\n"
+                + "  allowedDeps: []\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(74, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: CONTAINMENT_REQUIRED: MARKER_MISSING: build/bear/containment/applied.marker"));
+    }
+
+    @Test
+    void checkContainmentInScopeFromSharedSourcesOnlyRequiresMarkers(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Path sharedSource = tempDir.resolve("src/main/java/blocks/_shared/SharedOnly.java");
+        Files.createDirectories(sharedSource.getParent());
+        Files.writeString(sharedSource, "package blocks._shared;\npublic final class SharedOnly {}\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(74, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: CONTAINMENT_REQUIRED: MARKER_MISSING: build/bear/containment/applied.marker"));
+    }
+
+    @Test
+    void checkDoesNotActivateContainmentForEmptySharedDirWithoutPolicy(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Files.createDirectories(tempDir.resolve("src/main/java/blocks/_shared"));
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+    }
+
+    @Test
+    void checkSharedPolicyInvalidFailsValidation(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Path policy = tempDir.resolve("spec/_shared.policy.yaml");
+        Files.createDirectories(policy.getParent());
+        Files.writeString(
+            policy,
+            ""
+                + "version: v1\n"
+                + "scope: not_shared\n"
+                + "impl:\n"
+                + "  allowedDeps: []\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(2, check.exitCode);
+        assertTrue(normalizeLf(check.stderr).contains("check: POLICY_INVALID: INVALID_SCOPE"));
+        assertFailureEnvelope(
+            check.stderr,
+            "POLICY_INVALID",
+            "spec/_shared.policy.yaml",
+            "Fix `spec/_shared.policy.yaml` (version/scope/schema and pinned allowedDeps) and rerun `bear check`."
+        );
+    }
+
+    @Test
+    void checkSharedDepsViolationFromProjectTestsUsesSharedPolicyRemediation(@TempDir Path tempDir) throws Exception {
+        Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
+        Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
+        assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeFreshContainmentMarkers(tempDir);
+        String marker = "BEAR_SHARED_DEPS_VIOLATION|unit=_shared|task=compileBearImpl__shared";
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho " + marker.replace("|", "^|") + "\r\nexit /b 1\r\n",
+            "#!/usr/bin/env sh\necho \"" + marker + "\"\nexit 1\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(74, check.exitCode);
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.contains("check: CONTAINMENT_REQUIRED: SHARED_DEPS_VIOLATION:"));
+        assertFailureEnvelope(
+            check.stderr,
+            "CONTAINMENT_NOT_VERIFIED",
+            "spec/_shared.policy.yaml",
+            "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun Gradle containment build/check."
+        );
+    }
+
+    @Test
     void checkEmitsContainmentSkipInfoWhenSelectionHasNoAllowedDepsAndRequirementIsNonEmpty(@TempDir Path tempDir) throws Exception {
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
@@ -1164,6 +1289,121 @@ class BearCliTest {
             "bear.blocks.yaml",
             "Review per-block results above and fix failing blocks, then rerun the command."
         );
+    }
+
+    @Test
+    void checkAllEnforcesContainmentWhenSharedPolicyExistsWithoutAllowedDeps(@TempDir Path tempDir) throws Exception {
+        Path specDir = tempDir.resolve("spec");
+        Files.createDirectories(specDir);
+        Path alphaIr = specDir.resolve("alpha.bear.yaml");
+        Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
+
+        Path projectRoot = tempDir.resolve("services/shared");
+        Files.createDirectories(projectRoot);
+        assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
+        writeWorkingBlockImpl(projectRoot, "alpha");
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        writeSharedPolicy(
+            projectRoot,
+            ""
+                + "version: v1\n"
+                + "scope: shared\n"
+                + "impl:\n"
+                + "  allowedDeps: []\n"
+        );
+
+        writeBlockIndex(tempDir, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/shared\n");
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", tempDir.toString() });
+        assertEquals(74, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: alpha"));
+        assertTrue(stderr.contains("DETAIL: check: CONTAINMENT_REQUIRED: MARKER_MISSING: build/bear/containment/applied.marker"));
+    }
+
+    @Test
+    void checkAllEnforcesContainmentWhenSharedSourcesExistWithoutAllowedDeps(@TempDir Path tempDir) throws Exception {
+        Path specDir = tempDir.resolve("spec");
+        Files.createDirectories(specDir);
+        Path alphaIr = specDir.resolve("alpha.bear.yaml");
+        Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
+
+        Path projectRoot = tempDir.resolve("services/shared");
+        Files.createDirectories(projectRoot);
+        assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
+        writeWorkingBlockImpl(projectRoot, "alpha");
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Path sharedSource = projectRoot.resolve("src/main/java/blocks/_shared/SharedOnly.java");
+        Files.createDirectories(sharedSource.getParent());
+        Files.writeString(sharedSource, "package blocks._shared;\npublic final class SharedOnly {}\n", StandardCharsets.UTF_8);
+
+        writeBlockIndex(tempDir, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/shared\n");
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", tempDir.toString() });
+        assertEquals(74, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: alpha"));
+        assertTrue(stderr.contains("DETAIL: check: CONTAINMENT_REQUIRED: MARKER_MISSING: build/bear/containment/applied.marker"));
+    }
+
+    @Test
+    void checkAllMapsSharedDepsViolationToContainmentLane(@TempDir Path tempDir) throws Exception {
+        Path specDir = tempDir.resolve("spec");
+        Files.createDirectories(specDir);
+        Path alphaIr = specDir.resolve("alpha.bear.yaml");
+        Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
+
+        Path projectRoot = tempDir.resolve("services/shared");
+        Files.createDirectories(projectRoot);
+        writeSharedPolicy(
+            projectRoot,
+            ""
+                + "version: v1\n"
+                + "scope: shared\n"
+                + "impl:\n"
+                + "  allowedDeps: []\n"
+        );
+        assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
+        writeWorkingBlockImpl(projectRoot, "alpha");
+        writeFreshContainmentMarkers(projectRoot);
+        String marker = "BEAR_SHARED_DEPS_VIOLATION|unit=_shared|task=compileBearImpl__shared";
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\necho " + marker.replace("|", "^|") + "\r\nexit /b 1\r\n",
+            "#!/usr/bin/env sh\necho \"" + marker + "\"\nexit 1\n"
+        );
+
+        writeBlockIndex(tempDir, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/shared\n");
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", tempDir.toString() });
+        assertEquals(74, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: alpha"));
+        assertTrue(stderr.contains("BLOCK_CODE: CONTAINMENT_NOT_VERIFIED"));
+        assertTrue(stderr.contains("DETAIL: check: CONTAINMENT_REQUIRED: SHARED_DEPS_VIOLATION:"));
     }
 
     @Test
@@ -2172,6 +2412,7 @@ class BearCliTest {
                 + "}\n",
             StandardCharsets.UTF_8
         );
+        writeFreshContainmentMarkers(tempDir);
 
         CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(0, check.exitCode);
@@ -2280,6 +2521,7 @@ class BearCliTest {
                 + "}\n",
             StandardCharsets.UTF_8
         );
+        writeFreshContainmentMarkers(serviceRoot);
 
         writeBlockIndex(repo, ""
             + "version: v0\n"
@@ -4020,6 +4262,135 @@ class BearCliTest {
     }
 
     @Test
+    void prCheckSharedPolicyDeltaClassification(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        Files.createDirectories(ir.getParent());
+        Files.writeString(ir, fixtureIrContent(), StandardCharsets.UTF_8);
+        gitCommitAll(repo, "base ir");
+
+        writeSharedPolicy(
+            repo,
+            """
+                version: v1
+                scope: shared
+                impl:
+                  allowedDeps:
+                    - maven: com.fasterxml.jackson.core:jackson-databind
+                      version: 2.17.2
+                """
+        );
+        gitCommitAll(repo, "add shared policy dep");
+
+        CliRunResult added = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(5, added.exitCode);
+        assertTrue(normalizeLf(added.stderr).contains(
+            "pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: .:_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2"
+        ));
+
+        writeSharedPolicy(
+            repo,
+            """
+                version: v1
+                scope: shared
+                impl:
+                  allowedDeps:
+                    - maven: com.fasterxml.jackson.core:jackson-databind
+                      version: 2.18.0
+                """
+        );
+        gitCommitAll(repo, "change shared policy dep version");
+
+        CliRunResult changed = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(5, changed.exitCode);
+        assertTrue(normalizeLf(changed.stderr).contains(
+            "pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: CHANGED: .:_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2->2.18.0"
+        ));
+
+        Files.delete(repo.resolve("spec/_shared.policy.yaml"));
+        gitCommitAll(repo, "remove shared policy");
+
+        CliRunResult removed = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(0, removed.exitCode);
+        assertTrue(normalizeLf(removed.stderr).contains(
+            "pr-delta: ORDINARY: ALLOWED_DEPS: REMOVED: .:_shared:com.fasterxml.jackson.core:jackson-databind@2.18.0"
+        ));
+    }
+
+    @Test
+    void prCheckSharedPolicyInvalidReturnsPolicyInvalid(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        Files.createDirectories(ir.getParent());
+        Files.writeString(ir, fixtureIrContent(), StandardCharsets.UTF_8);
+        writeSharedPolicy(
+            repo,
+            """
+                version: v1
+                scope: invalid
+                impl:
+                  allowedDeps: []
+                """
+        );
+        gitCommitAll(repo, "add malformed shared policy");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "spec/withdraw.bear.yaml", "--project", repo.toString(), "--base", "HEAD"
+        });
+        assertEquals(2, run.exitCode);
+        assertTrue(normalizeLf(run.stderr).contains("pr-check: POLICY_INVALID: INVALID_SCOPE"));
+        assertFailureEnvelope(
+            run.stderr,
+            "POLICY_INVALID",
+            "spec/_shared.policy.yaml",
+            "Fix `spec/_shared.policy.yaml` (version/scope/schema and pinned allowedDeps) and rerun `bear pr-check`."
+        );
+    }
+
+    @Test
+    void prCheckAllPrintsRepoDeltaForSharedPolicyBeforeSummary(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        writeFixtureIr(ir);
+        writeBlockIndex(repo, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: withdraw\n"
+            + "    ir: spec/withdraw.bear.yaml\n"
+            + "    projectRoot: .\n");
+        gitCommitAll(repo, "base repo");
+
+        writeSharedPolicy(
+            repo,
+            """
+                version: v1
+                scope: shared
+                impl:
+                  allowedDeps:
+                    - maven: com.fasterxml.jackson.core:jackson-databind
+                      version: 2.17.2
+                """
+        );
+        gitCommitAll(repo, "add shared policy dep");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "--all", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(5, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("REPO DELTA:"));
+        assertTrue(stderr.contains("pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: .:_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2"));
+        assertTrue(stderr.indexOf("REPO DELTA:") < stderr.indexOf("SUMMARY:"));
+        assertEquals(1, countOccurrences(stderr, ":_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2"));
+    }
+
+    @Test
     void checkFailsValidationOnWiringSemanticPortOverlap(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
@@ -4210,6 +4581,12 @@ class BearCliTest {
             + "        version: " + version + "\n";
     }
 
+    private static void writeSharedPolicy(Path repoRoot, String content) throws Exception {
+        Path policy = repoRoot.resolve("spec/_shared.policy.yaml");
+        Files.createDirectories(policy.getParent());
+        Files.writeString(policy, content, StandardCharsets.UTF_8);
+    }
+
     private static void writeFixtureIr(Path path) throws Exception {
         Files.createDirectories(path.getParent());
         Files.writeString(path, fixtureIrContent(), StandardCharsets.UTF_8);
@@ -4217,6 +4594,37 @@ class BearCliTest {
 
     private static void writeWorkingWithdrawImpl(Path projectRoot) throws Exception {
         writeWorkingBlockImpl(projectRoot, "withdraw");
+    }
+
+    private static void writeFreshContainmentMarkers(Path projectRoot) throws Exception {
+        Path required = projectRoot.resolve("build/generated/bear/config/containment-required.json");
+        String requiredJson = Files.readString(required, StandardCharsets.UTF_8);
+        String hash = bytesToHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(required)));
+        List<String> blockKeys = parseContainmentRequiredBlockKeys(requiredJson);
+
+        Path markerDir = projectRoot.resolve("build/bear/containment");
+        Files.createDirectories(markerDir);
+        Files.writeString(
+            markerDir.resolve("applied.marker"),
+            "hash=" + hash + "\nblocks=" + String.join(",", blockKeys) + "\n",
+            StandardCharsets.UTF_8
+        );
+        for (String blockKey : blockKeys) {
+            Files.writeString(
+                markerDir.resolve(blockKey + ".applied.marker"),
+                "block=" + blockKey + "\nhash=" + hash + "\n",
+                StandardCharsets.UTF_8
+            );
+        }
+    }
+
+    private static List<String> parseContainmentRequiredBlockKeys(String json) {
+        TreeMap<String, Boolean> keys = new TreeMap<>();
+        Matcher matcher = Pattern.compile("\\\"blockKey\\\":\\\"([^\\\"]+)\\\"").matcher(json);
+        while (matcher.find()) {
+            keys.put(matcher.group(1), Boolean.TRUE);
+        }
+        return List.copyOf(keys.keySet());
     }
 
     private static void writeWorkingBlockImpl(Path projectRoot, String blockName) throws Exception {

@@ -138,6 +138,15 @@ final class CheckAllCommandService {
                 rootContainmentRequiredBySelection.put(block.projectRoot(), true);
             }
         }
+        for (Map.Entry<String, Boolean> entry : new ArrayList<>(rootContainmentRequiredBySelection.entrySet())) {
+            if (entry.getValue()) {
+                continue;
+            }
+            Path rootPath = options.repoRoot().resolve(entry.getKey()).normalize();
+            if (CheckCommandService.sharedContainmentInScope(rootPath)) {
+                rootContainmentRequiredBySelection.put(entry.getKey(), true);
+            }
+        }
         boolean failed = false;
         boolean failFastTriggered = false;
         for (BlockIndexEntry block : selected) {
@@ -343,6 +352,27 @@ final class CheckAllCommandService {
                             "project.tests",
                             detail,
                             "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check --all --project <repoRoot>`."
+                        ));
+                    }
+                } else if (testResult.status() == ProjectTestStatus.SHARED_DEPS_VIOLATION) {
+                    String sharedLine = testResult.firstSharedDepsViolationLine() != null
+                        ? testResult.firstSharedDepsViolationLine()
+                        : ProjectTestRunner.firstSharedDepsViolationLine(testResult.output());
+                    String detail = "check: CONTAINMENT_REQUIRED: SHARED_DEPS_VIOLATION: "
+                        + entry.getKey()
+                        + ":_shared";
+                    if (sharedLine != null && !sharedLine.isBlank()) {
+                        detail += ": " + sharedLine;
+                    }
+                    for (int idx : entry.getValue()) {
+                        blockResults.set(idx, BearCli.rootFailure(
+                            blockResults.get(idx),
+                            CliCodes.EXIT_IO,
+                            "CONTAINMENT",
+                            CliCodes.CONTAINMENT_NOT_VERIFIED,
+                            "spec/_shared.policy.yaml",
+                            detail,
+                            "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun Gradle containment build/check."
                         ));
                     }
                 } else if (testResult.status() == ProjectTestStatus.INVARIANT_VIOLATION) {

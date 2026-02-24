@@ -86,6 +86,13 @@ final class AllModeRenderer {
             }
             lines.add("");
         }
+        if (!summary.repoDeltaLines().isEmpty()) {
+            lines.add("REPO DELTA:");
+            for (String line : summary.repoDeltaLines()) {
+                lines.add("  " + line);
+            }
+            lines.add("");
+        }
         lines.add("SUMMARY:");
         lines.add(summary.total() + " blocks total");
         lines.add(summary.checked() + " checked");

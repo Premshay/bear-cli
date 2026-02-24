@@ -150,6 +150,47 @@ class AllModeRendererTest {
     }
 
     @Test
+    void renderPrAllOutputPlacesRepoDeltaBeforeSummary() {
+        List<BlockExecutionResult> results = List.of(
+            new BlockExecutionResult(
+                "alpha",
+                "spec/alpha.bear.yaml",
+                "services/alpha",
+                BlockStatus.FAIL,
+                5,
+                "BOUNDARY_EXPANSION",
+                "BOUNDARY_EXPANSION",
+                "spec/alpha.bear.yaml",
+                "detail",
+                "remediation",
+                null,
+                "NO_CHANGES",
+                List.of()
+            )
+        );
+        RepoAggregationResult summary = new RepoAggregationResult(
+            5,
+            1,
+            1,
+            0,
+            1,
+            0,
+            false,
+            0,
+            0,
+            0,
+            List.of("pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: .:_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2")
+        );
+
+        String output = String.join("\n", AllModeRenderer.renderPrAllOutput(results, summary));
+        CliTestAsserts.assertContainsInOrder(output, List.of(
+            "REPO DELTA:",
+            "pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: .:_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2",
+            "SUMMARY:"
+        ));
+    }
+
+    @Test
     void renderCompileAllOutputIncludesFailFastSummary() {
         List<BlockExecutionResult> results = List.of(
             new BlockExecutionResult("alpha", "spec/alpha.bear.yaml", "services/alpha", BlockStatus.PASS, 0, null, null, null, null, null, null, null, List.of()),
