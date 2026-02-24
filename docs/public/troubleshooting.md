@@ -88,6 +88,8 @@ Fix:
 
 Symptom: `drift:` lines and exit `3`.
 Likely cause: generated artifacts are stale, missing, or edited.
+Diagnostic note:
+- wiring drift now reports exact canonical wiring files and reason class (for example `build/generated/bear/wiring/<block>.wiring.json`, `CHANGED`/`MISSING_BASELINE`) so remediation can target the precise file.
 Fix:
 
 1. Run `bear compile <ir-file> --project <path>` (or `bear compile --all --project <repoRoot>`).

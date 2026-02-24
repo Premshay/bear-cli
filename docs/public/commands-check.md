@@ -50,6 +50,10 @@ Key line formats:
 
 - `drift: ADDED|REMOVED|CHANGED: <relative/path>`
 - `drift: MISSING_BASELINE: build/generated/bear (...)`
+- wiring-specific drift uses canonical repo-relative paths:
+  - `drift: CHANGED: build/generated/bear/wiring/<blockKey>.wiring.json`
+  - `drift: MISSING_BASELINE: build/generated/bear/wiring/<blockKey>.wiring.json`
+- for wiring files, `check` emits one deterministic line per `(reason, path)` (no duplicated `wiring/...` and `build/generated/bear/wiring/...` variants).
 - `check: UNDECLARED_REACH: <relative/path>: <surface>`
 - `check: BOUNDARY_BYPASS: RULE=<rule>: <relative/path>: <detail>`
 - `check: HYGIENE_UNEXPECTED_PATHS: <relative/path>`

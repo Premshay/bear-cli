@@ -378,6 +378,7 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, run.exitCode);
         assertTrue(run.stderr.startsWith("drift: MISSING_BASELINE: build/generated/bear"));
+        assertTrue(normalizeLf(run.stderr).contains("drift: MISSING_BASELINE: build/generated/bear/wiring/withdraw.wiring.json"));
         assertFailureEnvelope(
             run.stderr,
             "DRIFT_MISSING_BASELINE",
@@ -396,6 +397,7 @@ class BearCliTest {
         CliRunResult run = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
         assertEquals(3, run.exitCode);
         assertTrue(run.stderr.startsWith("drift: MISSING_BASELINE: build/generated/bear"));
+        assertTrue(normalizeLf(run.stderr).contains("drift: MISSING_BASELINE: build/generated/bear/wiring/withdraw.wiring.json"));
         assertFailureEnvelope(
             run.stderr,
             "DRIFT_MISSING_BASELINE",
@@ -492,6 +494,30 @@ class BearCliTest {
         assertFalse(Files.exists(removedFile));
         assertTrue(Files.exists(addedFile));
         assertEquals(changedBefore + "\n// drift\n", Files.readString(changedFile));
+    }
+
+    @Test
+    void checkWiringDriftUsesCanonicalPathWithoutDuplicates(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+
+        Path wiring = tempDir.resolve("build/generated/bear/wiring/withdraw.wiring.json");
+        Files.writeString(wiring, Files.readString(wiring, StandardCharsets.UTF_8) + "\n", StandardCharsets.UTF_8);
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(3, check.exitCode);
+        List<String> lines = nonEnvelopeLines(check.stderr);
+
+        String canonical = "drift: CHANGED: build/generated/bear/wiring/withdraw.wiring.json";
+        assertEquals(1L, lines.stream().filter(line -> line.equals(canonical)).count());
+        assertFalse(lines.stream().anyMatch(line -> line.equals("drift: CHANGED: wiring/withdraw.wiring.json")));
+        assertFailureEnvelope(
+            check.stderr,
+            "DRIFT_DETECTED",
+            "build/generated/bear",
+            "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
+        );
     }
 
     @Test
@@ -2204,8 +2230,42 @@ class BearCliTest {
         assertTrue(stderr.contains("BLOCK: beta"));
         assertTrue(stderr.contains("BLOCK: gamma"));
         assertTrue(stderr.contains("BLOCK: gamma\nIR: spec/gamma.bear.yaml\nPROJECT: services/gamma\nSTATUS: PASS"));
+        assertTrue(stderr.contains("DETAIL: drift: MISSING_BASELINE: build/generated/bear/wiring/beta.wiring.json"));
         assertTrue(stderr.contains("CODE=REPO_MULTI_BLOCK_FAILED"));
         assertTrue(stderr.contains("PATH=bear.blocks.yaml"));
+    }
+
+    @Test
+    void checkAllBlockDetailIncludesCanonicalWiringPathForWiringDrift(@TempDir Path tempDir) throws Exception {
+        MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
+        Path betaWiring = fixture.projectRoots().get(1).resolve("build/generated/bear/wiring/beta.wiring.json");
+        Files.writeString(betaWiring, Files.readString(betaWiring, StandardCharsets.UTF_8) + "\n", StandardCharsets.UTF_8);
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
+        assertEquals(3, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("BLOCK: beta"));
+        assertTrue(stderr.contains("DETAIL: drift: CHANGED: build/generated/bear/wiring/beta.wiring.json"));
+        assertFailureEnvelope(
+            run.stderr,
+            "REPO_MULTI_BLOCK_FAILED",
+            "bear.blocks.yaml",
+            "Review per-block results above and fix failing blocks, then rerun the command."
+        );
+    }
+
+    @Test
+    void wiringDriftDetailSummaryCapsAtTwentyWithDeterministicOverflowSuffix() {
+        List<String> tokens = new ArrayList<>();
+        for (int i = 0; i < 25; i++) {
+            tokens.add("CHANGED|build/generated/bear/wiring/block-" + String.format("%02d", i) + ".wiring.json");
+        }
+
+        String summary = CheckCommandService.summarizeWiringDriftDetail(tokens);
+        assertTrue(summary.contains("drift: CHANGED: build/generated/bear/wiring/block-00.wiring.json"));
+        assertTrue(summary.contains("drift: CHANGED: build/generated/bear/wiring/block-19.wiring.json"));
+        assertFalse(summary.contains("drift: CHANGED: build/generated/bear/wiring/block-20.wiring.json"));
+        assertTrue(summary.endsWith("(+5 more)"));
     }
 
     @Test

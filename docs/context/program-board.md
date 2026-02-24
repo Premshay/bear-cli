@@ -54,20 +54,27 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `Wiring drift diagnostics` (deterministic changed/missing/added wiring file list + single remediation)
-2. `Declared allowed deps containment` (stabilization/operational hardening)
-3. `_shared` allowedDeps policy (path-scoped shared policy, no IR schema changes; queued after core allowedDeps stabilization)
-4. Generated structural tests and cross-target parity follow-up
-5. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
+1. `Declared allowed deps containment` (stabilization/operational hardening)
+2. `_shared` allowedDeps policy (path-scoped shared policy, no IR schema changes; queued after core allowedDeps stabilization)
+3. Generated structural tests and cross-target parity follow-up
+4. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
 
 ## Recently Completed (P2)
 
-1. `General agent done-gate hardening` (`check --all` + `pr-check --all --base <ref>`)
+1. `Wiring drift diagnostics` (deterministic canonical wiring paths + bounded detail)
+   - wiring drift now reports canonical repo-relative paths:
+     - `build/generated/bear/wiring/<blockKey>.wiring.json`
+   - drift output no longer emits duplicate wiring path variants.
+   - `check --all` block `DETAIL` now carries explicit wiring drift reason/path for faster remediation.
+   - wiring drift detail ordering is frozen (`MISSING_BASELINE > REMOVED > CHANGED > ADDED`) and capped to 20 entries with deterministic overflow suffix.
+   - exit taxonomy/envelopes/CLI surface unchanged.
+
+2. `General agent done-gate hardening` (`check --all` + `pr-check --all --base <ref>`)
    - package agent workflow now requires dual-gate completion evidence before reporting done.
    - public command/context docs aligned to require both local gates as completion evidence.
    - CI remains authoritative remote `pr-check`; local `pr-check` required for fast governance feedback.
 
-2. `Multi-block port implementer guard` (`MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
+3. `Multi-block port implementer guard` (`MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
    - added structural bypass rule for classes implementing generated `*Port` interfaces across multiple generated block packages.
    - marker exception contract finalized:
      - exact marker line `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
@@ -133,7 +140,7 @@ Docs/package updates required:
 - `docs/bear-package/.bear/agent/BEAR_AGENT.md`
 - `docs/bear-package/.bear/agent/WORKFLOW.md`
 
-### 3) Wiring drift diagnostics (`P2`)
+### 3) Wiring drift diagnostics (`P2` completed)
 
 Goal:
 - eliminate guesswork on wiring drift failures.

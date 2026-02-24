@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -50,5 +51,25 @@ class DriftAnalyzerTest {
             Set.of("surfaces/", "src/main/java/"),
             "surfaces/x.surface.json"
         ));
+    }
+
+    @Test
+    void wiringDetailSummaryOrdersByPathThenFrozenReasonOrder() {
+        List<String> tokens = new ArrayList<>();
+        tokens.add("ADDED|build/generated/bear/wiring/a.wiring.json");
+        tokens.add("CHANGED|build/generated/bear/wiring/a.wiring.json");
+        tokens.add("REMOVED|build/generated/bear/wiring/a.wiring.json");
+        tokens.add("MISSING_BASELINE|build/generated/bear/wiring/a.wiring.json");
+        tokens.add("CHANGED|build/generated/bear/wiring/b.wiring.json");
+
+        String summary = CheckCommandService.summarizeWiringDriftDetail(tokens);
+        assertEquals(
+            "drift: MISSING_BASELINE: build/generated/bear/wiring/a.wiring.json | "
+                + "drift: REMOVED: build/generated/bear/wiring/a.wiring.json | "
+                + "drift: CHANGED: build/generated/bear/wiring/a.wiring.json | "
+                + "drift: ADDED: build/generated/bear/wiring/a.wiring.json | "
+                + "drift: CHANGED: build/generated/bear/wiring/b.wiring.json",
+            summary
+        );
     }
 }

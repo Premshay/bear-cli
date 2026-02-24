@@ -14,6 +14,8 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -21,6 +23,9 @@ final class CheckCommandService {
     private static final String CHECK_BLOCKED_MARKER_RELATIVE = "build/bear/check.blocked.marker";
     private static final String CHECK_BLOCKED_REASON_LOCK = "LOCK";
     private static final String CHECK_BLOCKED_REASON_BOOTSTRAP = "BOOTSTRAP_IO";
+    private static final String GENERATED_BEAR_ROOT = "build/generated/bear";
+    private static final String GENERATED_WIRING_PREFIX = GENERATED_BEAR_ROOT + "/wiring/";
+    private static final int WIRING_DETAIL_LIMIT = 20;
     private static final String RUNTIME_LEGACY_PREFIX = "runtime/src/main/java/com/bear/generated/runtime/";
     private static final String RUNTIME_CANONICAL_PREFIX = "src/main/java/com/bear/generated/runtime/";
     private static final Set<String> JAVA_KEYWORDS = Set.of(
@@ -88,16 +93,17 @@ final class CheckCommandService {
             }
 
             if (!DriftAnalyzer.hasOwnedBaselineFiles(baselineRoot, ownedPrefixes, markerRelPath)) {
-                String line = "drift: MISSING_BASELINE: build/generated/bear (run: bear compile "
+                String line = "drift: MISSING_BASELINE: " + GENERATED_BEAR_ROOT + " (run: bear compile "
                     + irFile + " --project " + projectRoot + ")";
+                String wiringMissingLine = formatWiringDriftLine("MISSING_BASELINE", toCanonicalWiringPath(wiringRelPath));
                 return checkFailure(
                     CliCodes.EXIT_DRIFT,
-                    List.of(line),
+                    List.of(line, wiringMissingLine),
                     "DRIFT",
                     CliCodes.DRIFT_MISSING_BASELINE,
-                    "build/generated/bear",
+                    GENERATED_BEAR_ROOT,
                     "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    "drift: MISSING_BASELINE: build/generated/bear"
+                    summarizeWiringDriftDetail(List.of(wiringDetailToken("MISSING_BASELINE", toCanonicalWiringPath(wiringRelPath))))
                 );
             }
 
@@ -152,17 +158,16 @@ final class CheckCommandService {
             }
 
             if (!Files.isRegularFile(baselineWiringPath)) {
-                String line = "drift: MISSING_BASELINE: build/generated/bear/" + wiringRelPath
-                    + " (run: bear compile "
-                    + irFile + " --project " + projectRoot + ")";
+                String canonicalWiringPath = toCanonicalWiringPath(wiringRelPath);
+                String line = formatWiringDriftLine("MISSING_BASELINE", canonicalWiringPath);
                 return checkFailure(
                     CliCodes.EXIT_DRIFT,
                     List.of(line),
                     "DRIFT",
                     CliCodes.DRIFT_MISSING_BASELINE,
-                    "build/generated/bear/" + wiringRelPath,
+                    canonicalWiringPath,
                     "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    "drift: MISSING_BASELINE: build/generated/bear/" + wiringRelPath
+                    summarizeWiringDriftDetail(List.of(wiringDetailToken("MISSING_BASELINE", canonicalWiringPath)))
                 );
             }
             if (!Files.isRegularFile(candidateWiringPath)) {
@@ -276,17 +281,33 @@ final class CheckCommandService {
                 return Integer.compare(left.type().order, right.type().order);
             });
             if (!drift.isEmpty()) {
+                LinkedHashSet<String> emittedDriftLines = new LinkedHashSet<>();
+                List<String> wiringDetailTokens = new ArrayList<>();
                 for (DriftItem item : drift) {
-                    diagnostics.add("drift: " + item.type().label + ": " + item.path());
+                    String reason = item.type().label;
+                    String path = item.path();
+                    if (isWiringDriftPath(path)) {
+                        String canonicalWiringPath = toCanonicalWiringPath(path);
+                        wiringDetailTokens.add(wiringDetailToken(reason, canonicalWiringPath));
+                        emittedDriftLines.add(formatWiringDriftLine(reason, canonicalWiringPath));
+                        continue;
+                    }
+                    emittedDriftLines.add("drift: " + reason + ": " + path);
+                }
+                diagnostics.addAll(emittedDriftLines);
+                String detail = diagnostics.get(diagnostics.size() - 1);
+                String wiringDetail = summarizeWiringDriftDetail(wiringDetailTokens);
+                if (!wiringDetail.isBlank()) {
+                    detail = wiringDetail;
                 }
                 return checkFailure(
                     CliCodes.EXIT_DRIFT,
                     diagnostics,
                     "DRIFT",
                     CliCodes.DRIFT_DETECTED,
-                    "build/generated/bear",
+                    GENERATED_BEAR_ROOT,
                     "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    diagnostics.get(diagnostics.size() - 1)
+                    detail
                 );
             }
 
@@ -551,6 +572,29 @@ final class CheckCommandService {
                 deleteRecursivelyBestEffort(tempRoot);
             }
         }
+    }
+
+    static String summarizeWiringDriftDetail(List<String> wiringDetailTokens) {
+        if (wiringDetailTokens == null || wiringDetailTokens.isEmpty()) {
+            return "";
+        }
+        List<String> ordered = new ArrayList<>();
+        LinkedHashSet<String> deduped = new LinkedHashSet<>(wiringDetailTokens);
+        ordered.addAll(deduped);
+        ordered.sort(Comparator
+            .comparing(CheckCommandService::wiringTokenPath)
+            .thenComparingInt(token -> wiringReasonOrder(wiringTokenReason(token))));
+        int limit = Math.min(WIRING_DETAIL_LIMIT, ordered.size());
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < limit; i++) {
+            String token = ordered.get(i);
+            lines.add(formatWiringDriftLine(wiringTokenReason(token), wiringTokenPath(token)));
+        }
+        String summary = String.join(" | ", lines);
+        if (ordered.size() > WIRING_DETAIL_LIMIT) {
+            summary += " | (+" + (ordered.size() - WIRING_DETAIL_LIMIT) + " more)";
+        }
+        return summary;
     }
 
     private static CheckResult verifyContainmentIfRequired(BearIr ir, Path projectRoot, List<String> diagnostics) throws IOException {
@@ -845,6 +889,59 @@ final class CheckCommandService {
         if ("true".equals(System.getProperty(key))) {
             throw new IllegalStateException("INJECTED_INTERNAL_check");
         }
+    }
+
+    private static boolean isWiringDriftPath(String path) {
+        if (path == null) {
+            return false;
+        }
+        String normalized = path.replace('\\', '/');
+        return normalized.startsWith("wiring/") && normalized.endsWith(".wiring.json");
+    }
+
+    private static String toCanonicalWiringPath(String path) {
+        String normalized = path.replace('\\', '/');
+        if (normalized.startsWith(GENERATED_WIRING_PREFIX)) {
+            return normalized;
+        }
+        if (normalized.startsWith("wiring/")) {
+            return GENERATED_BEAR_ROOT + "/" + normalized;
+        }
+        return normalized;
+    }
+
+    private static String formatWiringDriftLine(String reason, String canonicalWiringPath) {
+        return "drift: " + reason + ": " + canonicalWiringPath;
+    }
+
+    private static String wiringDetailToken(String reason, String canonicalPath) {
+        return reason + "|" + canonicalPath;
+    }
+
+    private static String wiringTokenReason(String token) {
+        int sep = token.indexOf('|');
+        if (sep <= 0) {
+            return token;
+        }
+        return token.substring(0, sep);
+    }
+
+    private static String wiringTokenPath(String token) {
+        int sep = token.indexOf('|');
+        if (sep < 0 || sep + 1 >= token.length()) {
+            return "";
+        }
+        return token.substring(sep + 1);
+    }
+
+    private static int wiringReasonOrder(String reason) {
+        return switch (reason) {
+            case "MISSING_BASELINE" -> 0;
+            case "REMOVED" -> 1;
+            case "CHANGED" -> 2;
+            case "ADDED" -> 3;
+            default -> 99;
+        };
     }
 
     private static CheckResult checkFailure(

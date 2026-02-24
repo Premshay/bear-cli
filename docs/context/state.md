@@ -13,17 +13,45 @@ P2 feature delivery:
 - active milestone is `P2`
 - post-hard-break follow-through with explicit dual-gate agent completion evidence
 - preserve structural governance focus (no endpoint-per-block policy, no style policing)
-- prioritize containment hardening where it increases block-boundary signal
-- keep deterministic bypass signaling clean (high-signal first finding, low-noise secondary findings)
+- prioritize declared deps containment hardening and `_shared` policy follow-up
+- keep deterministic diagnostics high-signal and directly actionable
 
 ## Next Concrete Task
 
 next feature sequence (one-by-one):
-1. implement deterministic wiring drift diagnostics (exact changed/missing/added files)
-2. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
-3. evaluate optional governance signal follow-ups after drift diagnostics land
+1. continue `Declared allowed deps containment` stabilization/operational hardening
+2. implement `_shared` allowedDeps policy contract after core deps stabilization
+3. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Implemented `Wiring drift diagnostics` feature (deterministic, no semantics change):
+  - canonical wiring drift path contract now uses repo-relative on-disk paths:
+    - `build/generated/bear/wiring/<blockKey>.wiring.json`
+  - missing baseline now emits explicit wiring-path drift signal in addition to baseline-root signal.
+  - wiring drift lines are deduped to one line per `(reason, path)` (no mixed `wiring/...` vs `build/generated/bear/wiring/...` duplicates).
+  - `CheckResult.detail` now carries bounded wiring drift summary when wiring drift exists:
+    - deterministic ordering by `path`, then reason rank:
+      - `MISSING_BASELINE`, `REMOVED`, `CHANGED`, `ADDED`
+    - capped at 20 entries with deterministic `(+N more)` suffix.
+  - `check --all` renderer unchanged; block-level `DETAIL` now surfaces exact wiring drift files via existing flow.
+  - tests added/updated:
+    - `BearCliTest`:
+      - missing baseline includes explicit wiring path
+      - canonical wiring path/no-duplicate drift line
+      - `check --all` detail includes exact canonical wiring path for wiring drift
+      - capped summary behavior (`(+5 more)` with 25 synthetic entries)
+    - `DriftAnalyzerTest`:
+      - wiring detail ordering test aligned to frozen reason rank
+  - docs updated:
+    - `docs/public/commands-check.md`
+    - `docs/public/output-format.md`
+    - `docs/public/troubleshooting.md`
+  - verification:
+    - `.\gradlew.bat --no-daemon :app:test` (green)
+    - `.\gradlew.bat --no-daemon test` (green)
+    - focused smoke:
+      - `.\gradlew.bat --no-daemon :app:test --tests "com.bear.app.BearCliTest.checkWiringDriftUsesCanonicalPathWithoutDuplicates" --tests "com.bear.app.BearCliTest.checkAllBlockDetailIncludesCanonicalWiringPathForWiringDrift"` (green)
 
 - Hardened general BEAR agent done-gate contract (not demo-only):
   - updated package agent/workflow docs to require both gates before done:

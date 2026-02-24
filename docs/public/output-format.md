@@ -30,6 +30,9 @@ Contract:
 - `drift: REMOVED: <relative/path>`
 - `drift: CHANGED: <relative/path>`
 - `drift: MISSING_BASELINE: build/generated/bear (...)`
+- wiring examples (canonical path form):
+  - `drift: CHANGED: build/generated/bear/wiring/<block>.wiring.json`
+  - `drift: MISSING_BASELINE: build/generated/bear/wiring/<block>.wiring.json`
 
 `pr-check` delta lines:
 
@@ -68,6 +71,14 @@ Common `check` policy lines:
 `pr-check` delta lines are deterministically sorted by class, category, change, and key.
 `pr-check` port-impl containment findings are deterministically sorted by `path`, then `rule`, then `detail`.
 `pr-check` governance signal lines are deterministically sorted by `path`, then `implClassFqcn`, then `sortedGeneratedPackageCsv`.
+
+Wiring drift diagnostics:
+- one line per `(reason, path)` for wiring files (no duplicate path variants).
+- wiring-detail reason rank is frozen as:
+  1. `MISSING_BASELINE`
+  2. `REMOVED`
+  3. `CHANGED`
+  4. `ADDED`
 
 ## Related
 
