@@ -45,6 +45,17 @@ next feature sequence (one-by-one):
     - kernel generation tests for `_shared` inclusion/omission and Gradle wiring (`JvmTargetTest`)
     - app tests for containment gating (`_shared` policy/source/empty dir), shared violation mapping, and shared-policy pr-check deltas
     - renderer/project-test runner coverage for repo delta placement and shared marker parsing.
+  - docs/package sync updated:
+    - `docs/public/commands-check.md`
+    - `docs/public/commands-pr-check.md`
+    - `docs/public/output-format.md`
+    - `docs/public/troubleshooting.md`
+    - `docs/context/user-guide.md`
+    - `docs/bear-package/README.md`
+    - `docs/bear-package/.bear/agent/BEAR_AGENT.md`
+    - `docs/bear-package/.bear/agent/WORKFLOW.md`
+    - `docs/context/program-board.md`
+    - `docs/context/state.md`
   - verification in-session:
     - `.\gradlew.bat --no-daemon :kernel:test` (green)
     - `.\gradlew.bat --no-daemon :app:test` (green)

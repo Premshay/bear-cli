@@ -48,9 +48,14 @@ Anti-patterns:
 - `bear validate <ir-file>`
 - `bear compile <ir-file> --project <repoRoot>`
   - or compile all indexed blocks in one pass: `bear compile --all --project <repoRoot>`
-6. If IR declares `impl.allowedDeps` and project is Java+Gradle:
+6. If containment is in scope and project is Java+Gradle:
 - ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
 - run Gradle build/test once to write containment marker
+  - containment scope is active when any is true:
+    - selected block set includes `impl.allowedDeps`
+    - `spec/_shared.policy.yaml` exists
+    - `src/main/java/blocks/_shared/**` has `.java`
+  - if `_shared` is in scope and `spec/_shared.policy.yaml` is missing, `_shared` default allowlist is JDK-only.
 7. Run gate:
 - single-block mode: `bear check <ir-file> --project <repoRoot> [--strict-hygiene]`
 - multi-block mode: `bear check --all --project <repoRoot> [--strict-hygiene]`
@@ -71,9 +76,14 @@ Greenfield hard stop:
 3. Apply IR changes first when boundaries change.
 4. Compile touched IR files.
 5. If generated artifacts are stale or drifted, run `bear fix` for touched IR (or `fix --all` when indexed).
-6. If touched IR declares `impl.allowedDeps` and project is Java+Gradle:
+6. If containment is in scope and project is Java+Gradle:
 - ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
 - run Gradle build/test once to write containment marker
+  - containment scope is active when any is true:
+    - selected block set includes `impl.allowedDeps`
+    - `spec/_shared.policy.yaml` exists
+    - `src/main/java/blocks/_shared/**` has `.java`
+  - if `_shared` is in scope and `spec/_shared.policy.yaml` is missing, `_shared` default allowlist is JDK-only.
 7. Run check gate (`check` or `check --all`).
   - stale `build/bear/check.blocked.marker` is advisory; use `bear unblock --project <repoRoot>` when cleanup is needed
 8. Implement and test.
@@ -83,6 +93,10 @@ Greenfield hard stop:
 - or `bear pr-check --all --project <repoRoot> --base <ref>` when indexed
   - `pr-check` uses deterministic temp staging and wiring-only generation for manifest analysis; it does not require full compile output in the project tree
   - `pr-check` may emit informational governance signal `MULTI_BLOCK_PORT_IMPL_ALLOWED` (non-failing) when a valid `_shared` multi-block marker is present
+  - shared policy deltas (`spec/_shared.policy.yaml`) classify as:
+    - add/change => `BOUNDARY_EXPANDING`
+    - remove => `ORDINARY`
+  - `pr-check --all` may render shared-policy changes once in repo-level `REPO DELTA:` before `SUMMARY`
 11. Mark completion only after both repository-level gates are green, and record the actual base ref used:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
@@ -209,9 +223,12 @@ Index troubleshooting:
   - ensure project applies generated containment entrypoint
   - run Gradle build/test once to refresh marker
   - rerun `bear check`
+- if shared allowlist mismatch (`SHARED_DEPS_VIOLATION`):
+  - add pinned dependency to `spec/_shared.policy.yaml`, or remove external dep usage from `src/main/java/blocks/_shared/**`
+  - rerun Gradle containment build/check, then rerun `bear check`
 - if unsupported target:
   - use Java+Gradle enforcement path for allowed deps
-  - or remove `impl.allowedDeps` and keep governance-only behavior in `pr-check`
+  - or remove containment scope drivers (`impl.allowedDeps`, `_shared` policy/source scope) and keep governance-only behavior in `pr-check`
 
 Lock and environment troubleshooting:
 - If BEAR compile/check fails with file-lock/permission signatures (for example `.zip.lck`, `Access is denied`, generated-file replacement lock), treat it as tooling/environment IO issue first.

@@ -32,7 +32,9 @@ Purpose:
 16. Retry budget for tooling/lock defects: rely on BEAR's deterministic project-test runner attempts/fallback (including Windows early fallback); if failure persists after BEAR retries, stop and report blocker details.
 17. Never add workaround type stubs/classes under `src/main/java/com/bear/generated/**` (for example fake `BigDecimal`); generated classes there are BEAR-owned.
 18. If implementation needs a new library, declare it in `block.impl.allowedDeps` (IR-first); do not silently add impl classpath reach.
-19. For IR with `impl.allowedDeps` on Java+Gradle projects, ensure the project applies generated containment entrypoint and run Gradle once before relying on `bear check`.
+19. For Java+Gradle projects with containment in scope, ensure the project applies generated containment entrypoint and run Gradle once before relying on `bear check`.
+    - containment scope is active when any is true: selected block has `impl.allowedDeps`, `spec/_shared.policy.yaml` exists, or `src/main/java/blocks/_shared/**` contains `.java`.
+    - if `_shared` is in scope and `spec/_shared.policy.yaml` is missing, default `_shared` allowlist is JDK-only.
 20. For generated `*Impl.java`, replace the generated stub method body; do not keep the placeholder return/throw and append logic below it.
 21. Canonical user-owned implementation path is `src/main/java/blocks/<pkg-segment>/impl/<BlockName>Impl.java` and package `blocks.<pkg-segment>.impl`; do not relocate `*Impl.java` to `src/main/java/com/bear/generated/**`.
 22. In greenfield, default to exactly one block; creating block #2 requires `Decomposition Evidence` with direct spec quotes before generation.
@@ -77,6 +79,10 @@ When running `bear check` or `bear check --all`:
 - execute-body containment is always on (no policy toggle).
 - allowed source roots come from manifest `governedSourceRoots` (`blockRootSourceDir` first; reserved `src/main/java/blocks/_shared` second).
 - unresolved call targets do not fail containment in v1.3.
+11. `_shared` policy rule:
+- path-scoped policy file is `spec/_shared.policy.yaml`.
+- parser is strict (`version: v1`, `scope: shared`, deterministic pinned `impl.allowedDeps`).
+- shared allowlist mismatch is a containment failure; remediation is policy update or removing external deps from `_shared`.
 9. Strict hygiene rule:
 - unexpected seed paths fail with `CODE=HYGIENE_UNEXPECTED_PATHS` unless allowlisted.
 10. For concrete syntax examples, see header comments in `.bear/policy/reflection-allowlist.txt` and `.bear/policy/hygiene-allowlist.txt`.
