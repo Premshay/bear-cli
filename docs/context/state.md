@@ -14,17 +14,32 @@ P2 feature delivery:
 - post-hard-break follow-through with explicit dual-gate agent completion evidence
 - preserve structural governance focus (no endpoint-per-block policy, no style policing)
 - declared deps containment strict marker semantics are now implemented with selection gating
-- `_shared` allowedDeps policy contract is now implemented and under validation/docs sync
+- `_shared` allowedDeps policy contract is now implemented and stabilized
+- Slice 1 containment auto-wiring in `check` is implemented and validated
 - keep deterministic diagnostics high-signal and directly actionable
 
 ## Next Concrete Task
 
 next feature sequence (one-by-one):
-1. close remaining P2 follow-ups (generated structural tests + cross-target parity)
+1. execute remaining P2 follow-up: generated structural tests + cross-target parity
 2. keep containment-lane smoke fixtures handy for future regressions (`exit 3` drift lane vs `exit 74` verification lane)
 3. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
 
 ## Session Notes
+
+- Implemented Slice 1 containment auto-wiring + post-test marker verification:
+  - `ProjectTestRunner` now supports deterministic optional init-script injection and fixed arg order.
+  - `check` and `check --all` now inject `-I build/generated/bear/gradle/bear-containment.gradle` only when containment scope is active for that root.
+  - containment preflight remains scope-gated and runs before tests only when containment scope is active.
+  - `check --all` now runs containment preflight once per containment-enabled `projectRoot` (before root test run), not per block.
+  - marker/hash verification now runs only after project tests exit `0` (single and all-mode).
+  - `check --all` keeps one root-level project test invocation per containment-enabled root.
+  - docs and bear-package guidance updated to remove manual `build.gradle` containment patching requirement for `check`.
+  - validation:
+    - `.\gradlew.bat --no-daemon :app:test` (green)
+    - `.\gradlew.bat --no-daemon test` (green)
+    - targeted smoke: fresh marker pass, stale marker fail (`exit 74`), no-scope no-preflight pass, one-invocation-per-root in `check --all` (green).
+    - added fail-fast regression proving root-once preflight behavior in `check --all` (no per-block preflight/skip artifact).
 
 - Implemented P2 `_shared` allowedDeps policy (final lock v2):
   - added kernel-owned parser/normalizer for `spec/_shared.policy.yaml` with strict schema validation.

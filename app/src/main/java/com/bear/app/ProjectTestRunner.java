@@ -51,6 +51,10 @@ final class ProjectTestRunner {
     }
 
     static ProjectTestResult runProjectTests(Path projectRoot) throws IOException, InterruptedException {
+        return runProjectTests(projectRoot, null);
+    }
+
+    static ProjectTestResult runProjectTests(Path projectRoot, String initScriptRelativePath) throws IOException, InterruptedException {
         Path normalizedProjectRoot = projectRoot.toAbsolutePath().normalize();
         Path wrapper = resolveWrapper(normalizedProjectRoot);
         List<ProjectTestAttempt> attempts = new ArrayList<>();
@@ -61,7 +65,8 @@ final class ProjectTestRunner {
                 normalizedProjectRoot,
                 wrapper,
                 externalGradleUserHome,
-                GradleHomeMode.EXTERNAL_ENV.initialLabel
+                GradleHomeMode.EXTERNAL_ENV.initialLabel,
+                initScriptRelativePath
             );
             attempts.add(first);
             ProjectTestAttempt latest = first;
@@ -72,7 +77,8 @@ final class ProjectTestRunner {
                     normalizedProjectRoot,
                     wrapper,
                     externalGradleUserHome,
-                    GradleHomeMode.EXTERNAL_ENV.retryLabel
+                    GradleHomeMode.EXTERNAL_ENV.retryLabel,
+                    initScriptRelativePath
                 );
                 attempts.add(latest);
             }
@@ -84,7 +90,8 @@ final class ProjectTestRunner {
             normalizedProjectRoot,
             wrapper,
             isolatedGradleUserHome,
-            GradleHomeMode.ISOLATED.initialLabel
+            GradleHomeMode.ISOLATED.initialLabel,
+            initScriptRelativePath
         );
         attempts.add(latest);
 
@@ -101,7 +108,8 @@ final class ProjectTestRunner {
                 normalizedProjectRoot,
                 wrapper,
                 userGradleUserHome,
-                GradleHomeMode.USER_CACHE.initialLabel
+                GradleHomeMode.USER_CACHE.initialLabel,
+                initScriptRelativePath
             );
             attempts.add(latest);
             if (isLockOrBootstrap(latest.status())) {
@@ -111,7 +119,8 @@ final class ProjectTestRunner {
                     normalizedProjectRoot,
                     wrapper,
                     userGradleUserHome,
-                    GradleHomeMode.USER_CACHE.retryLabel
+                    GradleHomeMode.USER_CACHE.retryLabel,
+                    initScriptRelativePath
                 );
                 attempts.add(latest);
             }
@@ -122,7 +131,8 @@ final class ProjectTestRunner {
             normalizedProjectRoot,
             wrapper,
             isolatedGradleUserHome,
-            GradleHomeMode.ISOLATED.retryLabel
+            GradleHomeMode.ISOLATED.retryLabel,
+            initScriptRelativePath
         );
         attempts.add(latest);
         if (isLockOrBootstrap(latest.status())) {
@@ -133,7 +143,8 @@ final class ProjectTestRunner {
                 normalizedProjectRoot,
                 wrapper,
                 userGradleUserHome,
-                GradleHomeMode.USER_CACHE.initialLabel
+                GradleHomeMode.USER_CACHE.initialLabel,
+                initScriptRelativePath
             );
             attempts.add(latest);
         }
@@ -148,7 +159,8 @@ final class ProjectTestRunner {
         Path projectRoot,
         Path wrapper,
         String gradleUserHome,
-        String attemptLabel
+        String attemptLabel,
+        String initScriptRelativePath
     ) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>();
         if (isWindows()) {
@@ -159,6 +171,11 @@ final class ProjectTestRunner {
             command.add(wrapper.toString());
         }
         command.add("--no-daemon");
+        String normalizedInitScript = normalizeInitScriptRelativePath(initScriptRelativePath);
+        if (normalizedInitScript != null) {
+            command.add("-I");
+            command.add(normalizedInitScript);
+        }
         command.add("test");
 
         ProcessBuilder pb = new ProcessBuilder(command);
@@ -183,6 +200,17 @@ final class ProjectTestRunner {
         }
         ProjectTestStatus status = classifyProjectTestStatus(process.exitValue(), output, gradleUserHome);
         return new ProjectTestAttempt(attemptLabel, gradleUserHome, status, output);
+    }
+
+    private static String normalizeInitScriptRelativePath(String initScriptRelativePath) {
+        if (initScriptRelativePath == null) {
+            return null;
+        }
+        String normalized = initScriptRelativePath.trim().replace('\\', '/');
+        while (normalized.startsWith("./")) {
+            normalized = normalized.substring(2);
+        }
+        return normalized.isBlank() ? null : normalized;
     }
 
     private static ProjectTestStatus classifyProjectTestStatus(int exitValue, String output, String gradleUserHome) {

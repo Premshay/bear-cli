@@ -854,6 +854,32 @@ class BearCliTest {
     }
 
     @Test
+    void checkAllowedDepsDoesNotRunMarkerVerificationWhenProjectTestsFail(@TempDir Path tempDir) throws Exception {
+        Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
+        Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
+        assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho FAILURE: Build failed with an exception.\r\nexit /b 1\r\n",
+            "#!/usr/bin/env sh\necho \"FAILURE: Build failed with an exception.\"\nexit 1\n"
+        );
+
+        CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(4, check.exitCode);
+        String stderr = normalizeLf(check.stderr);
+        assertTrue(stderr.contains("check: TEST_FAILED: project tests failed"));
+        assertFalse(stderr.contains("CONTAINMENT_REQUIRED: MARKER_MISSING"));
+        assertFailureEnvelope(
+            check.stderr,
+            "TEST_FAILURE",
+            "project.tests",
+            "Fix project tests and rerun `bear check <ir-file> --project <path>`."
+        );
+    }
+
+    @Test
     void checkAllowedDepsStaleMarkerFailsDeterministically(@TempDir Path tempDir) throws Exception {
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
@@ -904,6 +930,33 @@ class BearCliTest {
             "build/generated/bear/config/containment-required.json",
             "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`."
         );
+    }
+
+    @Test
+    void checkAllowedDepsPreflightFailureSkipsProjectTestExecution(@TempDir Path tempDir) throws Exception {
+        Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
+        Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
+        assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+
+        Path sentinel = tempDir.resolve("build/test-invoked.marker");
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\n"
+                + "echo invoked>\"" + sentinel + "\"\r\n"
+                + "echo TEST_OK\r\n"
+                + "exit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "echo invoked > \"" + sentinel.toString().replace("\\", "\\\\") + "\"\n"
+                + "echo TEST_OK\n"
+                + "exit 0\n"
+        );
+        Files.deleteIfExists(tempDir.resolve("build/generated/bear/config/containment-required.json"));
+
+        CliRunResult check = runCli(new String[] { "check", ir.toString(), "--project", tempDir.toString() });
+        assertEquals(3, check.exitCode);
+        assertFalse(Files.exists(sentinel));
+        assertTrue(normalizeLf(check.stderr).contains("drift: MISSING_BASELINE: build/generated/bear/config/containment-required.json"));
     }
 
     @Test
@@ -1157,6 +1210,24 @@ class BearCliTest {
     }
 
     @Test
+    void checkWithoutContainmentScopeDoesNotPreflightContainmentEntrypoint(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+        Files.deleteIfExists(tempDir.resolve("build/generated/bear/gradle/bear-containment.gradle"));
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        assertEquals(0, check.exitCode);
+        assertTrue(normalizeLf(check.stdout).contains("check: OK"));
+    }
+
+    @Test
     void checkSharedPolicyInvalidFailsValidation(@TempDir Path tempDir) throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
@@ -1212,7 +1283,7 @@ class BearCliTest {
             check.stderr,
             "CONTAINMENT_NOT_VERIFIED",
             "spec/_shared.policy.yaml",
-            "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun Gradle containment build/check."
+            "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun `bear check`."
         );
     }
 
@@ -1289,6 +1360,128 @@ class BearCliTest {
             "bear.blocks.yaml",
             "Review per-block results above and fix failing blocks, then rerun the command."
         );
+    }
+
+    @Test
+    void checkAllRunsOneProjectTestInvocationPerContainmentEnabledRoot(@TempDir Path tempDir) throws Exception {
+        Path specDir = tempDir.resolve("spec");
+        Files.createDirectories(specDir);
+        Path alphaIr = specDir.resolve("alpha.bear.yaml");
+        Path betaIr = specDir.resolve("beta.bear.yaml");
+        Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
+        Files.writeString(
+            betaIr,
+            fixtureIrWithAllowedDepForBlock("beta", "com.fasterxml.jackson.core:jackson-databind", "2.17.2"),
+            StandardCharsets.UTF_8
+        );
+
+        Path projectRoot = tempDir.resolve("services/shared");
+        Files.createDirectories(projectRoot);
+        assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
+        assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
+        writeWorkingBlockImpl(projectRoot, "alpha");
+        writeWorkingBlockImpl(projectRoot, "beta");
+        writeFreshContainmentMarkers(projectRoot);
+
+        Path invocationCount = projectRoot.resolve("build/test-run-count.txt");
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\n"
+                + "set \"countFile=" + invocationCount + "\"\r\n"
+                + "set \"n=0\"\r\n"
+                + "if exist \"%countFile%\" set /p n=<\"%countFile%\"\r\n"
+                + "set /a n=n+1\r\n"
+                + ">\"%countFile%\" echo %n%\r\n"
+                + "echo TEST_OK\r\n"
+                + "exit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "count_file=\"" + invocationCount.toString().replace("\\", "\\\\") + "\"\n"
+                + "n=0\n"
+                + "if [ -f \"$count_file\" ]; then n=$(cat \"$count_file\"); fi\n"
+                + "n=$((n+1))\n"
+                + "echo \"$n\" > \"$count_file\"\n"
+                + "echo TEST_OK\n"
+                + "exit 0\n"
+        );
+
+        writeBlockIndex(tempDir, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/shared\n"
+            + "  - name: beta\n"
+            + "    ir: spec/beta.bear.yaml\n"
+            + "    projectRoot: services/shared\n");
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", tempDir.toString() });
+        assertEquals(0, run.exitCode);
+        assertEquals("1", Files.readString(invocationCount, StandardCharsets.UTF_8).trim());
+    }
+
+    @Test
+    void checkAllContainmentPreflightRunsOncePerRootBeforeSingleTestInvocation(@TempDir Path tempDir) throws Exception {
+        Path specDir = tempDir.resolve("spec");
+        Files.createDirectories(specDir);
+        Path alphaIr = specDir.resolve("alpha.bear.yaml");
+        Path betaIr = specDir.resolve("beta.bear.yaml");
+        Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
+        Files.writeString(
+            betaIr,
+            fixtureIrWithAllowedDepForBlock("beta", "com.fasterxml.jackson.core:jackson-databind", "2.17.2"),
+            StandardCharsets.UTF_8
+        );
+
+        Path projectRoot = tempDir.resolve("services/shared");
+        Files.createDirectories(projectRoot);
+        assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
+        assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
+        writeWorkingBlockImpl(projectRoot, "alpha");
+        writeWorkingBlockImpl(projectRoot, "beta");
+        writeFreshContainmentMarkers(projectRoot);
+
+        Path invocationCount = projectRoot.resolve("build/test-run-count.txt");
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\n"
+                + "set \"countFile=" + invocationCount + "\"\r\n"
+                + "set \"n=0\"\r\n"
+                + "if exist \"%countFile%\" set /p n=<\"%countFile%\"\r\n"
+                + "set /a n=n+1\r\n"
+                + ">\"%countFile%\" echo %n%\r\n"
+                + "echo TEST_OK\r\n"
+                + "exit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "count_file=\"" + invocationCount.toString().replace("\\", "\\\\") + "\"\n"
+                + "n=0\n"
+                + "if [ -f \"$count_file\" ]; then n=$(cat \"$count_file\"); fi\n"
+                + "n=$((n+1))\n"
+                + "echo \"$n\" > \"$count_file\"\n"
+                + "echo TEST_OK\n"
+                + "exit 0\n"
+        );
+
+        Files.deleteIfExists(projectRoot.resolve("build/generated/bear/config/containment-required.json"));
+
+        writeBlockIndex(tempDir, ""
+            + "version: v0\n"
+            + "blocks:\n"
+            + "  - name: alpha\n"
+            + "    ir: spec/alpha.bear.yaml\n"
+            + "    projectRoot: services/shared\n"
+            + "  - name: beta\n"
+            + "    ir: spec/beta.bear.yaml\n"
+            + "    projectRoot: services/shared\n");
+
+        CliRunResult run = runCli(new String[] {
+            "check", "--all", "--project", tempDir.toString(), "--fail-fast"
+        });
+        assertEquals(3, run.exitCode);
+        assertFalse(Files.exists(invocationCount));
+        String stderr = normalizeLf(run.stderr);
+        assertTrue(stderr.contains("drift: MISSING_BASELINE: build/generated/bear/config/containment-required.json"));
+        assertFalse(stderr.contains("REASON: FAIL_FAST_ABORT"));
+        assertEquals(2, countOccurrences(stderr, "STATUS: FAIL"));
     }
 
     @Test

@@ -32,8 +32,11 @@ Purpose:
 16. Retry budget for tooling/lock defects: rely on BEAR's deterministic project-test runner attempts/fallback (including Windows early fallback); if failure persists after BEAR retries, stop and report blocker details.
 17. Never add workaround type stubs/classes under `src/main/java/com/bear/generated/**` (for example fake `BigDecimal`); generated classes there are BEAR-owned.
 18. If implementation needs a new library, declare it in `block.impl.allowedDeps` (IR-first); do not silently add impl classpath reach.
-19. For Java+Gradle projects with containment in scope, ensure the project applies generated containment entrypoint and run Gradle once before relying on `bear check`.
+19. For Java+Gradle projects with containment in scope, rely on `bear check` containment auto-injection.
     - containment scope is active when any is true: selected block has `impl.allowedDeps`, `spec/_shared.policy.yaml` exists, or `src/main/java/blocks/_shared/**` contains `.java`.
+    - `bear check` injects `-I build/generated/bear/gradle/bear-containment.gradle` into project tests when scope is active.
+    - in `check --all`, containment preflight/tests/marker verification run once per `projectRoot` (not per block).
+    - marker verification runs only after successful project tests.
     - if `_shared` is in scope and `spec/_shared.policy.yaml` is missing, default `_shared` allowlist is JDK-only.
 20. For generated `*Impl.java`, replace the generated stub method body; do not keep the placeholder return/throw and append logic below it.
 21. Canonical user-owned implementation path is `src/main/java/blocks/<pkg-segment>/impl/<BlockName>Impl.java` and package `blocks.<pkg-segment>.impl`; do not relocate `*Impl.java` to `src/main/java/com/bear/generated/**`.
@@ -114,9 +117,7 @@ Before planning or editing:
 - run `--all` command variants as canonical gates
   - if index validation fails, fix `name`/`ir`/`projectRoot` entries and rerun `check --all`
 8. Compile/generate after IR changes.
-   - when IR contains `impl.allowedDeps`:
-     - confirm project applies `build/generated/bear/gradle/bear-containment.gradle`
-     - run Gradle build/test once to refresh containment marker
+   - when containment scope is active (`impl.allowedDeps`, `_shared` policy, `_shared` sources), `bear check` handles containment init-script wiring and marker verification.
 9. If generated artifacts are stale/drifted, run `bear fix` (or `fix --all` when indexed).
 10. In greenfield bootstrap (`0` IR at start), no feature implementation edits are allowed until at least one `validate` and `compile` succeeds.
 11. Implement only after generated contracts exist.
@@ -190,7 +191,7 @@ Use direct CLI commands as canonical defaults:
 - clear check-only block marker: `bear unblock --project <repoRoot>`
 - PR/base: `bear pr-check ...`
 - repair generated artifacts: `bear fix <ir-file> --project <repoRoot>` / `bear fix --all --project <repoRoot>`
-- allowed-deps enforcement prereq (Java+Gradle): apply generated containment script and run Gradle once so `build/bear/containment/applied.marker` is fresh
+- allowed-deps enforcement behavior (Java+Gradle): `bear check` auto-injects generated containment init script when scope is active and verifies markers after successful tests
 
 Wrappers are optional project policy:
 - if a repo explicitly ships wrappers and documents them as canonical, use them

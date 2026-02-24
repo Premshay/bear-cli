@@ -31,6 +31,7 @@ final class CheckCommandService {
     private static final String GENERATED_BEAR_ROOT = "build/generated/bear";
     private static final String GENERATED_WIRING_PREFIX = GENERATED_BEAR_ROOT + "/wiring/";
     private static final String CONTAINMENT_REQUIRED_PATH = "build/generated/bear/config/containment-required.json";
+    private static final String CONTAINMENT_ENTRYPOINT_PATH = "build/generated/bear/gradle/bear-containment.gradle";
     private static final String CONTAINMENT_SKIP_REASON = "no_selected_blocks_with_impl_allowedDeps";
     private static final String CONTAINMENT_MARKER_DIR = "build/bear/containment";
     private static final String SHARED_POLICY_PATH = "spec/_shared.policy.yaml";
@@ -77,6 +78,28 @@ final class CheckCommandService {
         String expectedBlockKey,
         String expectedBlockLocator,
         Boolean considerContainmentSurfacesOverride
+    ) {
+        return executeCheck(
+            irFile,
+            projectRoot,
+            runReachAndTests,
+            strictHygiene,
+            expectedBlockKey,
+            expectedBlockLocator,
+            considerContainmentSurfacesOverride,
+            true
+        );
+    }
+
+    static CheckResult executeCheck(
+        Path irFile,
+        Path projectRoot,
+        boolean runReachAndTests,
+        boolean strictHygiene,
+        String expectedBlockKey,
+        String expectedBlockLocator,
+        Boolean considerContainmentSurfacesOverride,
+        boolean runContainmentPreflight
     ) {
         Path baselineRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
         Path tempRoot = null;
@@ -349,9 +372,11 @@ final class CheckCommandService {
                 );
             }
 
-            CheckResult containmentFailure = verifyContainmentIfRequired(projectRoot, diagnostics, considerContainmentSurfaces);
-            if (containmentFailure != null) {
-                return containmentFailure;
+            if (runContainmentPreflight) {
+                CheckResult containmentFailure = preflightContainmentIfRequired(projectRoot, diagnostics, considerContainmentSurfaces);
+                if (containmentFailure != null) {
+                    return containmentFailure;
+                }
             }
 
             if (!runReachAndTests) {
@@ -426,7 +451,10 @@ final class CheckCommandService {
                 );
             }
 
-            ProjectTestResult testResult = ProjectTestRunner.runProjectTests(projectRoot);
+            ProjectTestResult testResult = ProjectTestRunner.runProjectTests(
+                projectRoot,
+                considerContainmentSurfaces ? CONTAINMENT_ENTRYPOINT_PATH : null
+            );
             if (testResult.status() == ProjectTestStatus.LOCKED) {
                 String lockLine = testResult.firstLockLine() != null
                     ? testResult.firstLockLine()
@@ -503,7 +531,7 @@ final class CheckCommandService {
                     "CONTAINMENT",
                     CliCodes.CONTAINMENT_NOT_VERIFIED,
                     SHARED_POLICY_PATH,
-                    "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun Gradle containment build/check.",
+                    "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun `bear check`.",
                     violationLine
                 );
             }
@@ -550,6 +578,11 @@ final class CheckCommandService {
                     "Reduce test runtime or increase timeout, then rerun `bear check <ir-file> --project <path>`.",
                     timeoutLine
                 );
+            }
+
+            CheckResult containmentMarkerFailure = verifyContainmentMarkersIfRequired(projectRoot, diagnostics, considerContainmentSurfaces);
+            if (containmentMarkerFailure != null) {
+                return containmentMarkerFailure;
             }
 
             clearCheckBlockedMarker(projectRoot);
@@ -662,7 +695,7 @@ final class CheckCommandService {
         return summary;
     }
 
-    private static CheckResult verifyContainmentIfRequired(
+    static CheckResult preflightContainmentIfRequired(
         Path projectRoot,
         List<String> diagnostics,
         boolean considerContainmentSurfaces
@@ -706,19 +739,61 @@ final class CheckCommandService {
             );
         }
 
-        Path entrypoint = projectRoot.resolve("build/generated/bear/gradle/bear-containment.gradle");
+        Path entrypoint = projectRoot.resolve(CONTAINMENT_ENTRYPOINT_PATH);
         if (!Files.isRegularFile(entrypoint)) {
-            String line = "drift: MISSING_BASELINE: build/generated/bear/gradle/bear-containment.gradle";
+            String line = "drift: MISSING_BASELINE: " + CONTAINMENT_ENTRYPOINT_PATH;
             diagnostics.add(line);
             return checkFailure(
                 CliCodes.EXIT_DRIFT,
                 diagnostics,
                 "DRIFT",
                 CliCodes.DRIFT_MISSING_BASELINE,
-                "build/generated/bear/gradle/bear-containment.gradle",
+                CONTAINMENT_ENTRYPOINT_PATH,
                 "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
                 line
             );
+        }
+
+        Path required = projectRoot.resolve(CONTAINMENT_REQUIRED_PATH);
+        if (!Files.isRegularFile(required)) {
+            String line = "drift: MISSING_BASELINE: " + CONTAINMENT_REQUIRED_PATH;
+            diagnostics.add(line);
+            return checkFailure(
+                CliCodes.EXIT_DRIFT,
+                diagnostics,
+                "DRIFT",
+                CliCodes.DRIFT_MISSING_BASELINE,
+                CONTAINMENT_REQUIRED_PATH,
+                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
+                line
+            );
+        }
+        try {
+            parseContainmentRequiredIndex(required);
+        } catch (ManifestParseException e) {
+            String line = "drift: CHANGED: " + CONTAINMENT_REQUIRED_PATH;
+            diagnostics.add(line);
+            return checkFailure(
+                CliCodes.EXIT_DRIFT,
+                diagnostics,
+                "DRIFT",
+                CliCodes.DRIFT_DETECTED,
+                CONTAINMENT_REQUIRED_PATH,
+                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
+                line
+            );
+        }
+
+        return null;
+    }
+
+    static CheckResult verifyContainmentMarkersIfRequired(
+        Path projectRoot,
+        List<String> diagnostics,
+        boolean considerContainmentSurfaces
+    ) throws IOException {
+        if (!considerContainmentSurfaces) {
+            return null;
         }
 
         Path required = projectRoot.resolve(CONTAINMENT_REQUIRED_PATH);

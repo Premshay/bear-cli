@@ -45,18 +45,20 @@ Runtime distribution note:
   - when opt-in is valid, `pr-check` may emit informational governance signal `MULTI_BLOCK_PORT_IMPL_ALLOWED` (non-failing) for explicit review
 
 Containment note (v1 preview):
-- if IR declares `block.impl.allowedDeps`, Java+Gradle projects must apply generated containment entrypoint:
-  - `build/generated/bear/gradle/bear-containment.gradle`
 - containment verification is active per `projectRoot` when any is true:
   - selected blocks include at least one `impl.allowedDeps` block
   - `spec/_shared.policy.yaml` exists
   - `src/main/java/blocks/_shared/**` contains `.java` sources
+- when verification is active, `bear check` auto-injects generated containment wiring into project tests:
+  - `--no-daemon -I build/generated/bear/gradle/bear-containment.gradle test`
+- for `check --all`, containment preflight/tests/marker verification execute once per `projectRoot` and fan out deterministically to blocks in that root.
+- no manual `build.gradle` containment patching is required for `check`.
 - `_shared` policy is path-scoped at `spec/_shared.policy.yaml`; if missing while `_shared` is in scope, default allowlist is JDK-only (`allowedDeps=[]`).
 - when verification is active, `bear check` requires:
   - aggregate marker `build/bear/containment/applied.marker` with matching `hash=` and canonical `blocks=` set.
   - per-block marker `build/bear/containment/<blockKey>.applied.marker` for each required block key (`block=` + `hash=` must match).
+- marker verification runs after successful project tests.
 - `_shared` allowlist mismatches are reported as containment-not-verified and remediate by updating `spec/_shared.policy.yaml` (pinned dep) or removing external `_shared` dependency usage.
-- `bear check` does not invoke Gradle automatically.
 
 Semantic context included in package docs:
 - enforcement-by-construction (wrapper-owned idempotency + invariants)

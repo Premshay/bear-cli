@@ -67,6 +67,11 @@ Containment verification semantics:
   - `src/main/java/blocks/_shared/**` contains at least one `.java` source file.
 - in skip mode (`considerContainmentSurfaces=false`), containment index/marker state does not fail the command.
 - when containment verification is active:
+  - in `check --all`, containment preflight, project tests, and marker verification run once per `projectRoot` (result fanout to blocks in that root).
+  - `check` auto-injects the generated containment init script into the project test run:
+    - `--no-daemon -I build/generated/bear/gradle/bear-containment.gradle test`
+  - preflight for generated containment artifacts runs before tests.
+  - marker/hash verification runs only after project tests exit `0`.
   - generated containment artifacts (`build/generated/bear/config/containment-required.json`, `build/generated/bear/gradle/bear-containment.gradle`) fail in drift lane (`exit 3`) with compile remediation.
   - handshake markers fail in containment-not-verified lane (`exit 74`):
     - aggregate marker: `build/bear/containment/applied.marker` must match both required hash and canonical `blocks=` CSV.

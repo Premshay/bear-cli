@@ -93,6 +93,46 @@ class ProjectTestRunnerTest {
     }
 
     @Test
+    void runProjectTestsIncludesInitScriptAtDeterministicPosition(@TempDir Path tempDir) throws Exception {
+        Path projectRoot = tempDir.resolve("project");
+        Files.createDirectories(projectRoot);
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\necho ARGS:%*\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "echo \"ARGS:$*\"\n"
+                + "exit 0\n"
+        );
+
+        ProjectTestResult result = ProjectTestRunner.runProjectTests(
+            projectRoot,
+            "build/generated/bear/gradle/bear-containment.gradle"
+        );
+        assertEquals(ProjectTestStatus.PASSED, result.status());
+        String output = result.output();
+        assertTrue(output.contains("ARGS:--no-daemon -I build/generated/bear/gradle/bear-containment.gradle test"));
+    }
+
+    @Test
+    void runProjectTestsOmitsInitScriptWhenNotProvided(@TempDir Path tempDir) throws Exception {
+        Path projectRoot = tempDir.resolve("project");
+        Files.createDirectories(projectRoot);
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\necho ARGS:%*\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "echo \"ARGS:$*\"\n"
+                + "exit 0\n"
+        );
+
+        ProjectTestResult result = ProjectTestRunner.runProjectTests(projectRoot, null);
+        assertEquals(ProjectTestStatus.PASSED, result.status());
+        String output = result.output();
+        assertTrue(output.contains("ARGS:--no-daemon test"));
+        assertFalse(output.contains(" -I "));
+    }
+
+    @Test
     void runProjectTestsRetriesIsolatedAfterSelfHealAndPasses(@TempDir Path tempDir) throws Exception {
         Path projectRoot = tempDir.resolve("project");
         Files.createDirectories(projectRoot);

@@ -191,7 +191,11 @@ Behavior:
 - invariant marker-first classification:
   - test output marker `BEAR_INVARIANT_VIOLATION|block=...|kind=...|field=...|observed=...|rule=...`
   - deterministic `CODE=INVARIANT_VIOLATION` in test-failure bucket
-- when IR declares `block.impl.allowedDeps`, also enforces containment handshake (script/index/marker hash) before tests
+- when containment scope is active (`impl.allowedDeps`, `_shared` policy, or `_shared` sources), `check`:
+  - preflights containment generated artifacts before tests
+  - runs project tests with generated init script injection:
+    - `--no-daemon -I build/generated/bear/gradle/bear-containment.gradle test`
+  - verifies containment markers only after tests exit `0`
 - uses the same frozen block-key canonicalizer as `compile` for single-command index matching and identity checks
 
 ### 4b. Repo gate (multi-block)
@@ -210,7 +214,7 @@ Optional flags:
 Use when:
 - a repo has multiple BEAR-managed blocks declared in `bear.blocks.yaml`
 - CI/local workflow needs one deterministic gate for all managed blocks
-- multiple blocks can share one `projectRoot`; `check --all` runs undeclared-reach/tests once per root
+- multiple blocks can share one `projectRoot`; `check --all` runs undeclared-reach, containment preflight, tests, and post-test marker verification once per root
 
 ### 4c. Clear check block marker
 
@@ -380,7 +384,9 @@ Enforcement (`bear check`):
   - `build/generated/bear/config/containment-required.json`
   - `build/bear/containment/applied.marker`
 - marker hash must match containment index hash
-- `bear check` does not invoke Gradle; run Gradle build/test once after compile to refresh marker
+- `bear check` auto-injects generated containment wiring into its project test invocation when containment scope is active:
+  - `--no-daemon -I build/generated/bear/gradle/bear-containment.gradle test`
+- no manual `build.gradle` containment patching is required for `check`
 - `_shared` path-scoped policy:
   - file: `spec/_shared.policy.yaml`
   - if policy is missing while `_shared` sources are in scope, default is JDK-only (`allowedDeps=[]`)
@@ -401,7 +407,7 @@ All non-zero command exits include deterministic footer lines:
 2. Agent updates IR if boundary/contract/effect changes are needed.
 3. Agent runs `bear validate <ir-file>`.
 4. Agent runs `bear compile <ir-file> --project <path>`.
-5. If IR declares `impl.allowedDeps` on Java+Gradle, ensure project applies generated containment entrypoint and run Gradle build/test once.
+5. If containment scope is active, rely on `bear check` to run project tests with generated containment init-script injection (no manual `build.gradle` patching).
 6. If generated artifacts need deterministic repair, run `bear fix <ir-file> --project <path>` (or `fix --all`).
 7. Agent implements user-owned logic/tests.
 8. Agent runs `bear check --all --project <repoRoot>`.

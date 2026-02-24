@@ -127,13 +127,13 @@ Likely cause:
 - `_shared` containment compile failed against path-scoped allowlist (`SHARED_DEPS_VIOLATION`).
 Fix:
 
-1. Run Gradle build once to refresh containment markers for the current generated containment requirement.
-2. Re-run `bear check`.
+1. Re-run `bear check` after ensuring generated containment artifacts are current (`bear compile ...` if needed).
+2. `bear check` runs project tests with the generated containment init script and verifies markers only after tests pass.
 
 For `_shared` deps violations:
 1. Add the dependency with pinned version in `spec/_shared.policy.yaml`, or
 2. remove external dependency usage from `src/main/java/blocks/_shared/**`,
-3. rerun Gradle containment build/check.
+3. rerun `bear check`.
 
 Marker strictness:
 - aggregate marker must match both `hash=<sha256(containment-required.json)>` and canonical `blocks=<csv>` from required set.

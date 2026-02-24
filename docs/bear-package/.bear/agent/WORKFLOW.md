@@ -49,8 +49,9 @@ Anti-patterns:
 - `bear compile <ir-file> --project <repoRoot>`
   - or compile all indexed blocks in one pass: `bear compile --all --project <repoRoot>`
 6. If containment is in scope and project is Java+Gradle:
-- ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
-- run Gradle build/test once to write containment marker
+- rely on `bear check` containment auto-injection for project tests:
+  - `--no-daemon -I build/generated/bear/gradle/bear-containment.gradle test`
+  - marker verification runs only after successful tests
   - containment scope is active when any is true:
     - selected block set includes `impl.allowedDeps`
     - `spec/_shared.policy.yaml` exists
@@ -59,6 +60,7 @@ Anti-patterns:
 7. Run gate:
 - single-block mode: `bear check <ir-file> --project <repoRoot> [--strict-hygiene]`
 - multi-block mode: `bear check --all --project <repoRoot> [--strict-hygiene]`
+  - in `check --all`, containment preflight/tests/marker verification execute once per `projectRoot` and fan out to blocks in that root.
   - if a stale `build/bear/check.blocked.marker` exists, gate still runs; clear with `bear unblock --project <repoRoot>` when cleanup is needed
 8. Implement in `*Impl.java` and tests only.
 9. Re-run check to `0`.
@@ -77,14 +79,16 @@ Greenfield hard stop:
 4. Compile touched IR files.
 5. If generated artifacts are stale or drifted, run `bear fix` for touched IR (or `fix --all` when indexed).
 6. If containment is in scope and project is Java+Gradle:
-- ensure project applies `build/generated/bear/gradle/bear-containment.gradle`
-- run Gradle build/test once to write containment marker
+- rely on `bear check` containment auto-injection for project tests:
+  - `--no-daemon -I build/generated/bear/gradle/bear-containment.gradle test`
+  - marker verification runs only after successful tests
   - containment scope is active when any is true:
     - selected block set includes `impl.allowedDeps`
     - `spec/_shared.policy.yaml` exists
     - `src/main/java/blocks/_shared/**` has `.java`
   - if `_shared` is in scope and `spec/_shared.policy.yaml` is missing, `_shared` default allowlist is JDK-only.
 7. Run check gate (`check` or `check --all`).
+  - in `check --all`, containment preflight/tests/marker verification execute once per `projectRoot` and fan out to blocks in that root.
   - stale `build/bear/check.blocked.marker` is advisory; use `bear unblock --project <repoRoot>` when cleanup is needed
 8. Implement and test.
 9. Re-run check gate to `0`.
@@ -220,12 +224,10 @@ Index troubleshooting:
 10. `74` containment failure (`CONTAINMENT_NOT_VERIFIED` / `CONTAINMENT_UNSUPPORTED_TARGET`):
 - if missing/stale marker or missing generated containment script/index:
   - rerun `bear compile`
-  - ensure project applies generated containment entrypoint
-  - run Gradle build/test once to refresh marker
   - rerun `bear check`
 - if shared allowlist mismatch (`SHARED_DEPS_VIOLATION`):
   - add pinned dependency to `spec/_shared.policy.yaml`, or remove external dep usage from `src/main/java/blocks/_shared/**`
-  - rerun Gradle containment build/check, then rerun `bear check`
+  - rerun `bear check`
 - if unsupported target:
   - use Java+Gradle enforcement path for allowed deps
   - or remove containment scope drivers (`impl.allowedDeps`, `_shared` policy/source scope) and keep governance-only behavior in `pr-check`

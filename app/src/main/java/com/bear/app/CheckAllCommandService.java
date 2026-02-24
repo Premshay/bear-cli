@@ -13,6 +13,7 @@ import java.util.TreeMap;
 final class CheckAllCommandService {
     private static final String CHECK_BLOCKED_REASON_LOCK = "LOCK";
     private static final String CHECK_BLOCKED_REASON_BOOTSTRAP = "BOOTSTRAP_IO";
+    private static final String CONTAINMENT_ENTRYPOINT_PATH = "build/generated/bear/gradle/bear-containment.gradle";
 
     private CheckAllCommandService() {
     }
@@ -167,7 +168,8 @@ final class CheckAllCommandService {
                 false,
                 block.name(),
                 BearCli.indexLocator(block),
-                rootContainmentRequiredBySelection.getOrDefault(block.projectRoot(), false)
+                rootContainmentRequiredBySelection.getOrDefault(block.projectRoot(), false),
+                false
             );
             BlockExecutionResult blockResult = BearCli.toCheckBlockResult(block, checkResult);
             blockResults.add(blockResult);
@@ -293,7 +295,34 @@ final class CheckAllCommandService {
                     continue;
                 }
 
-                ProjectTestResult testResult = ProjectTestRunner.runProjectTests(root);
+                boolean considerContainmentSurfaces = rootContainmentRequiredBySelection.getOrDefault(entry.getKey(), false);
+                ArrayList<String> containmentPreflightDiagnostics = new ArrayList<>();
+                CheckResult containmentPreflightFailure = CheckCommandService.preflightContainmentIfRequired(
+                    root,
+                    containmentPreflightDiagnostics,
+                    considerContainmentSurfaces
+                );
+                if (containmentPreflightFailure != null) {
+                    String detail = containmentPreflightFailure.detail() != null && !containmentPreflightFailure.detail().isBlank()
+                        ? containmentPreflightFailure.detail()
+                        : containmentPreflightDiagnostics.isEmpty() ? "check: CONTAINMENT_REQUIRED: preflight failed" : containmentPreflightDiagnostics.get(0);
+                    for (int idx : entry.getValue()) {
+                        blockResults.set(idx, BearCli.rootFailure(
+                            blockResults.get(idx),
+                            containmentPreflightFailure.exitCode(),
+                            containmentPreflightFailure.category(),
+                            containmentPreflightFailure.failureCode(),
+                            containmentPreflightFailure.failurePath(),
+                            detail,
+                            containmentPreflightFailure.failureRemediation()
+                        ));
+                    }
+                    continue;
+                }
+                ProjectTestResult testResult = ProjectTestRunner.runProjectTests(
+                    root,
+                    considerContainmentSurfaces ? CONTAINMENT_ENTRYPOINT_PATH : null
+                );
                 if (testResult.status() == ProjectTestStatus.LOCKED) {
                     String lockLine = testResult.firstLockLine() != null
                         ? testResult.firstLockLine()
@@ -372,7 +401,7 @@ final class CheckAllCommandService {
                             CliCodes.CONTAINMENT_NOT_VERIFIED,
                             "spec/_shared.policy.yaml",
                             detail,
-                            "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun Gradle containment build/check."
+                            "Add dependency to `spec/_shared.policy.yaml` with exact pinned version, or remove external dependency usage from `src/main/java/blocks/_shared/**`, then rerun `bear check --all`."
                         ));
                     }
                 } else if (testResult.status() == ProjectTestStatus.INVARIANT_VIOLATION) {
@@ -431,6 +460,29 @@ final class CheckAllCommandService {
                         ));
                     }
                 } else if (testResult.status() == ProjectTestStatus.PASSED) {
+                    ArrayList<String> containmentDiagnostics = new ArrayList<>();
+                    CheckResult containmentMarkerFailure = CheckCommandService.verifyContainmentMarkersIfRequired(
+                        root,
+                        containmentDiagnostics,
+                        considerContainmentSurfaces
+                    );
+                    if (containmentMarkerFailure != null) {
+                        String detail = containmentMarkerFailure.detail() != null && !containmentMarkerFailure.detail().isBlank()
+                            ? containmentMarkerFailure.detail()
+                            : containmentDiagnostics.isEmpty() ? "check: CONTAINMENT_REQUIRED: verification failed" : containmentDiagnostics.get(0);
+                        for (int idx : entry.getValue()) {
+                            blockResults.set(idx, BearCli.rootFailure(
+                                blockResults.get(idx),
+                                containmentMarkerFailure.exitCode(),
+                                containmentMarkerFailure.category(),
+                                containmentMarkerFailure.failureCode(),
+                                containmentMarkerFailure.failurePath(),
+                                detail,
+                                containmentMarkerFailure.failureRemediation()
+                            ));
+                        }
+                        continue;
+                    }
                     BearCli.clearCheckBlockedMarker(root);
                 }
             } catch (IOException e) {
