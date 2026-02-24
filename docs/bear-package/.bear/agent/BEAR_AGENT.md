@@ -49,6 +49,10 @@ Purpose:
 33. Agent guidance must remain package-local: rely on `.bear/agent/**` plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**`), not non-shipped repo docs.
 34. If using reflection/hygiene policy allowlists, keep exact repo-relative path entries in `.bear/policy/*.txt` sorted, unique, and non-glob.
 35. You may use git history/branches/stashes for context in real projects, but BEAR decisions and outputs must remain grounded in the current working tree plus current IR/index contracts.
+36. Do not report completion unless both repository-level gates are evidenced green:
+    - `bear check --all --project <repoRoot>`
+    - `bear pr-check --all --project <repoRoot> --base <ref>`
+    - Do not report done if either command is missing or non-zero.
 
 ## Policy Contract (Check)
 
@@ -111,7 +115,9 @@ Before planning or editing:
 10. In greenfield bootstrap (`0` IR at start), no feature implementation edits are allowed until at least one `validate` and `compile` succeeds.
 11. Implement only after generated contracts exist.
 12. Implement only in user-owned implementation/tests.
-13. Run canonical gate to `0`.
+13. Run repository-level completion gates to `0`:
+    - `bear check --all --project <repoRoot>`
+    - `bear pr-check --all --project <repoRoot> --base <ref>`
 14. Report deterministic completion summary.
 
 ## Generic Decomposition Rules
@@ -193,5 +199,7 @@ Report completion in this format:
 - `IR delta: <files + boundary notes>`
 - `Implementation delta: <files>`
 - `Tests delta: <files>`
-- `Gate result: <command> => <exit>`
+- `Gate results:`
+- `- bear check --all --project <repoRoot> => <exit>`
+- `- bear pr-check --all --project <repoRoot> --base <ref> => <exit>`
 

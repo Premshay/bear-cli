@@ -5,13 +5,13 @@ For milestone status and backlog ordering, use `docs/context/program-board.md`.
 
 ## Last Updated
 
-2026-02-23
+2026-02-24
 
 ## Current Focus
 
 P2 feature delivery:
 - active milestone is `P2`
-- post-hard-break follow-through and next feature queue lock
+- post-hard-break follow-through with explicit dual-gate agent completion evidence
 - preserve structural governance focus (no endpoint-per-block policy, no style policing)
 - prioritize containment hardening where it increases block-boundary signal
 - keep deterministic bypass signaling clean (high-signal first finding, low-noise secondary findings)
@@ -19,11 +19,24 @@ P2 feature delivery:
 ## Next Concrete Task
 
 next feature sequence (one-by-one):
-1. update agent/demo workflow done-gate to require both `check --all` and `pr-check --all --base <ref>`
-2. implement deterministic wiring drift diagnostics (exact changed/missing/added files)
-3. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
+1. implement deterministic wiring drift diagnostics (exact changed/missing/added files)
+2. keep full `:kernel:test` + `:app:test` + root `test` green after each incremental update
+3. evaluate optional governance signal follow-ups after drift diagnostics land
 
 ## Session Notes
+
+- Hardened general BEAR agent done-gate contract (not demo-only):
+  - updated package agent/workflow docs to require both gates before done:
+    - `bear check --all --project <repoRoot>`
+    - `bear pr-check --all --project <repoRoot> --base <ref>`
+  - updated public/operator docs and context guide with the same completion contract and rationale.
+  - updated package README workflow note for dual-gate completion evidence.
+  - smoke/validation:
+    - `.\gradlew.bat --no-daemon :app:test` (green)
+    - `.\gradlew.bat --no-daemon test` (green)
+    - CLI smoke via `:app:run`:
+      - `check --all --project ..\bear-account-demo` executed and deterministically failed on existing demo bypass (`RULE=MULTI_BLOCK_PORT_IMPL_FORBIDDEN`, exit 7)
+      - `pr-check --all --project ..\bear-account-demo --base HEAD` executed and deterministically failed on boundary-expansion deltas (exit 5)
 
 - Implemented `MULTI_BLOCK_PORT_IMPL_FORBIDDEN` structural guard in boundary-bypass pipeline:
   - scanner now detects classes implementing generated ports from multiple generated block packages.

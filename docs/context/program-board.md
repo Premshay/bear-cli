@@ -2,7 +2,7 @@
 
 ## Last Updated
 
-2026-02-23
+2026-02-24
 
 ## Current Milestone
 
@@ -54,16 +54,20 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. `Demo done-gate hardening` (require both `check --all` and `pr-check --all --base <ref>` evidence in agent workflow/docs)
-2. `Wiring drift diagnostics` (deterministic changed/missing/added wiring file list + single remediation)
-3. `Declared allowed deps containment` (stabilization/operational hardening)
-4. `_shared` allowedDeps policy (path-scoped shared policy, no IR schema changes; queued after core allowedDeps stabilization)
-5. Generated structural tests and cross-target parity follow-up
-6. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
+1. `Wiring drift diagnostics` (deterministic changed/missing/added wiring file list + single remediation)
+2. `Declared allowed deps containment` (stabilization/operational hardening)
+3. `_shared` allowedDeps policy (path-scoped shared policy, no IR schema changes; queued after core allowedDeps stabilization)
+4. Generated structural tests and cross-target parity follow-up
+5. BEAR-owned generated-source wiring auto-enforcement (avoid ad-hoc `build.gradle` patching)
 
 ## Recently Completed (P2)
 
-1. `Multi-block port implementer guard` (`MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
+1. `General agent done-gate hardening` (`check --all` + `pr-check --all --base <ref>`)
+   - package agent workflow now requires dual-gate completion evidence before reporting done.
+   - public command/context docs aligned to require both local gates as completion evidence.
+   - CI remains authoritative remote `pr-check`; local `pr-check` required for fast governance feedback.
+
+2. `Multi-block port implementer guard` (`MULTI_BLOCK_PORT_IMPL_FORBIDDEN`)
    - added structural bypass rule for classes implementing generated `*Port` interfaces across multiple generated block packages.
    - marker exception contract finalized:
      - exact marker line `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
@@ -114,12 +118,12 @@ Determinism:
 - source traversal sorted by repo-relative path.
 - findings sorted by `(path, rule, detail)`.
 
-### 2) Demo done-gate hardening (`P2`)
+### 2) General agent done-gate hardening (`P2` completed)
 
 Contract:
-- demo completion requires both commands green:
-  - `bear check --all --project .`
-  - `bear pr-check --all --project . --base <ref>`
+- agent completion requires both commands green:
+  - `bear check --all --project <repoRoot>`
+  - `bear pr-check --all --project <repoRoot> --base <ref>`
 - completion reports must include both gate results.
 
 Docs/package updates required:

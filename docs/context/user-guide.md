@@ -387,7 +387,12 @@ All non-zero command exits include deterministic footer lines:
 5. If IR declares `impl.allowedDeps` on Java+Gradle, ensure project applies generated containment entrypoint and run Gradle build/test once.
 6. If generated artifacts need deterministic repair, run `bear fix <ir-file> --project <path>` (or `fix --all`).
 7. Agent implements user-owned logic/tests.
-8. Agent runs `bear check <ir-file> --project <path>`.
-9. For PR governance, run `bear pr-check <ir-file> --project <path> --base <ref>`.
+8. Agent runs `bear check --all --project <repoRoot>`.
+9. Agent runs `bear pr-check --all --project <repoRoot> --base <ref>`.
+
+Why both:
+- local `check --all` proves current repo integrity.
+- local `pr-check --all` gives fast governance feedback before CI.
+- CI `pr-check` remains the authoritative remote enforcement gate.
 
 

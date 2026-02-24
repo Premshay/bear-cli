@@ -5,6 +5,7 @@
 Run deterministic PR governance checks:
 - classify normalized IR deltas versus merge-base (boundary expansion signaling)
 - enforce generated-port implementation containment boundaries
+- provide completion counterpart to `check --all` for local agent evidence before CI enforcement
 
 ## Invocation forms
 
@@ -18,6 +19,10 @@ bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only 
 - Single mode requires `<ir-file>`, `--project`, and `--base`.
 - `<ir-file>` must be repo-relative.
 - `--all` mode uses index selection and optional `--blocks`, `--only`, `--strict-orphans`.
+- completion workflows should pair:
+  - `bear check --all --project <repoRoot>`
+  - `bear pr-check --all --project <repoRoot> --base <ref>`
+- CI `pr-check` remains authoritative remote enforcement; local `pr-check` is expected for fast feedback.
 
 ## Output schema and ordering guarantees
 

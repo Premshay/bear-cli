@@ -83,6 +83,10 @@ Greenfield hard stop:
 - or `bear pr-check --all --project <repoRoot> --base <ref>` when indexed
   - `pr-check` uses deterministic temp staging and wiring-only generation for manifest analysis; it does not require full compile output in the project tree
   - `pr-check` may emit informational governance signal `MULTI_BLOCK_PORT_IMPL_ALLOWED` (non-failing) when a valid `_shared` multi-block marker is present
+11. Mark completion only after both repository-level gates are green, and record the actual base ref used:
+- `bear check --all --project <repoRoot>`
+- `bear pr-check --all --project <repoRoot> --base <ref>`
+- do not mark done if either command is missing or non-zero.
 
 ## Block Index Gate
 
@@ -231,7 +235,7 @@ Lock and environment troubleshooting:
 
 - No generated-file edits.
 - No silent boundary expansion.
-- One deterministic gate determines done/not-done.
+- Completion is a two-gate contract: `check --all` and `pr-check --all --base <ref>` must both be green.
 - No implementation-first bypass in greenfield mode.
 - No execute-path business-logic delegation from governed impls to non-governed external packages.
 - Prefer minimal sufficient design; avoid unnecessary architecture expansion.

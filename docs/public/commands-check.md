@@ -4,6 +4,10 @@
 
 Run deterministic enforcement for one block or all indexed blocks: drift, static boundary checks, and project test gate.
 
+Completion pairing note:
+- `check --all` is the local integrity gate.
+- for completion evidence, pair it with `bear pr-check --all --project <repoRoot> --base <ref>`.
+
 ## Invocation forms
 
 ```text

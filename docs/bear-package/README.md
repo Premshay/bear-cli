@@ -122,6 +122,9 @@ When a project has multiple governed BEAR blocks:
 1. `bear.blocks.yaml` is mandatory.
 2. Canonical gates must run `--all` variants (`check --all` / `pr-check --all`).
 3. Removing index files to bypass `--all` governance is invalid workflow.
+4. Canonical agent done-gate evidence requires both:
+   - `bear check --all --project <repoRoot>`
+   - `bear pr-check --all --project <repoRoot> --base <ref>`
 
 ## Integration Rule: Existing `AGENTS.md`
 
