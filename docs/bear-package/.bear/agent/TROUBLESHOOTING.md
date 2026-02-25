@@ -12,9 +12,10 @@ Purpose:
 4. Boundary bypass (`7`) -> move wiring/logic back into governed seams/roots, then rerun.
 5. Undeclared reach or strict hygiene (`6`) -> declare boundary or remediate unexpected path, then rerun.
 6. Project tests failed (`4`) -> fix implementation/tests; rerun check.
-7. PR boundary expansion (`5`) -> confirm intentional expansion and review process.
+7. PR boundary expansion / `BOUNDARY_EXPANSION_DETECTED` (`5`) -> confirm intentional expansion and review process.
 8. IO/git/runtime environment (`74`) -> resolve repo/path/lock/bootstrap and rerun.
-9. Internal failure (`70`) -> capture output and report tool defect.
+9. Schema/path mismatch or missing routed docs -> suspect stale package sync, re-sync package, verify `.bear/agent/**` tree parity, rerun.
+10. Internal failure (`70`) -> capture output and report tool defect.
 
 ## Deterministic Remediation by Failure Class
 
@@ -39,6 +40,24 @@ Purpose:
 
 5. Boundary expansion lane (`exit 5`, `pr-check`):
 - treat as governance review signal, not random failure.
+- verify `--base` selection first; `--base HEAD` can misclassify or hide intended delta unless explicitly instructed.
+
+6. Schema/path mismatch or missing routed docs:
+- rerun package sync from canonical source package.
+- verify destination `.bear/agent/**` tree exactly matches source package tree.
+- rerun the failing gate after parity is restored.
+
+## BOUNDARY_EXPANSION_DETECTED
+
+Meaning:
+1. `pr-check` detected boundary-affecting change relative to provided base.
+2. This can be expected when adding/changing blocks, contracts, effects, idempotency, invariants, or governed adapter boundaries.
+
+Success criteria:
+1. Use correct base (merge-base against target branch, or provided SHA) and rerun if base was wrong.
+2. Confirm classification matches intentional IR/implementation delta.
+3. Report classification as expected or unintended in completion report with rationale.
+4. Do not "eliminate" an intentional boundary expansion by hiding or reverting valid contract changes.
 
 ## Lock/IO Environment Branch
 

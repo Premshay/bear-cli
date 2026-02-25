@@ -140,6 +140,9 @@ Rules:
 
 - Idempotency and invariants are wrapper-owned semantics.
 - Idempotent logic signatures exclude idempotency port.
+- Wrapper signature clarification (frozen):
+  - generated logic signatures exclude the idempotency store port
+  - wrapper enforcement binds idempotency via IR-declared `idempotency.store` (`port`, `getOp`, `putOp`)
 - IR-declared semantics must be enforceable by target; otherwise `check` fails.
 
 Selection rule:
@@ -216,3 +219,4 @@ For each changed IR:
 Policy files used by `check`:
 1. `.bear/policy/reflection-allowlist.txt`
 2. `.bear/policy/hygiene-allowlist.txt`
+3. Strict policy format contract: see `.bear/agent/CONTRACTS.md`.

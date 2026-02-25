@@ -10,6 +10,25 @@ This file is contract-only.
 - Contains: definitions, MUST/MUST NOT rules, canonical paths, canonical formats, frozen semantics.
 - Excludes: troubleshooting flows, failure triage playbooks, procedural step-by-step runbooks.
 
+## Decomposition Signals (Normative)
+
+Default decomposition:
+1. One block is the default when no explicit split signal is present in spec intent.
+
+Explicit split signals:
+1. Lifecycle split: independently deployable or independently evolving lifecycle boundaries are declared.
+2. Effect split: external capability boundaries (ports/ops) must be isolated for policy/governance reasons.
+3. Authority split: ownership, trust, or approval authority boundaries must be isolated.
+4. State split: state domain boundaries must be isolated to preserve determinism, governance, or auditability.
+
+Rule:
+1. Add a new block only when at least one explicit split signal is present in spec evidence.
+
+## Contract Modeling Anti-Patterns (Normative)
+
+1. MUST NOT encode multiple externally visible operations as an action/command enum multiplexer inside one request unless the spec explicitly defines that command-router contract.
+2. When multiple external operations are required and no explicit command-router contract exists, model them as distinct operations/contracts (or distinct blocks when decomposition signals require it).
+
 ## Canonical Wiring Recipe
 
 Default adapter shape:
@@ -78,7 +97,4 @@ Implications:
 1. Multi-block state requires `bear.blocks.yaml`.
 2. In multi-block state, canonical done gates are repository-level `--all` commands.
 3. Removing `bear.blocks.yaml` to force per-IR fallback is invalid.
-4. Completion is valid only with both gates evidenced green:
-- `bear check --all --project <repoRoot>`
-- `bear pr-check --all --project <repoRoot> --base <ref>`
-5. Completion report MUST include governance-signal disposition block as defined in `.bear/agent/REPORTING.md`.
+4. Governance-signal disposition requirements are defined in `.bear/agent/REPORTING.md`.
