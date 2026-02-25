@@ -28,6 +28,44 @@ next feature sequence (one-by-one):
 
 ## Session Notes
 
+- Extended isolated simulation contract with mandatory post-run BEAR analysis + grading:
+  - `docs/context/demo-agent-simulation.md` now requires:
+    - went well / did not go well / lessons / BEAR improvements sections
+    - weighted 0..5 run grading across workflow, governance, gates, correctness, and hygiene
+    - explicit letter grade and weighted score output
+  - added ready-state consistency criteria for demo confidence:
+    - repeated isolated runs (`>=5`) with grade distribution threshold and structural consistency expectations
+
+- Simulation runbook branch lock added:
+  - `docs/context/demo-agent-simulation.md` now requires per-run metadata:
+    - `stepId`
+    - `simulationBranch`
+    - `baseRef`
+  - current default profile documented for greenfield:
+    - `stepId=greenfield`
+    - `simulationBranch=main` (or fresh branch from `main`)
+    - `baseRef=HEAD` for completion evidence
+
+- Added canonical isolated demo simulation runbook:
+  - new doc: `docs/context/demo-agent-simulation.md`
+  - defines hard isolation requirements (fresh session, demo-only context), exact bootstrap/task prompts, required evidence capture, and pass/fail rubric.
+  - clarifies prep automation boundary:
+    - `scripts/run-demo-simulated.ps1` is prep/smoke only, not isolated-agent reasoning.
+  - linked from:
+    - `docs/context/start-here.md`
+    - `docs/context/user-guide.md`
+
+- Added repeatable simulated-demo protocol (clean-room approximation):
+  - new script: `scripts/run-demo-simulated.ps1`
+  - documented in:
+    - `docs/context/user-guide.md`
+    - `docs/context/start-here.md`
+  - flow supports:
+    - reset (`clean-demo-branch.ps1`)
+    - sync (`sync-bear-demo.ps1`)
+    - optional gate smoke (`compile/check/pr-check --all`)
+  - this is intentionally documented as simulation only (not true isolated-memory session behavior).
+
 - Implemented P2 next slice: generated structural tests + minimal parity lock.
   - `JvmTarget` now emits:
     - `<BlockName>StructuralDirectionTest`

@@ -44,6 +44,8 @@ Interpretation guardrail:
 2. Read `docs/context/ir-spec.md` before parser/validator/generator edits.
 3. Read `docs/context/roadmap.md` before choosing scope.
 4. If this is a fresh non-repo chat, paste `docs/context/prompt-bootstrap.md` SHORT block.
+5. For isolated demo agent evaluation, follow `docs/context/demo-agent-simulation.md`.
+6. `scripts/run-demo-simulated.ps1` is prep/smoke automation only (clean/sync/gates), not isolated-agent reasoning.
 
 ## Session Close Protocol
 

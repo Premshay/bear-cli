@@ -422,4 +422,15 @@ Why both:
 - local `pr-check --all` gives fast governance feedback before CI.
 - CI `pr-check` remains the authoritative remote enforcement gate.
 
+## Demo simulation references
+
+Use `docs/context/demo-agent-simulation.md` for canonical isolated-agent simulation instructions (fresh session, demo-only context, branch-under-test metadata, mandatory BEAR analysis, and run grading/readiness rubric).
+
+`scripts/run-demo-simulated.ps1` is prep/smoke automation only:
+- clean demo
+- sync demo runtime/package
+- optional compile/check/pr-check smoke
+
+It is not a substitute for a true isolated agent reasoning session.
+
 
