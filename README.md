@@ -111,6 +111,7 @@ Pipeline: `IR -> compile -> check`, then `pr-check --base <ref>` for PR governan
 - Install in another repo: [docs/public/INSTALL.md](docs/public/INSTALL.md)
 - What BEAR protects: [docs/public/ENFORCEMENT.md](docs/public/ENFORCEMENT.md)
 - Operating model: [docs/public/MODEL.md](docs/public/MODEL.md)
+- Directional vision: [docs/public/VISION.md](docs/public/VISION.md)
 - Rationale and architecture: [docs/public/FOUNDATIONS.md](docs/public/FOUNDATIONS.md)
 - Frozen contracts: [docs/public/CONTRACTS.md](docs/public/CONTRACTS.md)
 - Command contracts: [docs/public/commands-check.md](docs/public/commands-check.md), [docs/public/commands-pr-check.md](docs/public/commands-pr-check.md), [docs/public/commands-unblock.md](docs/public/commands-unblock.md)

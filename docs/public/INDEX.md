@@ -11,6 +11,7 @@ This folder is the developer-facing documentation for BEAR.
 
 - [FOUNDATIONS.md](FOUNDATIONS.md) - rationale, philosophy, and architecture context.
 - [MODEL.md](MODEL.md) - operating vocabulary and agent/developer flow.
+- [VISION.md](VISION.md) - directional future possibilities (non-committed).
 - [CONTRACTS.md](CONTRACTS.md) - frozen Preview machine contract surface.
 - [VERSIONING.md](VERSIONING.md) - what may change and what is frozen.
 
@@ -32,6 +33,7 @@ This folder is the developer-facing documentation for BEAR.
 - [INSTALL.md](INSTALL.md) - Install the BEAR `.bear` bundle in another project.
 - [FOUNDATIONS.md](FOUNDATIONS.md) - Why BEAR exists and how it is structured.
 - [MODEL.md](MODEL.md) - Vocabulary and operating model.
+- [VISION.md](VISION.md) - Directional long-horizon product vision (not a delivery plan).
 - [ENFORCEMENT.md](ENFORCEMENT.md) - What BEAR enforces and alerts on.
 - [CONTRACTS.md](CONTRACTS.md) - Frozen Preview contract boundaries.
 - [commands-validate.md](commands-validate.md) - Validate IR.
@@ -50,5 +52,6 @@ This folder is the developer-facing documentation for BEAR.
 - [QUICKSTART.md](QUICKSTART.md)
 - [ENFORCEMENT.md](ENFORCEMENT.md)
 - [INSTALL.md](INSTALL.md)
+- [VISION.md](VISION.md)
 - [CONTRACTS.md](CONTRACTS.md)
 - [troubleshooting.md](troubleshooting.md)

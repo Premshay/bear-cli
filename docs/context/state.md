@@ -24,6 +24,10 @@ P2 stabilization and context-governance cleanup:
 
 ## Session Notes
 
+- Refined `docs/public/VISION.md` to remove already-done/mis-scoped items and align with active BEAR direction (agent-first IR handling, boundary-usage visibility, side-effect taxonomy, operation-scoped contracts, cross-block modeling, deterministic extensibility, Node.js target candidate).
+- Rewrote `docs/public/VISION.md` to a reader-friendly narrative format (less checklist-style, clearer non-commitment framing, explicit Node.js future direction).
+- Added public directional vision page at `docs/public/VISION.md` (explicitly non-committed, no near-term queue content).
+- Added public docs navigation link for vision in `docs/public/INDEX.md` and root `README.md`.
 - Context refactor completed with no-loss mapping:
   - added `docs/context/CONTEXT_BOOTSTRAP.md`
   - added `docs/context/context-coverage-map.md`
