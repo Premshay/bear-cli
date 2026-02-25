@@ -59,6 +59,28 @@ Purpose:
     - `bear pr-check --all --project <repoRoot> --base <ref>`
     - Do not report done if either command is missing or non-zero.
 37. Treat `BEAR_STRUCTURAL_SIGNAL|...` lines as structural evidence by default (non-failing); only treat as gate failure when strict mode is explicitly enabled (`-Dbear.structural.tests.strict=true`).
+38. Completion report must include a mechanically checkable governance-signal disposition block with exact keys:
+    - `GOVERNANCE_SIGNAL_DISPOSITION`
+    - `MULTI_BLOCK_PORT_IMPL_ALLOWED: none` or `MULTI_BLOCK_PORT_IMPL_ALLOWED: <count>`
+    - if `<count> > 0`, both `JUSTIFICATION:` and `TRADEOFF:` are required.
+39. `MULTI_BLOCK_PORT_IMPL_ALLOWED` `<count>` means the number of governance signal lines emitted by `bear pr-check --all --project <repoRoot> --base <ref>` in that run.
+40. Missing governance disposition block, mismatched count, or missing required justification/tradeoff fields means completion report is incomplete.
+
+## Canonical Wiring Recipe (Normative)
+
+This section is the single source of truth for preferred generated-port adapter shape.
+
+Default expected shape:
+1. Keep `_shared` focused on shared state primitives and small pure utilities.
+2. Prefer one adapter class per generated block package.
+3. Place adapters under governed roots:
+- block root (`src/main/java/blocks/<blockKey>/...`)
+- shared governed root (`src/main/java/blocks/_shared/<blockKey>/...`)
+4. Each adapter class should implement generated ports for one generated block package.
+5. Multi-block adapter classes are allowed only when explicitly intentional:
+- keep class under `src/main/java/blocks/_shared/**`
+- use exact marker contract `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`
+- include required completion-report disposition and rationale (`GOVERNANCE_SIGNAL_DISPOSITION`, `JUSTIFICATION`, `TRADEOFF`)
 
 ## Policy Contract (Check)
 
@@ -210,4 +232,8 @@ Report completion in this format:
 - `Gate results:`
 - `- bear check --all --project <repoRoot> => <exit>`
 - `- bear pr-check --all --project <repoRoot> --base <ref> => <exit>`
+- `GOVERNANCE_SIGNAL_DISPOSITION`
+- `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
+- `JUSTIFICATION: <required when count > 0>`
+- `TRADEOFF: <required when count > 0>`
 

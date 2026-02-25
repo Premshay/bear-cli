@@ -416,6 +416,19 @@ All non-zero command exits include deterministic footer lines:
 7. Agent implements user-owned logic/tests.
 8. Agent runs `bear check --all --project <repoRoot>`.
 9. Agent runs `bear pr-check --all --project <repoRoot> --base <ref>`.
+10. Agent completion report includes governance-signal disposition block:
+```text
+GOVERNANCE_SIGNAL_DISPOSITION
+MULTI_BLOCK_PORT_IMPL_ALLOWED: none
+```
+or, if signals exist:
+```text
+GOVERNANCE_SIGNAL_DISPOSITION
+MULTI_BLOCK_PORT_IMPL_ALLOWED: <count>
+JUSTIFICATION: <...>
+TRADEOFF: <...>
+```
+where `<count>` is the number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` lines in `pr-check --all` output for that run.
 
 Why both:
 - local `check --all` proves current repo integrity.
@@ -428,6 +441,7 @@ Use `docs/context/demo-agent-simulation.md` for canonical isolated-agent simulat
 
 Run-evaluation policy:
 - the BEAR run grading model in `docs/context/demo-agent-simulation.md` is also the default rubric for any run review (including non-simulated runs and user-provided transcripts).
+- run completion/accounting expects the same mechanically-checkable `GOVERNANCE_SIGNAL_DISPOSITION` block used in simulation runs.
 
 `scripts/run-demo-simulated.ps1` is prep/smoke automation only:
 - clean demo

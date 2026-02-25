@@ -43,6 +43,7 @@ Runtime distribution note:
   - one class implementing generated ports from multiple generated block packages fails by default
   - explicit opt-in exists only under `_shared` with exact marker `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above class declaration
   - when opt-in is valid, `pr-check` may emit informational governance signal `MULTI_BLOCK_PORT_IMPL_ALLOWED` (non-failing) for explicit review
+- canonical adapter-shape guidance lives only in `.bear/agent/BEAR_AGENT.md` (`Canonical Wiring Recipe (Normative)`); `WORKFLOW.md` and this README reference it and do not restate recipe details.
 
 Containment note (v1 preview):
 - containment verification is active per `projectRoot` when any is true:
@@ -143,6 +144,11 @@ When a project has multiple governed BEAR blocks:
 4. Canonical agent done-gate evidence requires both:
    - `bear check --all --project <repoRoot>`
    - `bear pr-check --all --project <repoRoot> --base <ref>`
+5. Completion report must include:
+   - `GOVERNANCE_SIGNAL_DISPOSITION`
+   - `MULTI_BLOCK_PORT_IMPL_ALLOWED: none` or `MULTI_BLOCK_PORT_IMPL_ALLOWED: <count>`
+   - when `<count> > 0`, include both `JUSTIFICATION:` and `TRADEOFF:`.
+   - `<count>` is the number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` governance lines emitted by `pr-check --all` in that run.
 
 ## Integration Rule: Existing `AGENTS.md`
 

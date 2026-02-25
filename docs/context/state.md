@@ -28,6 +28,17 @@ next feature sequence (one-by-one):
 
 ## Session Notes
 
+- Operationalized governance signal accounting in run completion contracts:
+  - added mechanically-checkable completion block requirement:
+    - `GOVERNANCE_SIGNAL_DISPOSITION`
+    - `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
+    - `JUSTIFICATION` + `TRADEOFF` required when count > 0
+  - froze `<count>` definition as number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` lines emitted by `pr-check --all` in that run.
+  - applied to all agent-run evaluations (not demo-only).
+- Canonical wiring recipe source-of-truth lock:
+  - full normative adapter-shape recipe now lives in `docs/bear-package/.bear/agent/BEAR_AGENT.md` only.
+  - `WORKFLOW.md` and `docs/bear-package/README.md` now reference that section instead of duplicating recipe prose.
+
 - Grading policy normalization:
   - run-grading rubric in `docs/context/demo-agent-simulation.md` is now canonical for all BEAR run evaluations (not simulation-only).
   - `docs/context/user-guide.md` now explicitly points non-simulated/user-provided run reviews to the same grading rubric.

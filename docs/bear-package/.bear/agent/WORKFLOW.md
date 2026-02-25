@@ -14,6 +14,7 @@ Purpose:
 Reference boundary:
 - use only `.bear/agent/**` guidance plus project-local BEAR artifacts (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**` when present).
 - current working tree + current IR/index contracts are authoritative for BEAR decisions; history can be used as auxiliary context.
+- canonical generated-port adapter recipe is defined only in `.bear/agent/BEAR_AGENT.md` (`Canonical Wiring Recipe (Normative)`).
 
 ## Canonical Flows
 
@@ -105,6 +106,13 @@ Greenfield hard stop:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
 - do not mark done if either command is missing or non-zero.
+12. Completion report must include governance-signal disposition block with exact keys:
+- `GOVERNANCE_SIGNAL_DISPOSITION`
+- `MULTI_BLOCK_PORT_IMPL_ALLOWED: none` or `MULTI_BLOCK_PORT_IMPL_ALLOWED: <count>`
+- if `<count> > 0`, include both:
+  - `JUSTIFICATION: ...`
+  - `TRADEOFF: ...`
+- `<count>` is the number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` governance lines emitted by `bear pr-check --all` in that run.
 
 ## Block Index Gate
 
@@ -256,6 +264,7 @@ Lock and environment troubleshooting:
 - No generated-file edits.
 - No silent boundary expansion.
 - Completion is a two-gate contract: `check --all` and `pr-check --all --base <ref>` must both be green.
+- Completion report is also a governance-signal contract: include required `GOVERNANCE_SIGNAL_DISPOSITION` block and matching signal count.
 - No implementation-first bypass in greenfield mode.
 - No execute-path business-logic delegation from governed impls to non-governed external packages.
 - Prefer minimal sufficient design; avoid unnecessary architecture expansion.

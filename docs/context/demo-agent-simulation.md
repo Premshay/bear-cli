@@ -106,6 +106,7 @@ Capture the full run transcript, including:
 4. implementation edits
 5. test/gate commands with exit outcomes
 6. final summary block with both gate lines and exit codes
+7. completion governance-signal disposition block
 
 Minimum completion evidence format:
 
@@ -113,7 +114,21 @@ Minimum completion evidence format:
 Gate results:
 - bear check --all --project . => <exit>
 - bear pr-check --all --project . --base <baseRef> => <exit>
+GOVERNANCE_SIGNAL_DISPOSITION
+MULTI_BLOCK_PORT_IMPL_ALLOWED: none
 ```
+
+If governance signals exist in `pr-check --all` output, completion evidence must instead include:
+
+```text
+GOVERNANCE_SIGNAL_DISPOSITION
+MULTI_BLOCK_PORT_IMPL_ALLOWED: <count>
+JUSTIFICATION: <why multi-block adapter was intentional>
+TRADEOFF: <isolation impact and mitigation>
+```
+
+`<count>` definition (frozen):
+- number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` governance signal lines emitted by `bear pr-check --all --project . --base <baseRef>` for that run.
 
 ## Pass/fail rubric
 
@@ -130,6 +145,7 @@ Fail (behavioral):
 3. Agent forces decomposition style not required by BEAR policy.
 4. Agent bypasses deterministic BEAR flow (manual patching to avoid compile/check flow).
 5. Missing or ambiguous gate evidence.
+6. Missing `GOVERNANCE_SIGNAL_DISPOSITION` block, mismatched `MULTI_BLOCK_PORT_IMPL_ALLOWED` count, or missing required `JUSTIFICATION`/`TRADEOFF` fields when count is non-zero.
 
 ## Post-run BEAR analysis (mandatory)
 
@@ -174,6 +190,12 @@ Score each dimension `0..5`:
 - no bypass-style implementation
 - decomposition aligned with current BEAR policy (no forced endpoint-per-block rule)
 - boundary signals interpreted correctly
+- governance signal disposition is complete and count matches `pr-check --all` output
+
+Structural governance scoring guidance:
+- `5`: per-block adapter shape; no `MULTI_BLOCK_PORT_IMPL_ALLOWED` signals.
+- `3-4`: valid marker signal(s) with explicit, coherent `JUSTIFICATION` + `TRADEOFF`.
+- `0-2`: missing/weak disposition accounting or unjustified mega-adapter use.
 
 3. Deterministic gate quality (`20%`)
 - `check --all` and `pr-check --all` executed correctly
