@@ -26,7 +26,10 @@ Bootstrap guardrails:
 9. Completion requires both gates green:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
-10. Completion output must follow `.bear/agent/REPORTING.md`.
+10. If a spec requirement conflicts with an explicit repo enforcement rule or BEAR contract rule, stop and escalate unless the spec explicitly authorizes changing that rule.
+11. Do not self-edit build/policy/runtime harness files unless explicitly instructed:
+- `build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`
+12. Completion output must follow `.bear/agent/REPORTING.md`.
 
 ## Routing Map
 
@@ -63,6 +66,7 @@ Read on demand:
 - `rg -n "TODO: replace this entire method body|Do not append logic below this placeholder return" src/main/java/blocks`
 - `rg -n "implements\\s+.*Port" src/main/java`
 - all generated-port implementations must remain under governed roots (`src/main/java/blocks/**`)
+- `_shared` must not import app packages; app packages must not implement generated ports
 
 ## Mandatory Operating Loop
 
@@ -75,13 +79,18 @@ Read on demand:
 5. Validate and compile IR before implementation:
 - `bear validate <ir-file>`
 - `bear compile <ir-file> --project <repoRoot>` or `bear compile --all --project <repoRoot>`
-6. If generated artifacts drift, repair deterministically:
+6. Containment sanity check (deterministic, bounded):
+- inspect `build/generated/bear/config/containment-required.json`
+- if containment metadata is unexpected for intended mode, run exactly one repair: `bear compile --all --project <repoRoot>`
+- re-check containment metadata
+- if still inconsistent, stop and escalate with evidence (do not patch harness/build scripts)
+7. If generated artifacts drift, repair deterministically:
 - `bear fix <ir-file> --project <repoRoot>` or `bear fix --all --project <repoRoot>`
-7. Implement only in user-owned sources/tests.
-8. Run completion gates:
+8. Implement only in user-owned sources/tests.
+9. Run completion gates:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
-9. Report results using `.bear/agent/REPORTING.md`.
+10. Report results using `.bear/agent/REPORTING.md`.
 
 ## Always-On Rules
 
@@ -92,15 +101,19 @@ Read on demand:
 5. Implement against generated BEAR ports/contracts only.
 6. IR files must live under `spec/` (or repo-declared canonical IR directory), and validation must target the exact created IR path.
 7. Keep governed execute-path logic inside governed roots.
-8. Do not implement generated `com.bear.generated.*Port` interfaces outside governed roots; never place generated-port implementations under app packages (for example `com.bear.account.demo`).
+8. Do not implement generated `com.bear.generated.*Port` interfaces outside governed roots; never place generated-port implementations under app packages.
 9. Do not use action/command enum multiplexers for multiple external operations unless the spec explicitly defines that router contract.
 10. Multi-block repos must keep `bear.blocks.yaml`; no bypass by deletion.
 11. Use deterministic BEAR commands; do not replace with ad-hoc scripts.
 12. `pr-check` base must be merge-base/target-base SHA, not `HEAD` unless explicitly instructed.
 13. Remove generated scaffold placeholder returns before gates.
-14. If gates fail, fix root cause and rerun; do not bypass with alternate architecture.
-15. Use `bear fix` for generated drift repair only; never for test or IO failures.
-16. Do not claim done without both repo-level gates green.
+14. Do not self-edit build/policy/runtime harness files unless explicitly instructed (`build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`).
+15. Do not bypass containment by moving impl seams to alternate roots, creating duplicate shim copies in `_shared`, or overriding containment excludes.
+16. `_shared` must not depend on app packages, and app packages must not implement generated ports.
+17. Lock/IO retries are bounded: perform only fixed retry actions and stop after 2 failed retries with escalation evidence.
+18. If gates fail, fix root cause and rerun; do not bypass with alternate architecture.
+19. Use `bear fix` for generated drift repair only; never for test or IO failures.
+20. Do not claim done without both repo-level gates green.
 
 ## Done Gate Contract
 

@@ -10,6 +10,23 @@ This file is contract-only.
 - Contains: definitions, MUST/MUST NOT rules, canonical paths, canonical formats, frozen semantics.
 - Excludes: troubleshooting flows, failure triage playbooks, procedural step-by-step runbooks.
 
+## Conflict Definition (Normative)
+
+Conflict definition:
+1. `SPEC_POLICY_CONFLICT` exists only when a spec requirement cannot be met without violating an explicit repo enforcement rule or BEAR contract rule, and the spec does not authorize changing that rule.
+
+Positive examples:
+1. Repo forbids `java.net.*` reach while spec explicitly requires an in-process HTTP server.
+2. Repo forbids build-script edits while spec requires changing build scripts.
+
+Non-examples:
+1. `check`/`pr-check` failures caused by incorrect implementation.
+2. Missing `bear.blocks.yaml` index in multi-block mode.
+3. Placeholder stub detection failures.
+
+Rule:
+1. Conflict state requires escalation; autonomous harness/policy/runtime rewiring is prohibited unless explicitly instructed.
+
 ## Decomposition Signals (Normative)
 
 Default decomposition:
@@ -80,6 +97,16 @@ Path/package contract:
 1. Preferred impl path: `src/main/java/blocks/<pkg-segment>/impl/<BlockName>Impl.java`
 2. Preferred package: `blocks.<pkg-segment>.impl`
 3. User-owned `*Impl.java` MUST NOT be relocated under `src/main/java/com/bear/generated/**`
+
+Forbidden autonomous infrastructure edits:
+1. Do not edit `build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, or `bin/bear*` unless explicitly instructed.
+2. Do not move impl seams to alternate roots, create duplicate shim copies in `_shared`, or override containment excludes to force checks green.
+
+## Dependency Direction Invariants
+
+1. `_shared` MUST NOT import or depend on app packages.
+2. App packages MUST NOT implement generated `com.bear.generated.*Port` interfaces.
+3. Generated port implementations MUST remain under governed roots.
 
 ## Semantics Policy (wrapper-owned)
 

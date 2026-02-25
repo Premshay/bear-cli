@@ -91,30 +91,73 @@ class BearPackageDocsConsistencyTest {
                 StandardCharsets.UTF_8
         );
 
-        assertTrue(bootstrap.contains("If `bear.blocks.yaml` exists, treat as multi-block regardless of IR file count."));
-        assertTrue(bootstrap.contains("Decomposition signals are defined in `CONTRACTS.md` (single source)."));
-        assertTrue(bootstrap.contains("IR files MUST be created under `spec/`"));
-        assertTrue(bootstrap.contains("Do not encode multiple externally visible operations as an action/command enum multiplexer"));
-        assertTrue(bootstrap.contains("Do not use `--base HEAD` unless explicitly instructed."));
-        assertTrue(bootstrap.contains("validate that exact created path (do not validate a different file)"));
-        assertTrue(bootstrap.contains("TODO: replace this entire method body|Do not append logic below this placeholder return"));
-        assertTrue(contracts.contains("## Decomposition Signals (Normative)"));
-        assertTrue(contracts.contains("## Contract Modeling Anti-Patterns (Normative)"));
-        assertTrue(contracts.contains("MUST NOT encode multiple externally visible operations as an action/command enum multiplexer"));
+        assertContainsTokens(bootstrap,
+                "bear.blocks.yaml",
+                "IR files MUST be created under `spec/`",
+                "Decomposition signals are defined in `CONTRACTS.md`",
+                "action/command enum multiplexer",
+                "Do not use `--base HEAD` unless explicitly instructed.",
+                "validate that exact created path",
+                "TODO: replace this entire method body|Do not append logic below this placeholder return",
+                "Do not self-edit build/policy/runtime harness files",
+                "build.gradle",
+                "gradlew",
+                "containment-required.json",
+                "run exactly one repair",
+                "bear compile --all --project <repoRoot>",
+                "if still inconsistent, stop and escalate",
+                "moving impl seams",
+                "duplicate shim copies in `_shared`",
+                "_shared` must not depend on app packages",
+                "app packages must not implement generated ports",
+                "2 failed retries"
+        );
+
+        assertContainsTokens(contracts,
+                "## Decomposition Signals (Normative)",
+                "## Contract Modeling Anti-Patterns (Normative)",
+                "## Conflict Definition (Normative)",
+                "SPEC_POLICY_CONFLICT",
+                "Positive examples",
+                "Non-examples",
+                "Do not edit `build.gradle`",
+                "_shared` MUST NOT import or depend on app packages",
+                "App packages MUST NOT implement generated `com.bear.generated.*Port` interfaces"
+        );
         assertFalse(contracts.contains("Completion is valid only with both gates evidenced green"));
-        assertTrue(reporting.contains("Copy this count from the `pr-check` output of that exact completion run; do not infer."));
-        assertTrue(reporting.contains("PR base used: <ref>"));
-        assertTrue(reporting.contains("PR base rationale: <merge-base against target branch OR user-provided base SHA>"));
-        assertTrue(reporting.contains("PR classification interpretation: <expected|unintended> - <brief rationale>"));
+
+        assertContainsTokens(reporting,
+                "Copy this count from the `pr-check` output of that exact completion run; do not infer.",
+                "PR base used: <ref>",
+                "PR base rationale:",
+                "PR classification interpretation:",
+                "Constraint conflicts encountered: none|<list>",
+                "Escalation decision: none|<reason>",
+                "Containment sanity check: pass|fail|n/a - <evidence>",
+                "Infra edits: none|<list>"
+        );
         assertFalse(reporting.contains("--base HEAD"));
-        assertTrue(troubleshooting.contains("Schema/path mismatch or missing routed docs"));
-        assertTrue(troubleshooting.contains("verify destination `.bear/agent/**` tree exactly matches source package tree."));
-        assertTrue(troubleshooting.contains("## BOUNDARY_EXPANSION_DETECTED"));
-        assertTrue(troubleshooting.contains("This can be expected when adding/changing blocks, contracts, effects, idempotency, invariants, or governed adapter boundaries."));
-        assertTrue(troubleshooting.contains("`--base HEAD` can misclassify or hide intended delta unless explicitly instructed."));
-        assertTrue(irReference.contains("generated logic signatures exclude the idempotency store port"));
-        assertTrue(irReference.contains("wrapper enforcement binds idempotency via IR-declared `idempotency.store`"));
-        assertTrue(irReference.contains("Strict policy format contract: see `.bear/agent/CONTRACTS.md`."));
+
+        assertContainsTokens(troubleshooting,
+                "Schema/path mismatch or missing routed docs",
+                "verify destination `.bear/agent/**` tree exactly matches source package tree.",
+                "## BOUNDARY_EXPANSION_DETECTED",
+                "`--base HEAD` can misclassify or hide intended delta unless explicitly instructed.",
+                "## SPEC_POLICY_CONFLICT",
+                "## CONTAINMENT_METADATA_MISMATCH",
+                "run one repair only: `bear compile --all --project <repoRoot>`",
+                "## Forbidden Actions",
+                "Do not edit `build.gradle`",
+                "Do not move impl seams",
+                "Do not override containment excludes",
+                "Retry budget is max 2 failed retries."
+        );
+
+        assertContainsTokens(irReference,
+                "generated logic signatures exclude the idempotency store port",
+                "wrapper enforcement binds idempotency via IR-declared `idempotency.store`",
+                "Strict policy format contract: see `.bear/agent/CONTRACTS.md`."
+        );
 
         Path agentRoot = repoRoot.resolve("docs/bear-package/.bear/agent");
         try (var files = Files.walk(agentRoot)) {
@@ -122,6 +165,10 @@ class BearPackageDocsConsistencyTest {
                 String content = Files.readString(file, StandardCharsets.UTF_8);
                 assertFalse(content.contains(".bear/agent/doc/"),
                         "Packaged agent docs must not reference retired doc/ paths: " + file);
+                assertFalse(content.contains("com.bear.account.demo"),
+                        "Packaged agent docs must remain BEAR-generic (no demo package references): " + file);
+                assertFalse(content.contains("bear-account-demo"),
+                        "Packaged agent docs must remain BEAR-generic (no demo repo references): " + file);
             }
         }
     }
@@ -148,6 +195,12 @@ class BearPackageDocsConsistencyTest {
         );
         assertFalse(content.contains("v0 supports `non_negative`"));
         assertTrue(content.contains("v1 supports `non_negative`"));
+    }
+
+    private static void assertContainsTokens(String content, String... tokens) {
+        for (String token : tokens) {
+            assertTrue(content.contains(token), "Expected token missing: " + token);
+        }
     }
 }
 

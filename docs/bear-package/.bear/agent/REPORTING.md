@@ -19,10 +19,14 @@ Completion report MUST include:
 10. `PR base used: <ref>`
 11. `PR base rationale: <merge-base against target branch OR user-provided base SHA>`
 12. `PR classification interpretation: <expected|unintended> - <brief rationale>`
-13. `GOVERNANCE_SIGNAL_DISPOSITION`
-14. `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
-15. `JUSTIFICATION: <required when count > 0>`
-16. `TRADEOFF: <required when count > 0>`
+13. `Constraint conflicts encountered: none|<list>`
+14. `Escalation decision: none|<reason>`
+15. `Containment sanity check: pass|fail|n/a - <evidence>`
+16. `Infra edits: none|<list>`
+17. `GOVERNANCE_SIGNAL_DISPOSITION`
+18. `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
+19. `JUSTIFICATION: <required when count > 0>`
+20. `TRADEOFF: <required when count > 0>`
 
 ## Governance-Signal Disposition Rules
 
@@ -31,6 +35,7 @@ Completion report MUST include:
 3. Missing disposition block, mismatched count, or missing required fields means report is incomplete.
 4. `PR base used` and `PR base rationale` are mandatory; defaulting to `HEAD` without explicit instruction is invalid.
 5. `PR classification interpretation` is mandatory and must state whether the classification is expected or unintended for this change.
+6. `Constraint conflicts encountered`, `Escalation decision`, `Containment sanity check`, and `Infra edits` are mandatory.
 
 ## Count Rule (Frozen)
 
@@ -55,6 +60,10 @@ Gate results:
 PR base used: origin/main
 PR base rationale: target branch merge-base reference for this completion run
 PR classification interpretation: expected - new boundary declarations were intentional and match IR delta
+Constraint conflicts encountered: none
+Escalation decision: none
+Containment sanity check: pass - metadata matches intended index-managed mode after completion compile
+Infra edits: none
 GOVERNANCE_SIGNAL_DISPOSITION
 MULTI_BLOCK_PORT_IMPL_ALLOWED: none
 ```
