@@ -16,21 +16,23 @@ Run report MUST include:
 7. `Gate results:`
 8. `- bear check --all --project <repoRoot> => <exit>`
 9. `- bear pr-check --all --project <repoRoot> --base <ref> => <exit>`
-10. `Run outcome: COMPLETE|BLOCKED`
-11. `Required next action: <...>` (required when `Run outcome: BLOCKED`)
-12. `PR base used: <ref>`
-13. `PR base rationale: <merge-base against target branch OR user-provided base SHA>`
-14. `PR classification interpretation: <expected|unintended> - <brief rationale>`
-15. `Constraint conflicts encountered: none|<list>`
-16. `Escalation decision: none|<reason>`
-17. `Containment sanity check: pass|fail|n/a - <evidence>`
-18. `Infra edits: none|<list>`
-19. `Unblock used: no|yes - <reason>`
-20. `Gate policy acknowledged: yes|no`
-21. `GOVERNANCE_SIGNAL_DISPOSITION`
-22. `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
-23. `JUSTIFICATION: <required when count > 0>`
-24. `TRADEOFF: <required when count > 0>`
+10. `Gate run order: <ordered list of executed gates>`
+11. `Run outcome: COMPLETE|BLOCKED`
+12. `Required next action: <...>` (required when `Run outcome: BLOCKED`)
+13. `PR base used: <ref>`
+14. `PR base rationale: <merge-base against target branch OR user-provided base SHA>`
+15. `PR classification interpretation: <expected|unintended> - <brief rationale>`
+16. `Constraint conflicts encountered: none|<list>`
+17. `Escalation decision: none|<reason>`
+18. `Containment sanity check: pass|fail|n/a - <evidence>`
+19. `Infra edits: none|<list>`
+20. `Unblock used: no|yes - <reason>`
+21. `Gate policy acknowledged: yes|no`
+22. `Final git status: <git status --short summary>`
+23. `GOVERNANCE_SIGNAL_DISPOSITION`
+24. `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
+25. `JUSTIFICATION: <required when count > 0>`
+26. `TRADEOFF: <required when count > 0>`
 
 ## Outcome Rules
 
@@ -47,7 +49,7 @@ Run report MUST include:
 3. Missing disposition block, mismatched count, or missing required fields means report is incomplete.
 4. `PR base used` and `PR base rationale` are mandatory; defaulting to `HEAD` without explicit instruction is invalid.
 5. `PR classification interpretation` is mandatory and must state whether the classification is expected or unintended for this change.
-6. `Constraint conflicts encountered`, `Escalation decision`, `Containment sanity check`, `Infra edits`, `Unblock used`, and `Gate policy acknowledged` are mandatory.
+6. `Constraint conflicts encountered`, `Escalation decision`, `Containment sanity check`, `Infra edits`, `Unblock used`, `Gate policy acknowledged`, `Gate run order`, and `Final git status` are mandatory.
 
 ## Count Rule (Frozen)
 
@@ -69,6 +71,7 @@ Tests delta: src/test/java/blocks/withdraw/WithdrawImplTest.java
 Gate results:
 - bear check --all --project . => 0
 - bear pr-check --all --project . --base origin/main => 0
+Gate run order: bear check --all --project . -> bear pr-check --all --project . --base origin/main
 Run outcome: COMPLETE
 PR base used: origin/main
 PR base rationale: target branch merge-base reference for this completion run
@@ -79,6 +82,7 @@ Containment sanity check: pass - containment diagnostics were not needed for thi
 Infra edits: none
 Unblock used: no - not needed
 Gate policy acknowledged: yes
+Final git status: clean (no tracked or untracked changes)
 GOVERNANCE_SIGNAL_DISPOSITION
 MULTI_BLOCK_PORT_IMPL_ALLOWED: none
 ```
@@ -95,6 +99,7 @@ Tests delta: src/test/java/blocks/wallet/WalletImplTest.java
 Gate results:
 - bear check --all --project . => 0
 - bear pr-check --all --project . --base origin/main => 5
+Gate run order: bear check --all --project . -> bear pr-check --all --project . --base origin/main
 Run outcome: BLOCKED
 Required next action: governance review/approval for expected boundary expansion
 PR base used: origin/main
@@ -106,6 +111,7 @@ Containment sanity check: n/a - no containment/classpath failure signature in ch
 Infra edits: none
 Unblock used: no - unblock is stale-marker-only and not valid for intentional expansion
 Gate policy acknowledged: yes
+Final git status: M src/main/java/blocks/wallet/impl/WalletImpl.java
 GOVERNANCE_SIGNAL_DISPOSITION
 MULTI_BLOCK_PORT_IMPL_ALLOWED: none
 ```

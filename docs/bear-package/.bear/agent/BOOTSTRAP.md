@@ -16,21 +16,24 @@ Bootstrap guardrails:
 - single block: `1` IR file
 - multi-block: `>=2` IR files, `bear.blocks.yaml` required
 - If `bear.blocks.yaml` exists, treat as multi-block regardless of IR file count.
-2. IR files MUST be created under `spec/` (or repo-declared canonical IR directory). Never create IR at repo root.
-3. IR-first always. In greenfield, run `bear validate` and `bear compile` before any implementation edits.
-4. Never edit generated artifacts under `build/generated/bear/**`.
-5. Implement against generated BEAR contracts/ports only; do not invent substitute interfaces.
-6. Do not encode multiple externally visible operations as an action/command enum multiplexer unless the spec explicitly defines a command router.
-7. Multi-block governance requires index + `--all`; do not bypass by deleting `bear.blocks.yaml`.
-8. `pr-check` base must be merge-base against target branch (or provided base SHA). Do not use `--base HEAD` unless explicitly instructed.
-9. Completion requires both gates green:
+2. Default canonical IR dir is `spec/` unless repo policy declares otherwise.
+3. IR files MUST be created under the canonical IR directory. Never create IR at repo root.
+4. Create the canonical IR directory before writing the first IR file.
+5. Write `bear.blocks.yaml` only after all referenced IR files exist.
+6. IR-first always. In greenfield, run `bear validate` and `bear compile` before any implementation edits.
+7. Never edit generated artifacts under `build/generated/bear/**`.
+8. Implement against generated BEAR contracts/ports only; do not invent substitute interfaces.
+9. Do not encode multiple externally visible operations as an action/command enum multiplexer unless the spec explicitly defines a command router.
+10. Multi-block governance requires index + `--all`; do not bypass by deleting `bear.blocks.yaml`.
+11. `pr-check` base must be merge-base against target branch (or provided base SHA). Do not use `--base HEAD` unless explicitly instructed.
+12. Completion requires both gates green:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
-10. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; report `BLOCKED` with required next action.
-11. If a spec requirement conflicts with an explicit repo enforcement rule or BEAR contract rule, stop and escalate unless the spec explicitly authorizes changing that rule.
-12. Do not self-edit build/policy/runtime harness files unless explicitly instructed:
+13. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; report `BLOCKED` with required next action.
+14. If a spec requirement conflicts with an explicit repo enforcement rule or BEAR contract rule, stop and escalate unless the spec explicitly authorizes changing that rule.
+15. Do not self-edit build/policy/runtime harness files unless explicitly instructed:
 - `build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`
-13. Completion output must follow `.bear/agent/REPORTING.md`.
+16. Completion output must follow `.bear/agent/REPORTING.md`.
 
 ## Routing Map
 
@@ -57,7 +60,7 @@ Read on demand:
 - greenfield / single-block / multi-block
 4. Detect whether repo expects index mode before IR creation:
 - workflow/scripts/docs indicate canonical `check --all` / `pr-check --all` usage -> index-required mode
-- if index-required, create `bear.blocks.yaml` immediately after first IR file creation
+- if index-required, create `bear.blocks.yaml` after all referenced IR files exist
 5. Decide if boundary changes are needed (contract/effects/idempotency/invariants/allowedDeps).
 6. Choose smallest valid decomposition:
 - default one block
@@ -81,18 +84,21 @@ Read on demand:
 5. Validate and compile IR before implementation:
 - `bear validate <ir-file>`
 - `bear compile <ir-file> --project <repoRoot>` or `bear compile --all --project <repoRoot>`
-6. If generated artifacts drift, repair deterministically:
+6. Index preflight before `compile --all`:
+- verify all `ir:` paths referenced by `bear.blocks.yaml` exist on disk
+- if any referenced path is missing, stop and fix index/IR paths before compile
+7. If generated artifacts drift, repair deterministically:
 - `bear fix <ir-file> --project <repoRoot>` or `bear fix --all --project <repoRoot>`
-7. Implement only in user-owned sources/tests.
-8. Run completion gates:
+8. Implement only in user-owned sources/tests.
+9. Run completion gates:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
-9. Containment metadata diagnosis trigger (deterministic, bounded):
+10. Containment metadata diagnosis trigger (deterministic, bounded):
 - Do not interpret containment metadata preemptively.
 - Inspect `build/generated/bear/config/containment-required.json` only when `bear check` fails with containment/classpath signatures.
 - Run one repair compile: `bear compile --all --project <repoRoot>`, then rerun the same `bear check`.
 - If `bear check` still fails with the same containment/classpath signature, classify `CONTAINMENT_METADATA_MISMATCH`, escalate, and stop (no harness/build edits).
-10. Report results using `.bear/agent/REPORTING.md`.
+11. Report results using `.bear/agent/REPORTING.md`.
 
 ## Always-On Rules
 
@@ -101,22 +107,25 @@ Read on demand:
 3. Do not edit `build/generated/bear/**`.
 4. Greenfield hard stop: no implementation edits before successful validate+compile.
 5. Implement against generated BEAR ports/contracts only.
-6. IR files must live under `spec/` (or repo-declared canonical IR directory), and validation must target the exact created IR path.
-7. Keep governed execute-path logic inside governed roots.
-8. Do not implement generated `com.bear.generated.*Port` interfaces outside governed roots; never place generated-port implementations under app packages.
-9. Do not use action/command enum multiplexers for multiple external operations unless the spec explicitly defines that router contract.
-10. Multi-block repos must keep `bear.blocks.yaml`; no bypass by deletion.
-11. Use deterministic BEAR commands; do not replace with ad-hoc scripts.
-12. `pr-check` base must be merge-base/target-base SHA, not `HEAD` unless explicitly instructed.
-13. Never leave generated placeholder returns before real logic; replace generated stub bodies fully before gates.
-14. Do not self-edit build/policy/runtime harness files unless explicitly instructed (`build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`).
-15. Do not bypass containment by moving impl seams to alternate roots, creating duplicate shim copies in `_shared`, or overriding containment excludes.
-16. `_shared` must not depend on app packages, and app packages must not implement generated ports.
-17. Lock/IO retries are bounded: perform only fixed retry actions and stop after 2 failed retries with escalation evidence.
-18. If gates fail, fix root cause and rerun; do not bypass with alternate architecture.
-19. Use `bear fix` for generated drift repair only; never for test or IO failures.
-20. Do not claim done without both repo-level gates green.
-21. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; mark run `BLOCKED` with required governance next action.
+6. Default canonical IR dir is `spec/` unless repo policy declares otherwise.
+7. IR files must live under the canonical IR directory, and validation must target the exact created IR path.
+8. Never create `*.bear.yaml` outside the canonical IR directory.
+9. Keep governed execute-path logic inside governed roots.
+10. Do not implement generated `com.bear.generated.*Port` interfaces outside governed roots; never place generated-port implementations under app packages.
+11. Do not use action/command enum multiplexers for multiple external operations unless the spec explicitly defines that router contract.
+12. Multi-block repos must keep `bear.blocks.yaml`; no bypass by deletion.
+13. Before `compile --all`, verify all `bear.blocks.yaml` referenced `ir:` paths exist.
+14. Use deterministic BEAR commands; do not replace with ad-hoc scripts.
+15. `pr-check` base must be merge-base/target-base SHA, not `HEAD` unless explicitly instructed.
+16. Never leave generated placeholder returns before real logic; replace generated stub bodies fully before gates.
+17. Do not self-edit build/policy/runtime harness files unless explicitly instructed (`build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`).
+18. Do not bypass containment by moving impl seams to alternate roots, creating duplicate shim copies in `_shared`, or overriding containment excludes.
+19. `_shared` must not depend on app packages, and app packages must not implement generated ports.
+20. Lock/IO retries are bounded: perform only fixed retry actions and stop after 2 failed retries with escalation evidence.
+21. If gates fail, fix root cause and rerun; do not bypass with alternate architecture.
+22. Use `bear fix` for generated drift repair only; never for test or IO failures.
+23. Do not claim done without both repo-level gates green.
+24. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; mark run `BLOCKED` with required governance next action.
 
 ## Done Gate Contract
 

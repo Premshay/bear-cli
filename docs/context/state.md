@@ -14,6 +14,7 @@ P2 stabilization and context-governance cleanup:
 - keep deterministic governance behavior stable while reducing context boot cost
 - maintain strict dual-gate completion evidence in docs/workflows
 - harden agent package guardrails for behavioral containment diagnosis and BLOCKED run reporting
+- harden agent/package run order and repo-local IR layout policy checks
 - ensure context docs follow no-loss mapping contract
 
 ## Next Concrete Task
@@ -42,3 +43,8 @@ P2 stabilization and context-governance cleanup:
   - containment metadata is interpreted only for failing `check` containment/classpath signatures
   - expected `pr-check` boundary expansion is reported as `BLOCKED` with required next action
   - decomposition contract now states IR v1 one-logic-block-per-IR-file capability fact
+- Guardrails refinement v2.1 landed in package docs + tests:
+  - canonical IR directory language is scoped (`spec/` default unless repo policy declares otherwise)
+  - write-order hard rules added (canonical IR directory before first IR write; index after referenced IR exists)
+  - reporting schema now requires `Gate run order` and `Final git status`
+  - repo-local policy test added for tracked `*.bear.yaml` placement and index `ir:` path existence when root index is present

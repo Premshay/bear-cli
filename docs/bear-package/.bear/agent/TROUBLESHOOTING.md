@@ -13,7 +13,7 @@ Purpose:
 5. Undeclared reach or strict hygiene (`6`) -> declare boundary or remediate unexpected path, then rerun.
 6. Project tests failed (`4`) -> fix implementation/tests; rerun check.
 7. PR boundary expansion / `BOUNDARY_EXPANSION_DETECTED` (`5`) -> confirm intentional expansion and review process.
-8. IO/git/runtime environment (`74`) -> resolve repo/path/lock/bootstrap and rerun.
+8. `IO_LOCK` / IO/git/runtime environment (`74`) -> resolve repo/path/lock/bootstrap and rerun.
 9. Schema/path mismatch or missing routed docs -> suspect stale package sync, re-sync package, verify `.bear/agent/**` tree parity, rerun.
 10. `SPEC_POLICY_CONFLICT` -> apply conflict checklist and escalate if criteria hold.
 11. `CONTAINMENT_METADATA_MISMATCH` -> apply bounded compile-once repair flow only for failing `check` with containment/classpath signatures.
@@ -109,11 +109,24 @@ When lock signatures appear (for example `.zip.lck`, `Access is denied`, generat
 1. Treat as tooling/environment IO issue first.
 2. Do not mutate unrelated IR to match stale generated outputs.
 3. Do not introduce workaround classes under `com.bear.generated.*`.
-4. Fixed retry action 1: stop concurrent build daemons/processes that hold locks.
-5. Fixed retry action 2: rerun the same failing command unchanged.
-6. Fixed retry action 3: if containment is suspected, run one `bear compile --all --project <repoRoot>`, then rerun check.
-7. Retry budget is max 2 failed retries.
-8. If still failing after budget, stop and escalate with command outputs and lock evidence.
+4. Do not edit wrapper/build harness files as lock workaround (`build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`).
+5. Fixed retry action 1: stop concurrent build daemons/processes that hold locks.
+6. Fixed retry action 2: rerun the same failing command unchanged.
+7. Fixed retry action 3: if containment is suspected, run one `bear compile --all --project <repoRoot>`, then rerun check.
+8. Retry budget is max 2 failed retries.
+9. If still failing after budget, stop and escalate with command outputs and lock evidence.
+
+## IO_LOCK
+
+Use this class when failure signatures include:
+1. `.zip.lck`
+2. `Access is denied`
+3. wrapper/bootstrap lock errors in project test lane
+
+Deterministic flow:
+1. Apply fixed retry actions from Lock/IO Environment Branch only.
+2. Do not reclassify as containment unless `check` also shows containment/classpath signatures.
+3. If retries are exhausted, escalate as environment IO lock with evidence.
 
 ## Marker Handling Branch
 

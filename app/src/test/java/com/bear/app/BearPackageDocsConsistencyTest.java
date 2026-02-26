@@ -93,7 +93,10 @@ class BearPackageDocsConsistencyTest {
 
         assertContainsTokens(bootstrap,
                 "bear.blocks.yaml",
-                "IR files MUST be created under `spec/`",
+                "Default canonical IR dir is `spec/` unless repo policy declares otherwise.",
+                "IR files MUST be created under the canonical IR directory.",
+                "Create the canonical IR directory before writing the first IR file.",
+                "Write `bear.blocks.yaml` only after all referenced IR files exist.",
                 "Decomposition signals are defined in `CONTRACTS.md`",
                 "action/command enum multiplexer",
                 "Do not use `--base HEAD` unless explicitly instructed.",
@@ -106,6 +109,7 @@ class BearPackageDocsConsistencyTest {
                 "Do not interpret containment metadata preemptively.",
                 "containment/classpath signatures",
                 "bear compile --all --project <repoRoot>",
+                "verify all `ir:` paths referenced by `bear.blocks.yaml` exist on disk",
                 "CONTAINMENT_METADATA_MISMATCH",
                 "moving impl seams",
                 "duplicate shim copies in `_shared`",
@@ -114,6 +118,7 @@ class BearPackageDocsConsistencyTest {
                 "Never leave generated placeholder returns before real logic",
                 "For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green",
                 "mark run `BLOCKED` with required governance next action.",
+                "Never create `*.bear.yaml` outside the canonical IR directory.",
                 "2 failed retries"
         );
 
@@ -134,6 +139,7 @@ class BearPackageDocsConsistencyTest {
 
         assertContainsTokens(reporting,
                 "Copy this count from the `pr-check` output of that exact completion run; do not infer.",
+                "Gate run order: <ordered list of executed gates>",
                 "Run outcome: COMPLETE|BLOCKED",
                 "Required next action: <...>",
                 "PR base used: <ref>",
@@ -145,6 +151,7 @@ class BearPackageDocsConsistencyTest {
                 "Infra edits: none|<list>",
                 "Unblock used: no|yes - <reason>",
                 "Gate policy acknowledged: yes|no",
+                "Final git status: <git status --short summary>",
                 "`pr-check` exit is non-zero -> `Run outcome` MUST be `BLOCKED`."
         );
         assertFalse(reporting.contains("--base HEAD"));
@@ -156,6 +163,9 @@ class BearPackageDocsConsistencyTest {
                 "`--base HEAD` can misclassify or hide intended delta unless explicitly instructed.",
                 "## SPEC_POLICY_CONFLICT",
                 "## CONTAINMENT_METADATA_MISMATCH",
+                "IO_LOCK",
+                ".zip.lck",
+                "Access is denied",
                 "containment/classpath signatures",
                 "run exactly one deterministic repair: `bear compile --all --project <repoRoot>`",
                 "Rerun the same `bear check` command.",
@@ -166,6 +176,7 @@ class BearPackageDocsConsistencyTest {
                 "Do not use `bear unblock` for intentional boundary expansion.",
                 "report `BLOCKED` with required governance next action.",
                 "Do not use `bear unblock` to force expected boundary expansion green.",
+                "Do not edit wrapper/build harness files as lock workaround",
                 "Retry budget is max 2 failed retries."
         );
 
