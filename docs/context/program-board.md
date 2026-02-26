@@ -5,7 +5,7 @@ Context entrypoint:
 
 ## Last Updated
 
-2026-02-25
+2026-02-26
 
 ## Current Milestone
 
@@ -144,6 +144,21 @@ Preview standing note:
    - new optional immutable-type allowlist contract:
      - `.bear/policy/pure-shared-immutable-types.txt` (FQCN-only, sorted, unique, comments/blank lines allowed)
    - docs package and consistency tests updated to keep enforcement deterministic and BEAR-generic.
+
+9. `Guardrails v2.2.3: IO lock discipline + blocker evidence + scoped conflict precision`:
+   - packaged agent docs now pin IO lock triage to deterministic steps:
+     - `gradlew(.bat) --stop`
+     - rerun the same failing command unchanged
+     - rerun unchanged one more time
+     - then stop and report `BLOCKED(IO_LOCK)`
+   - lock lane now explicitly forbids command variants and environment knob changes (`GRADLE_USER_HOME`, `buildDir`, wrapper env tweaks) unless explicitly instructed.
+   - reporting schema now requires blocker classification and first-failure evidence fields:
+     - `Gate blocker`
+     - `Stopped after blocker`
+     - `First failing command`
+     - `First failure signature`
+   - scoped import-policy wording now explicitly states lane/path scope and app-layer non-global applicability unless separately constrained.
+   - docs consistency tests now enforce these IO lock anchors and blocker-evidence tokens.
 
 ## Next Feature Specs (Locked)
 

@@ -25,38 +25,11 @@ P2 stabilization and context-governance cleanup:
 
 ## Session Notes
 
-- Implemented BEAR guardrails v2.2.1 (docs + CLI `check` enforcement + tests):
-  - new lane contract: `blocks/**/impl/**`, `blocks/**/adapter/**`, `_shared/pure`, `_shared/state`
-  - new boundary bypass rules:
-    - `SHARED_PURITY_VIOLATION`
-    - `IMPL_PURITY_VIOLATION`
-    - `IMPL_STATE_DEPENDENCY_BYPASS`
-    - `SCOPED_IMPORT_POLICY_BYPASS`
-    - `SHARED_LAYOUT_POLICY_VIOLATION`
-  - `_shared/pure` immutable type allowlist added (`.bear/policy/pure-shared-immutable-types.txt`, FQCN-only contract)
-  - check/remediation text updated in `CheckCommandService` and `CheckAllCommandService`
-  - updated package docs (`BOOTSTRAP`, `CONTRACTS`, `TROUBLESHOOTING`, `IR_REFERENCE`) and docs consistency assertions
-  - added/updated scanner, CLI, and allowlist parser tests; requested regression suite passed
-- Refined `docs/public/VISION.md` to remove already-done/mis-scoped items and align with active BEAR direction (agent-first IR handling, boundary-usage visibility, side-effect taxonomy, operation-scoped contracts, cross-block modeling, deterministic extensibility, Node.js target candidate).
-- Rewrote `docs/public/VISION.md` to a reader-friendly narrative format (less checklist-style, clearer non-commitment framing, explicit Node.js future direction).
-- Added public directional vision page at `docs/public/VISION.md` (explicitly non-committed, no near-term queue content).
-- Added public docs navigation link for vision in `docs/public/INDEX.md` and root `README.md`.
-- Context refactor completed with no-loss mapping:
-  - added `docs/context/CONTEXT_BOOTSTRAP.md`
-  - added `docs/context/context-coverage-map.md`
-  - compacted active context docs to routed canonical ownership
-  - archived pre-compaction state snapshot in `docs/context/archive/archive-state-history.md`
-- Agent package hard-cut remains active:
-  - `.bear/agent/BOOTSTRAP.md` entrypoint
-  - `.bear/agent/ref/IR_REFERENCE.md` canonical IR package reference
-- Demo sync path remains deterministic:
-  - `scripts/sync-bear-demo.ps1` replaces `.bear/agent` tree to prevent stale files.
-- Guardrails refinement v2 landed in package docs + consistency test:
-  - containment metadata is interpreted only for failing `check` containment/classpath signatures
-  - expected `pr-check` boundary expansion is reported as `BLOCKED` with required next action
-  - decomposition contract now states IR v1 one-logic-block-per-IR-file capability fact
-- Guardrails refinement v2.1 landed in package docs + tests:
-  - canonical IR directory language is scoped (`spec/` default unless repo policy declares otherwise)
-  - write-order hard rules added (canonical IR directory before first IR write; index after referenced IR exists)
-  - reporting schema now requires `Gate run order` and `Final git status`
-  - repo-local policy test added for tracked `*.bear.yaml` placement and index `ir:` path existence when root index is present
+- Implemented guardrails v2.2.3 docs/test hardening:
+  - IO lock lane now requires `gradlew(.bat) --stop`, two unchanged retries, then `BLOCKED(IO_LOCK)`.
+  - lock triage now forbids command variants and env knob changes (`GRADLE_USER_HOME`, `buildDir`, wrapper env tweaks) unless explicitly instructed.
+  - reporting schema now includes blocker/evidence fields (`Gate blocker`, `Stopped after blocker`, `First failing command`, `First failure signature`).
+  - scoped import policy wording now explicitly states lane/path scope and app-layer non-global applicability unless separately constrained.
+  - docs consistency tests now enforce the new IO lock anchors and reporting/scoped-conflict tokens.
+- Guardrails baseline v2.2.1 remains active (lane purity/state enforcement + immutable allowlist contract).
+- Context routing/model remains stable (`CONTEXT_BOOTSTRAP`, coverage map, and archived historical snapshots already in place).

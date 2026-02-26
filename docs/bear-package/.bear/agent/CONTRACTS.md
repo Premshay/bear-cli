@@ -23,9 +23,11 @@ Non-examples:
 1. `check`/`pr-check` failures caused by incorrect implementation.
 2. Missing `bear.blocks.yaml` index in multi-block mode.
 3. Placeholder stub detection failures.
+4. A request to use HTTP in app-layer code, by itself, is not a conflict with lane-scoped import bans.
 
 Rule:
 1. Conflict state requires escalation; autonomous harness/policy/runtime rewiring is prohibited unless explicitly instructed.
+2. Import-policy conflict exists only when the spec requires forbidden imports inside banned lanes (`impl`/`_shared/pure`) or another explicit policy-banned scope.
 
 ## Decomposition Signals (Normative)
 
@@ -132,6 +134,8 @@ Purity invariants:
 Scoped import invariants:
 1. `impl` and `_shared/pure` MUST NOT import/reference `java.io.*`, `java.net.*`, `java.nio.file.*`.
 2. `impl` MUST NOT import/reference `java.util.concurrent.*`.
+3. These scoped import bans are path-scoped to guarded lanes and are not app-layer global bans unless another explicit repo policy states so.
+4. App-layer HTTP usage is not a policy conflict unless spec/policy forces forbidden imports into banned lanes.
 
 `_shared/pure` static-final constants:
 1. Allowed by default: primitives, boxed primitives, `java.lang.String`, enum constants.

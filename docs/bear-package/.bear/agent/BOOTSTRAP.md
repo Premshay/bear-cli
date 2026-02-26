@@ -34,6 +34,7 @@ Bootstrap guardrails:
 15. Do not self-edit build/policy/runtime harness files unless explicitly instructed:
 - `build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`
 16. Completion output must follow `.bear/agent/REPORTING.md`.
+17. Scoped import bans are lane/path-scoped (`impl`, `_shared/pure`) and are not app-layer global bans unless explicitly constrained elsewhere (see `CONTRACTS.md`).
 
 ## Routing Map
 
@@ -128,10 +129,11 @@ Read on demand:
 23. `_shared/pure` static final constants are limited to primitives/boxed/String, enum constants, or FQCNs allowlisted in `.bear/policy/pure-shared-immutable-types.txt`.
 24. Lane/package checks are structural token checks (deterministic) and may flag forbidden package tokens even in comments/strings inside guarded lanes.
 25. Lock/IO retries are bounded: perform only fixed retry actions and stop after 2 failed retries with escalation evidence.
-26. If gates fail, fix root cause and rerun; do not bypass with alternate architecture.
-27. Use `bear fix` for generated drift repair only; never for test or IO failures.
-28. Do not claim done without both repo-level gates green.
-29. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; mark run `BLOCKED` with required governance next action.
+26. After `IO_LOCK` classification, use only deterministic lock-lane steps (`gradlew(.bat) --stop` + unchanged retries); do not vary env knobs (`GRADLE_USER_HOME`, `buildDir`, wrapper env tweaks) and do not run command variants.
+27. If gates fail, fix root cause and rerun; do not bypass with alternate architecture.
+28. Use `bear fix` for generated drift repair only; never for test or IO failures.
+29. Do not claim done without both repo-level gates green.
+30. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; mark run `BLOCKED` with required governance next action.
 
 ## Done Gate Contract
 

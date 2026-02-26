@@ -121,11 +121,13 @@ When lock signatures appear (for example `.zip.lck`, `Access is denied`, generat
 2. Do not mutate unrelated IR to match stale generated outputs.
 3. Do not introduce workaround classes under `com.bear.generated.*`.
 4. Do not edit wrapper/build harness files as lock workaround (`build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`).
-5. Fixed retry action 1: stop concurrent build daemons/processes that hold locks.
+5. Fixed retry action 1: run `gradlew(.bat) --stop`.
 6. Fixed retry action 2: rerun the same failing command unchanged.
-7. Fixed retry action 3: if containment is suspected, run one `bear compile --all --project <repoRoot>`, then rerun check.
-8. Retry budget is max 2 failed retries.
-9. If still failing after budget, stop and escalate with command outputs and lock evidence.
+7. Fixed retry action 3: rerun the same failing command unchanged one more time.
+8. Do not run build/test/check command variants after `IO_LOCK` is confirmed.
+9. Do not change environment knobs (`GRADLE_USER_HOME`, `buildDir`, wrapper env tweaks) during `IO_LOCK` triage unless explicitly instructed by repo policy/user.
+10. Retry budget is max 2 failed retries.
+11. If still failing after budget, stop and escalate with command outputs and lock evidence.
 
 ## IO_LOCK
 
@@ -136,8 +138,11 @@ Use this class when failure signatures include:
 
 Deterministic flow:
 1. Apply fixed retry actions from Lock/IO Environment Branch only.
-2. Do not reclassify as containment unless `check` also shows containment/classpath signatures.
-3. If retries are exhausted, escalate as environment IO lock with evidence.
+2. Required stop command: `gradlew(.bat) --stop`.
+3. Run the same failing command unchanged, then unchanged once more.
+4. No environment changes and no command variants during this flow.
+5. Stop after 2 retries and report `BLOCKED(IO_LOCK)` with evidence.
+6. Do not reclassify as containment unless `check` also shows containment/classpath signatures.
 
 ## Marker Handling Branch
 

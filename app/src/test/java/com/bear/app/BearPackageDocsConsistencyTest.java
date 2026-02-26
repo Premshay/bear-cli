@@ -122,6 +122,7 @@ class BearPackageDocsConsistencyTest {
                 "impl` must not reference `blocks._shared.state.*`",
                 "Purity rules: `_shared/pure` and `impl` must not declare mutable static shared state or `synchronized` usage.",
                 "Scoped import policy: forbid `java.io.*`, `java.net.*`, `java.nio.file.*` in `impl` and `_shared/pure`; additionally forbid `java.util.concurrent.*` in `impl`.",
+                "Scoped import bans are lane/path-scoped (`impl`, `_shared/pure`) and are not app-layer global bans unless explicitly constrained elsewhere",
                 ".bear/policy/pure-shared-immutable-types.txt",
                 "Never leave generated placeholder returns before real logic",
                 "For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green",
@@ -152,6 +153,9 @@ class BearPackageDocsConsistencyTest {
                 "java.util.concurrent.*",
                 ".bear/policy/pure-shared-immutable-types.txt",
                 "FQCN entries only",
+                "A request to use HTTP in app-layer code, by itself, is not a conflict with lane-scoped import bans.",
+                "Import-policy conflict exists only when the spec requires forbidden imports inside banned lanes (`impl`/`_shared/pure`)",
+                "These scoped import bans are path-scoped to guarded lanes and are not app-layer global bans unless another explicit repo policy states so.",
                 "layout/usage constraints; they do not prove full semantic correctness"
         );
         assertFalse(contracts.contains("Completion is valid only with both gates evidenced green"));
@@ -171,6 +175,10 @@ class BearPackageDocsConsistencyTest {
                 "Unblock used: no|yes - <reason>",
                 "Gate policy acknowledged: yes|no",
                 "Final git status: <git status --short summary>",
+                "Gate blocker: IO_LOCK | TEST_FAILURE | BOUNDARY_EXPANSION | OTHER",
+                "Stopped after blocker: yes|no",
+                "First failing command: <exact command line>",
+                "First failure signature: <one copied verbatim line>",
                 "`pr-check` exit is non-zero -> `Run outcome` MUST be `BLOCKED`."
         );
         assertFalse(reporting.contains("--base HEAD"));
@@ -196,6 +204,11 @@ class BearPackageDocsConsistencyTest {
                 "report `BLOCKED` with required governance next action.",
                 "Do not use `bear unblock` to force expected boundary expansion green.",
                 "Do not edit wrapper/build harness files as lock workaround",
+                "Fixed retry action 1: run `gradlew(.bat) --stop`.",
+                "rerun the same failing command unchanged",
+                "Do not run build/test/check command variants after `IO_LOCK` is confirmed.",
+                "Do not change environment knobs (`GRADLE_USER_HOME`, `buildDir`, wrapper env tweaks) during `IO_LOCK` triage unless explicitly instructed by repo policy/user.",
+                "Stop after 2 retries and report `BLOCKED(IO_LOCK)` with evidence.",
                 "Retry budget is max 2 failed retries.",
                 "SHARED_PURITY_VIOLATION",
                 "IMPL_PURITY_VIOLATION",
@@ -203,6 +216,12 @@ class BearPackageDocsConsistencyTest {
                 "SCOPED_IMPORT_POLICY_BYPASS",
                 "SHARED_LAYOUT_POLICY_VIOLATION",
                 "deterministic token checks"
+        );
+        assertOrderedTokens(
+                troubleshooting,
+                "rerun the same failing command unchanged",
+                "Do not change environment knobs",
+                "Stop after 2 retries"
         );
 
         assertContainsTokens(irReference,
@@ -258,6 +277,16 @@ class BearPackageDocsConsistencyTest {
     private static void assertContainsTokens(String content, String... tokens) {
         for (String token : tokens) {
             assertTrue(content.contains(token), "Expected token missing: " + token);
+        }
+    }
+
+    private static void assertOrderedTokens(String content, String... tokens) {
+        int previous = -1;
+        for (String token : tokens) {
+            int index = content.indexOf(token);
+            assertTrue(index >= 0, "Expected ordered token missing: " + token);
+            assertTrue(index > previous, "Expected token order violation at: " + token);
+            previous = index;
         }
     }
 }
