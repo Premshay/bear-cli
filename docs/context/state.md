@@ -17,9 +17,9 @@ Stability-first quality rollout (aggressive track):
 
 ## Next Concrete Task
 
-1. Run `:app:test` + `:kernel:test` and confirm policy/docs gates pass after cleanup.
-2. Verify `check --all` + `pr-check --all` CI command wiring against `spec/repo/block-index.md`.
-3. Continue seam extraction in app/kernel without CLI surface or exit-envelope drift.
+1. Continue oversized-class decomposition for `BoundaryBypassScanner`, `BearCli`, and `JvmTarget` while preserving CLI/output determinism.
+2. Start rule-module extraction in scanner (`BoundaryRule` slices) with deterministic ordering.
+3. Begin command-domain test split for `BearCliTest` after behavior locks are in place.
 
 ## Session Notes
 
@@ -44,3 +44,11 @@ Stability-first quality rollout (aggressive track):
   - extracted CLI command handlers to `BearCliCommandHandlers` for `validate`, `compile`, `fix`, `check`, `unblock`, and `pr-check`.
   - reduced `BearCli.java` footprint to 1342 lines while preserving command contracts.
   - validated behavior parity through full tests and dual BEAR gates (reran `check --all` alone after an initial parallel timeout caused by resource contention).
+- Continued decomposition + parity hardening:
+  - extracted containment checks into `CheckContainmentStage` and fixed all callsites.
+  - extracted direct/reflection impl token detection into `BoundaryImplUsageDetector` and restored exact legacy token text (`Class.forName(...)`/`loadClass(...)`).
+  - extracted JVM render units into `JvmRenderUnits` and delegated `renderBearValue`, `renderInvariantException`, and `renderContainmentGradleEntrypoint` with byte-equivalent output.
+  - extracted wiring manifest semantics/remediation helpers into `CheckManifestValidation`.
+  - extracted diagnostics suffix formatters into `CheckDiagnosticsFormatter`.
+  - reduced `CheckCommandService` from 1024 LOC to 899 LOC (under 900 threshold).
+  - revalidated repeatedly: `:app:compileJava :kernel:compileJava`, `:app:test :kernel:test`, and BEAR `compile/check/pr-check --all` via `:app:run`.

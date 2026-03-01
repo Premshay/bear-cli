@@ -43,14 +43,6 @@ final class BoundaryBypassScanner {
         new BoundaryRule(STATE_STORE_OP_MISUSE_RULE, BoundaryBypassScanner::isAdapterSourcePath),
         new BoundaryRule(SHARED_LAYOUT_POLICY_RULE, relPath -> relPath.startsWith(SHARED_ROOT_PREFIX))
     ));
-    private static final Pattern REFLECTION_CLASS_FORNAME_PATTERN = Pattern.compile("\\bClass\\s*\\.\\s*forName\\s*\\(");
-    private static final Pattern REFLECTION_LOAD_CLASS_PATTERN = Pattern.compile("\\bloadClass\\s*\\(");
-    private static final Pattern REFLECT_FORNAME_PATTERN = Pattern.compile(
-        "\\bClass\\s*\\.\\s*forName\\s*\\(\\s*\"blocks\\.[A-Za-z0-9_$.]+\\.impl\\.[A-Za-z0-9_]+Impl\"\\s*\\)"
-    );
-    private static final Pattern REFLECT_LOADCLASS_PATTERN = Pattern.compile(
-        "\\bloadClass\\s*\\(\\s*\"blocks\\.[A-Za-z0-9_$.]+\\.impl\\.[A-Za-z0-9_]+Impl\"\\s*\\)"
-    );
     private static final String PLACEHOLDER_MARKER_TODO = "TODO: replace this entire method body with business logic.";
     private static final String PLACEHOLDER_MARKER_RETURN = "Do not append logic below this placeholder return.";
     private static final Pattern PLACEHOLDER_RESULT_RETURN_PATTERN = Pattern.compile(
@@ -376,43 +368,12 @@ final class BoundaryBypassScanner {
     }
 
     static String firstDirectImplUsageToken(String source) {
-        Matcher importMatcher = PolicyPatterns.DIRECT_IMPL_IMPORT_PATTERN.matcher(source);
-        if (importMatcher.find()) {
-            return normalizeToken(importMatcher.group());
-        }
-        Matcher newMatcher = PolicyPatterns.DIRECT_IMPL_NEW_PATTERN.matcher(source);
-        if (newMatcher.find()) {
-            return normalizeToken(newMatcher.group());
-        }
-        Matcher castMatcher = PolicyPatterns.DIRECT_IMPL_TYPE_CAST_PATTERN.matcher(source);
-        if (castMatcher.find()) {
-            return normalizeToken(castMatcher.group());
-        }
-        Matcher varMatcher = PolicyPatterns.DIRECT_IMPL_VAR_DECL_PATTERN.matcher(source);
-        if (varMatcher.find()) {
-            return normalizeToken(varMatcher.group());
-        }
-        Matcher extendsMatcher = PolicyPatterns.DIRECT_IMPL_EXTENDS_IMPL_PATTERN.matcher(source);
-        if (extendsMatcher.find()) {
-            return normalizeToken(extendsMatcher.group());
-        }
-        Matcher implementsMatcher = PolicyPatterns.DIRECT_IMPL_IMPLEMENTS_IMPL_PATTERN.matcher(source);
-        if (implementsMatcher.find()) {
-            return normalizeToken(implementsMatcher.group());
-        }
-        return null;
+        String token = BoundaryImplUsageDetector.firstDirectImplUsageToken(source);
+        return token == null ? null : normalizeToken(token);
     }
 
     static String firstReflectionClassloadingToken(String source) {
-        Matcher forNameMatcher = REFLECTION_CLASS_FORNAME_PATTERN.matcher(source);
-        if (forNameMatcher.find()) {
-            return "Class.forName(...)";
-        }
-        Matcher loadClassMatcher = REFLECTION_LOAD_CLASS_PATTERN.matcher(source);
-        if (loadClassMatcher.find()) {
-            return "loadClass(...)";
-        }
-        return null;
+        return BoundaryImplUsageDetector.firstReflectionClassloadingToken(source);
     }
 
     static void scanServiceDescriptor(
@@ -1149,15 +1110,8 @@ final class BoundaryBypassScanner {
     }
 
     static String firstReflectiveImplUsageToken(String source) {
-        Matcher forNameMatcher = REFLECT_FORNAME_PATTERN.matcher(source);
-        if (forNameMatcher.find()) {
-            return normalizeToken(forNameMatcher.group());
-        }
-        Matcher loadClassMatcher = REFLECT_LOADCLASS_PATTERN.matcher(source);
-        if (loadClassMatcher.find()) {
-            return normalizeToken(loadClassMatcher.group());
-        }
-        return null;
+        String token = BoundaryImplUsageDetector.firstReflectiveImplUsageToken(source);
+        return token == null ? null : normalizeToken(token);
     }
 
     static String firstTopLevelNullPortWiringToken(

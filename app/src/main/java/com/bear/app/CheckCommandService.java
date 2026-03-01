@@ -2,8 +2,6 @@ package com.bear.app;
 
 import com.bear.kernel.ir.BearIr;
 import com.bear.kernel.ir.BearIrValidationException;
-import com.bear.kernel.policy.SharedAllowedDepsPolicyException;
-import com.bear.kernel.policy.SharedAllowedDepsPolicyParser;
 import com.bear.kernel.target.JvmTarget;
 
 import java.io.IOException;
@@ -17,20 +15,13 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 final class CheckCommandService {
     private static final IrPipeline IR_PIPELINE = new DefaultIrPipeline();
     private static final String GENERATED_BEAR_ROOT = "build/generated/bear";
     private static final String GENERATED_WIRING_PREFIX = GENERATED_BEAR_ROOT + "/wiring/";
-    private static final String CONTAINMENT_REQUIRED_PATH = "build/generated/bear/config/containment-required.json";
     private static final String CONTAINMENT_ENTRYPOINT_PATH = "build/generated/bear/gradle/bear-containment.gradle";
-    private static final String CONTAINMENT_SKIP_REASON = "no_selected_blocks_with_impl_allowedDeps";
-    private static final String CONTAINMENT_MARKER_DIR = "build/bear/containment";
     private static final String SHARED_POLICY_PATH = "spec/_shared.policy.yaml";
-    private static final String SHARED_SOURCE_ROOT = "src/main/java/blocks/_shared";
     private static final int WIRING_DETAIL_LIMIT = 20;
     private static final String RUNTIME_LEGACY_PREFIX = "runtime/src/main/java/com/bear/generated/runtime/";
     private static final String RUNTIME_CANONICAL_PREFIX = "src/main/java/com/bear/generated/runtime/";
@@ -104,7 +95,7 @@ final class CheckCommandService {
             BearIr normalized = IR_PIPELINE.parseValidateNormalize(irFile);
             boolean considerContainmentSurfaces = considerContainmentSurfacesOverride != null
                 ? considerContainmentSurfacesOverride
-                : hasAllowedDeps(normalized) || sharedContainmentInScope(projectRoot);
+                : CheckContainmentStage.hasAllowedDeps(normalized) || sharedContainmentInScope(projectRoot);
             BlockIdentityResolution identity = expectedBlockKey == null
                 ? BlockIdentityResolver.resolveSingleCommandIdentity(irFile, projectRoot, normalized.block().name())
                 : BlockIdentityResolver.resolveIndexIdentity(
@@ -166,7 +157,7 @@ final class CheckCommandService {
             applyCandidateManifestTestMode(candidateManifestPath);
 
             List<String> diagnostics = new ArrayList<>();
-            String containmentSkipInfo = maybeContainmentSkipInfo(
+            String containmentSkipInfo = containmentSkipInfoLine(
                 projectRoot.toString().replace('\\', '/'),
                 projectRoot,
                 considerContainmentSurfaces
@@ -689,91 +680,7 @@ final class CheckCommandService {
         List<String> diagnostics,
         boolean considerContainmentSurfaces
     ) throws IOException {
-        if (!considerContainmentSurfaces) {
-            return null;
-        }
-        Path sharedPolicyPath = projectRoot.resolve(SHARED_POLICY_PATH);
-        if (Files.isRegularFile(sharedPolicyPath)) {
-            SharedAllowedDepsPolicyParser parser = new SharedAllowedDepsPolicyParser();
-            try {
-                parser.parse(sharedPolicyPath);
-            } catch (SharedAllowedDepsPolicyException e) {
-                String line = "check: POLICY_INVALID: " + e.reasonCode();
-                diagnostics.add(line);
-                return checkFailure(
-                    CliCodes.EXIT_VALIDATION,
-                    diagnostics,
-                    "VALIDATION",
-                    CliCodes.POLICY_INVALID,
-                    SHARED_POLICY_PATH,
-                    "Fix `spec/_shared.policy.yaml` (version/scope/schema and pinned allowedDeps) and rerun `bear check`.",
-                    line
-                );
-            }
-        }
-        Path gradlew = projectRoot.resolve("gradlew");
-        Path gradlewBat = projectRoot.resolve("gradlew.bat");
-        boolean hasWrapper = Files.isRegularFile(gradlew) || Files.isRegularFile(gradlewBat);
-        if (!hasWrapper) {
-            String line = "check: CONTAINMENT_REQUIRED: UNSUPPORTED_TARGET: missing Gradle wrapper";
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_IO,
-                diagnostics,
-                "CONTAINMENT",
-                CliCodes.CONTAINMENT_UNSUPPORTED_TARGET,
-                "project.root",
-                "Containment enforcement in P2 requires Java+Gradle with wrapper at project root; remove `impl.allowedDeps`/`spec/_shared.policy.yaml` scope usage or use supported target, then rerun `bear check`.",
-                line
-            );
-        }
-
-        Path entrypoint = projectRoot.resolve(CONTAINMENT_ENTRYPOINT_PATH);
-        if (!Files.isRegularFile(entrypoint)) {
-            String line = "drift: MISSING_BASELINE: " + CONTAINMENT_ENTRYPOINT_PATH;
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_DRIFT,
-                diagnostics,
-                "DRIFT",
-                CliCodes.DRIFT_MISSING_BASELINE,
-                CONTAINMENT_ENTRYPOINT_PATH,
-                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                line
-            );
-        }
-
-        Path required = projectRoot.resolve(CONTAINMENT_REQUIRED_PATH);
-        if (!Files.isRegularFile(required)) {
-            String line = "drift: MISSING_BASELINE: " + CONTAINMENT_REQUIRED_PATH;
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_DRIFT,
-                diagnostics,
-                "DRIFT",
-                CliCodes.DRIFT_MISSING_BASELINE,
-                CONTAINMENT_REQUIRED_PATH,
-                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                line
-            );
-        }
-        try {
-            parseContainmentRequiredIndex(required);
-        } catch (ManifestParseException e) {
-            String line = "drift: CHANGED: " + CONTAINMENT_REQUIRED_PATH;
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_DRIFT,
-                diagnostics,
-                "DRIFT",
-                CliCodes.DRIFT_DETECTED,
-                CONTAINMENT_REQUIRED_PATH,
-                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                line
-            );
-        }
-
-        return null;
+        return CheckContainmentStage.preflightContainmentIfRequired(projectRoot, diagnostics, considerContainmentSurfaces);
     }
 
     static CheckResult verifyContainmentMarkersIfRequired(
@@ -781,240 +688,19 @@ final class CheckCommandService {
         List<String> diagnostics,
         boolean considerContainmentSurfaces
     ) throws IOException {
-        if (!considerContainmentSurfaces) {
-            return null;
-        }
-
-        Path required = projectRoot.resolve(CONTAINMENT_REQUIRED_PATH);
-        if (!Files.isRegularFile(required)) {
-            String line = "drift: MISSING_BASELINE: " + CONTAINMENT_REQUIRED_PATH;
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_DRIFT,
-                diagnostics,
-                "DRIFT",
-                CliCodes.DRIFT_MISSING_BASELINE,
-                CONTAINMENT_REQUIRED_PATH,
-                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                line
-            );
-        }
-        ContainmentRequiredIndex requiredIndex;
-        try {
-            requiredIndex = parseContainmentRequiredIndex(required);
-        } catch (ManifestParseException e) {
-            String line = "drift: CHANGED: " + CONTAINMENT_REQUIRED_PATH;
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_DRIFT,
-                diagnostics,
-                "DRIFT",
-                CliCodes.DRIFT_DETECTED,
-                CONTAINMENT_REQUIRED_PATH,
-                "Run `bear compile <ir-file> --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                line
-            );
-        }
-
-        Path marker = projectRoot.resolve(CONTAINMENT_MARKER_DIR + "/applied.marker");
-        if (!Files.isRegularFile(marker)) {
-            String line = "check: CONTAINMENT_REQUIRED: MARKER_MISSING: " + CONTAINMENT_MARKER_DIR + "/applied.marker";
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_IO,
-                diagnostics,
-                "CONTAINMENT",
-                CliCodes.CONTAINMENT_NOT_VERIFIED,
-                CONTAINMENT_MARKER_DIR + "/applied.marker",
-                "Run Gradle build once so BEAR containment marker tasks write markers, then rerun `bear check`.",
-                line
-            );
-        }
-
-        String expectedHash = sha256Hex(Files.readAllBytes(required));
-        String markerHash = readMarkerHash(marker);
-        List<String> markerBlocks = readMarkerBlocks(marker);
-        List<String> expectedBlocks = requiredIndex.blockKeys();
-        if (markerHash == null || !markerHash.equals(expectedHash) || markerBlocks == null || !markerBlocks.equals(expectedBlocks)) {
-            String line = "check: CONTAINMENT_REQUIRED: MARKER_STALE: " + CONTAINMENT_MARKER_DIR + "/applied.marker";
-            diagnostics.add(line);
-            return checkFailure(
-                CliCodes.EXIT_IO,
-                diagnostics,
-                "CONTAINMENT",
-                CliCodes.CONTAINMENT_NOT_VERIFIED,
-                CONTAINMENT_MARKER_DIR + "/applied.marker",
-                "Run Gradle build once after BEAR compile so containment markers refresh, then rerun `bear check`.",
-                line
-            );
-        }
-
-        for (String blockKey : expectedBlocks) {
-            String blockMarkerRel = CONTAINMENT_MARKER_DIR + "/" + blockKey + ".applied.marker";
-            Path blockMarker = projectRoot.resolve(blockMarkerRel);
-            if (!Files.isRegularFile(blockMarker)) {
-                String line = "check: CONTAINMENT_REQUIRED: BLOCK_MARKER_MISSING: " + blockMarkerRel;
-                diagnostics.add(line);
-                return checkFailure(
-                    CliCodes.EXIT_IO,
-                    diagnostics,
-                    "CONTAINMENT",
-                    CliCodes.CONTAINMENT_NOT_VERIFIED,
-                    blockMarkerRel,
-                    "Run Gradle build once so BEAR containment marker tasks write markers, then rerun `bear check`.",
-                    line
-                );
-            }
-            String blockMarkerHash = readMarkerHash(blockMarker);
-            String markerBlockKey = readMarkerBlockKey(blockMarker);
-            if (blockMarkerHash == null || !expectedHash.equals(blockMarkerHash) || markerBlockKey == null || !blockKey.equals(markerBlockKey)) {
-                String line = "check: CONTAINMENT_REQUIRED: BLOCK_MARKER_STALE: " + blockMarkerRel;
-                diagnostics.add(line);
-                return checkFailure(
-                    CliCodes.EXIT_IO,
-                    diagnostics,
-                    "CONTAINMENT",
-                    CliCodes.CONTAINMENT_NOT_VERIFIED,
-                    blockMarkerRel,
-                    "Run Gradle build once after BEAR compile so containment markers refresh, then rerun `bear check`.",
-                    line
-                );
-            }
-        }
-
-        return null;
-    }
-
-    private static boolean hasAllowedDeps(BearIr ir) {
-        return ir.block().impl() != null
-            && ir.block().impl().allowedDeps() != null
-            && !ir.block().impl().allowedDeps().isEmpty();
+        return CheckContainmentStage.verifyContainmentMarkersIfRequired(projectRoot, diagnostics, considerContainmentSurfaces);
     }
 
     static boolean sharedContainmentInScope(Path projectRoot) {
-        return Files.isRegularFile(projectRoot.resolve(SHARED_POLICY_PATH)) || hasSharedJavaSources(projectRoot);
-    }
-
-    private static boolean hasSharedJavaSources(Path projectRoot) {
-        Path sharedRoot = projectRoot.resolve(SHARED_SOURCE_ROOT);
-        if (!Files.isDirectory(sharedRoot)) {
-            return false;
-        }
-        try (var stream = Files.walk(sharedRoot)) {
-            return stream
-                .filter(Files::isRegularFile)
-                .anyMatch(path -> path.getFileName().toString().endsWith(".java"));
-        } catch (IOException e) {
-            return false;
-        }
+        return CheckContainmentStage.sharedContainmentInScope(projectRoot);
     }
 
     static boolean blockDeclaresAllowedDeps(Path irFile) {
-        try {
-            BearIr normalized = IR_PIPELINE.parseValidateNormalize(irFile);
-            return hasAllowedDeps(normalized);
-        } catch (Exception ignored) {
-            return false;
-        }
+        return CheckContainmentStage.blockDeclaresAllowedDeps(irFile);
     }
 
     static String containmentSkipInfoLine(String projectRootLabel, Path projectRoot, boolean considerContainmentSurfaces) {
-        return maybeContainmentSkipInfo(projectRootLabel, projectRoot, considerContainmentSurfaces);
-    }
-
-    private static String maybeContainmentSkipInfo(String projectRootLabel, Path projectRoot, boolean considerContainmentSurfaces) {
-        if (considerContainmentSurfaces) {
-            return null;
-        }
-        Path required = projectRoot.resolve(CONTAINMENT_REQUIRED_PATH);
-        if (!Files.isRegularFile(required)) {
-            return null;
-        }
-        try {
-            ContainmentRequiredIndex index = parseContainmentRequiredIndex(required);
-            if (index.blockKeys().isEmpty()) {
-                return null;
-            }
-            return "check: INFO: CONTAINMENT_SURFACES_SKIPPED_FOR_SELECTION: projectRoot="
-                + projectRootLabel
-                + ": reason="
-                + CONTAINMENT_SKIP_REASON;
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private static String readMarkerHash(Path markerFile) throws IOException {
-        String content = CliText.normalizeLf(Files.readString(markerFile, StandardCharsets.UTF_8));
-        for (String line : content.lines().toList()) {
-            if (line.startsWith("hash=")) {
-                String hash = line.substring("hash=".length()).trim();
-                return hash.isEmpty() ? null : hash;
-            }
-        }
-        return null;
-    }
-
-    private static List<String> readMarkerBlocks(Path markerFile) throws IOException {
-        String content = CliText.normalizeLf(Files.readString(markerFile, StandardCharsets.UTF_8));
-        for (String line : content.lines().toList()) {
-            if (!line.startsWith("blocks=")) {
-                continue;
-            }
-            String raw = line.substring("blocks=".length()).trim();
-            if (raw.isEmpty()) {
-                return List.of();
-            }
-            ArrayList<String> blocks = new ArrayList<>();
-            Set<String> dedupe = new java.util.HashSet<>();
-            for (String token : raw.split(",")) {
-                String value = token.trim();
-                if (value.isEmpty()) {
-                    return null;
-                }
-                if (!dedupe.add(value)) {
-                    return null;
-                }
-                blocks.add(value);
-            }
-            return List.copyOf(blocks);
-        }
-        return null;
-    }
-
-    private static String readMarkerBlockKey(Path markerFile) throws IOException {
-        String content = CliText.normalizeLf(Files.readString(markerFile, StandardCharsets.UTF_8));
-        for (String line : content.lines().toList()) {
-            if (line.startsWith("block=")) {
-                String value = line.substring("block=".length()).trim();
-                return value.isEmpty() ? null : value;
-            }
-        }
-        return null;
-    }
-
-    private static ContainmentRequiredIndex parseContainmentRequiredIndex(Path requiredFile) throws IOException, ManifestParseException {
-        String json = Files.readString(requiredFile, StandardCharsets.UTF_8).trim();
-        if (json.isEmpty() || !json.startsWith("{") || !json.endsWith("}")) {
-            throw new ManifestParseException("MALFORMED_JSON");
-        }
-        String blocksPayload = ManifestParsers.extractRequiredArrayPayload(json, "blocks");
-        TreeSet<String> blockKeys = new TreeSet<>();
-        if (!blocksPayload.isBlank()) {
-            Matcher matcher = Pattern
-                .compile("\\{\\\"blockKey\\\":\\\"((?:\\\\.|[^\\\\\\\"])*)\\\"")
-                .matcher(blocksPayload);
-            while (matcher.find()) {
-                blockKeys.add(ManifestParsers.jsonUnescape(matcher.group(1)));
-            }
-            if (blockKeys.isEmpty()) {
-                throw new ManifestParseException("INVALID_CONTAINMENT_REQUIRED_BLOCKS");
-            }
-        }
-        return new ContainmentRequiredIndex(List.copyOf(blockKeys));
-    }
-
-    private record ContainmentRequiredIndex(List<String> blockKeys) {
+        return CheckContainmentStage.containmentSkipInfoLine(projectRootLabel, projectRoot, considerContainmentSurfaces);
     }
 
     private static void applyCandidateManifestTestMode(Path candidateManifestPath) throws IOException {
@@ -1042,148 +728,23 @@ final class CheckCommandService {
     }
 
     private static String testDiagnosticsSuffix(ProjectTestResult testResult) {
-        String attempts = testResult.attemptTrail() == null || testResult.attemptTrail().isBlank()
-            ? "<none>"
-            : testResult.attemptTrail().trim();
-        String cacheMode = testResult.cacheMode() == null || testResult.cacheMode().isBlank()
-            ? "isolated"
-            : testResult.cacheMode().trim();
-        String fallback = testResult.fallbackToUserCache() ? "to_user_cache" : "none";
-        return "; attempts=" + attempts + "; CACHE_MODE=" + cacheMode + "; FALLBACK=" + fallback;
+        return CheckDiagnosticsFormatter.testDiagnosticsSuffix(testResult);
     }
 
     private static String markerWriteFailureSuffix(IOException error) {
-        return "; markerWrite=failed:" + CliText.squash(error.getMessage());
+        return CheckDiagnosticsFormatter.markerWriteFailureSuffix(error);
     }
 
     private static CheckResult validateWiringManifestSemantics(WiringManifest manifest, String path) {
-        if (manifest.logicInterfaceFqcn() == null || manifest.logicInterfaceFqcn().trim().isEmpty()) {
-            String line = "check: MANIFEST_INVALID: missing logicInterfaceFqcn";
-            return checkFailure(
-                CliCodes.EXIT_VALIDATION,
-                List.of(line),
-                "VALIDATION",
-                CliCodes.MANIFEST_INVALID,
-                path,
-                "Regenerate wiring manifests with governed binding fields and rerun `bear check`.",
-                line
-            );
-        }
-        if (manifest.implFqcn() == null || manifest.implFqcn().trim().isEmpty()) {
-            String line = "check: MANIFEST_INVALID: missing implFqcn";
-            return checkFailure(
-                CliCodes.EXIT_VALIDATION,
-                List.of(line),
-                "VALIDATION",
-                CliCodes.MANIFEST_INVALID,
-                path,
-                "Regenerate wiring manifests with governed binding fields and rerun `bear check`.",
-                line
-            );
-        }
-        if (!"v2".equals(manifest.schemaVersion())) {
-            String line = "check: MANIFEST_INVALID: unsupported wiring schema version: " + manifest.schemaVersion();
-            return checkFailure(
-                CliCodes.EXIT_VALIDATION,
-                List.of(line),
-                "VALIDATION",
-                CliCodes.MANIFEST_INVALID,
-                path,
-                "Regenerate wiring manifests with `bear compile` so v2 wiring metadata is present, then rerun `bear check`.",
-                line
-            );
-        }
-        if (manifest.blockRootSourceDir() == null || manifest.blockRootSourceDir().trim().isEmpty()) {
-            String line = "check: MANIFEST_INVALID: missing blockRootSourceDir";
-            return checkFailure(
-                CliCodes.EXIT_VALIDATION,
-                List.of(line),
-                "VALIDATION",
-                CliCodes.MANIFEST_INVALID,
-                path,
-                "Regenerate wiring manifests with governed block root metadata and rerun `bear check`.",
-                line
-            );
-        }
-        if (manifest.governedSourceRoots() == null || manifest.governedSourceRoots().isEmpty()) {
-            String line = "check: MANIFEST_INVALID: missing governedSourceRoots";
-            return checkFailure(
-                CliCodes.EXIT_VALIDATION,
-                List.of(line),
-                "VALIDATION",
-                CliCodes.MANIFEST_INVALID,
-                path,
-                "Regenerate wiring manifests with governed source root metadata and rerun `bear check`.",
-                line
-            );
-        }
-        for (String semanticPort : manifest.wrapperOwnedSemanticPorts()) {
-            if (manifest.logicRequiredPorts().contains(semanticPort)) {
-                String line = "check: MANIFEST_INVALID: wrapperOwnedSemanticPorts overlaps logicRequiredPorts: " + semanticPort;
-                return checkFailure(
-                    CliCodes.EXIT_VALIDATION,
-                    List.of(line),
-                    "VALIDATION",
-                    CliCodes.MANIFEST_INVALID,
-                    path,
-                    "Regenerate wiring so semantic ports are wrapper-owned only, then rerun `bear check`.",
-                    line
-                );
-            }
-        }
-        return null;
+        return CheckManifestValidation.validateWiringManifestSemantics(manifest, path);
     }
 
     private static boolean isManifestSemanticFieldError(ManifestParseException e) {
-        String code = e.reasonCode();
-        return "MISSING_KEY_logicInterfaceFqcn".equals(code)
-            || "MISSING_KEY_implFqcn".equals(code)
-            || "MISSING_KEY_logicRequiredPorts".equals(code)
-            || "MISSING_KEY_wrapperOwnedSemanticPorts".equals(code)
-            || "MISSING_KEY_wrapperOwnedSemanticChecks".equals(code)
-            || "MISSING_KEY_blockRootSourceDir".equals(code)
-            || "MISSING_KEY_governedSourceRoots".equals(code)
-            || "MALFORMED_ARRAY_logicRequiredPorts".equals(code)
-            || "MALFORMED_ARRAY_wrapperOwnedSemanticPorts".equals(code)
-            || "MALFORMED_ARRAY_wrapperOwnedSemanticChecks".equals(code)
-            || "MALFORMED_ARRAY_governedSourceRoots".equals(code)
-            || "INVALID_STRING_ARRAY".equals(code)
-            || "UNSUPPORTED_WIRING_SCHEMA_VERSION".equals(code)
-            || "INVALID_GOVERNED_SOURCE_ROOTS".equals(code)
-            || PortImplContainmentScanner.AMBIGUOUS_PORT_OWNER_REASON_CODE.equals(code)
-            || "INVALID_ROOT_PATH_blockRootSourceDir".equals(code)
-            || "INVALID_ROOT_PATH_governedSourceRoots".equals(code);
+        return CheckManifestValidation.isManifestSemanticFieldError(e);
     }
 
     private static String boundaryBypassRemediation(String rule) {
-        if ("PORT_IMPL_OUTSIDE_GOVERNED_ROOT".equals(rule)) {
-            return "Move the port implementation under the owning block governed roots (block root or blocks/_shared) or refactor so app layer calls wrappers without implementing generated ports.";
-        }
-        if ("MULTI_BLOCK_PORT_IMPL_FORBIDDEN".equals(rule)) {
-            return "Split generated-port adapters so each class implements one generated block package, or move the adapter under blocks/_shared and add `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL` within 5 non-empty lines above the class declaration.";
-        }
-        if ("SHARED_PURITY_VIOLATION".equals(rule)) {
-            return "Keep `_shared.pure` deterministic: remove mutable static state/synchronized usage, move stateful code to `blocks/**/adapter/**` or `blocks/_shared/state/**`, and use allowlisted immutable constants only.";
-        }
-        if ("IMPL_PURITY_VIOLATION".equals(rule)) {
-            return "Keep impl lane pure: remove mutable static state and synchronized usage from `blocks/**/impl/**`; route cross-call state through generated ports and adapter/state lanes.";
-        }
-        if ("IMPL_STATE_DEPENDENCY_BYPASS".equals(rule)) {
-            return "Remove `blocks._shared.state.*` dependencies from impl lane and access state through generated port adapters.";
-        }
-        if ("SCOPED_IMPORT_POLICY_BYPASS".equals(rule)) {
-            return "Remove forbidden package usage from guarded lane (`impl` or `_shared.pure`) and move IO/network/filesystem/concurrency integration into adapter/state lanes.";
-        }
-        if ("SHARED_LAYOUT_POLICY_VIOLATION".equals(rule)) {
-            return "Move shared Java files under `src/main/java/blocks/_shared/pure/**` or `src/main/java/blocks/_shared/state/**`; root-level `_shared` Java files are not allowed.";
-        }
-        if ("STATE_STORE_OP_MISUSE".equals(rule)) {
-            return "In adapter lane, do not mix update-path logic with state-create calls in the same method; split create vs update semantics and preserve explicit not-found behavior.";
-        }
-        if ("STATE_STORE_NOOP_UPDATE".equals(rule)) {
-            return "In `_shared/state`, update-path methods must not silently return on missing state; raise explicit not-found behavior instead.";
-        }
-        return "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses.";
+        return CheckManifestValidation.boundaryBypassRemediation(rule);
     }
 
     private static void writeCheckBlockedMarker(Path projectRoot, String reason, String detail) throws IOException {
