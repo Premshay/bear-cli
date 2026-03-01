@@ -5,7 +5,7 @@ Context entrypoint:
 
 ## Last Updated
 
-2026-02-26
+2026-03-01
 
 ## Current Milestone
 
@@ -173,6 +173,13 @@ Preview standing note:
      - no-artifact-mining stated as contract rule (docs/test enforced, not claimed as runtime scanner proof),
      - troubleshooting/reporting anomaly routing clarified,
      - new `RepoArtifactPolicyTest` enforces no tracked `build[0-9]+/` paths and no stale build path tokens in tracked text sources.
+
+11. `Guardrails v2.2.5-lite (revised): lane-scope hardening + minimal anchor checks`:
+   - scanner rule applicability is now explicitly path-allowlisted via `ruleAppliesToPath(ruleId, relPath)`.
+   - `_shared/state` is explicitly excluded from purity/import bans (`SHARED_PURITY_VIOLATION`, `SCOPED_IMPORT_POLICY_BYPASS`).
+   - scanner tests now include white-box rule-scope checks and a non-evaluation regression for `_shared/state`.
+   - packaged docs add deterministic `POLICY_SCOPE_MISMATCH` escalation anchors.
+   - docs consistency checks were reduced to minimal section-anchor coverage plus package file/legacy checks.
 
 ## Next Feature Specs (Locked)
 

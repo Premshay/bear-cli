@@ -6,25 +6,31 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-02-26
+2026-03-01
 
 ## Current Focus
 
 P2 stabilization and BEAR guardrails hardening:
-- keep deterministic governance behavior stable while reducing context boot cost
-- maintain strict dual-gate completion evidence in docs/workflows
-- harden `pr-check` anomaly handling and boundary reporting contracts
-- keep scanner/validator guardrails deterministic and low-noise
-- ensure context docs follow no-loss mapping contract
+- lock lane-scope scanner behavior to path allowlists so `_shared/state` cannot be accidentally scanned by purity/import bans
+- keep `pr-check` exit-envelope anomaly handling aligned between runtime behavior and packaged docs
+- reduce docs consistency overhead to minimal section-anchor checks
 
 ## Next Concrete Task
 
-1. Run stabilization bake period for v2.2.4 lock-candidate guardrails in greenfield + boundary-expansion runs.
-2. Validate `pr-check` exit-envelope anomaly behavior against real repos during next dogfood cycle.
-3. Keep containment-lane smoke fixtures ready (`exit 3` drift lane vs `exit 74` verification lane).
+1. Bake v2.2.5-lite in greenfield + extension runs and confirm no false positives on `_shared/state`.
+2. Monitor `pr-check` anomaly path (`PR_CHECK_EXIT_ENVELOPE_ANOMALY`) in single and `--all` flows during dogfood.
+3. Keep docs anchor set minimal/stable and avoid reintroducing broad token-level assertions.
 
 ## Session Notes
 
+- Implemented Guardrails v2.2.5-lite (revised):
+  - `BoundaryBypassScanner` now gates rule evaluation through explicit `ruleAppliesToPath(ruleId, relPath)` allowlists.
+  - Lane-scope hardening ensures `_shared/state` is excluded from `SHARED_PURITY_VIOLATION` and `SCOPED_IMPORT_POLICY_BYPASS` evaluation.
+  - Added scanner tests for both rule-scope white-box checks and non-evaluation behavior on `_shared/state`.
+  - Added deterministic `POLICY_SCOPE_MISMATCH` guidance to packaged docs (`BOOTSTRAP`, `TROUBLESHOOTING`).
+  - Added explicit bootstrap heading `GREENFIELD_ARTIFACT_SOURCE_RULE` and docs-anchor enforcement to block greenfield artifact-mining drift.
+  - Added reporting anchor section for blocker/anomaly handling and kept `pr-check` anomaly semantics aligned.
+  - Reduced `BearPackageDocsConsistencyTest` to minimal checks: package file set, legacy-file removal, required section anchors.
 - Implemented guardrails v2.2.3 docs/test hardening:
   - IO lock lane now requires `gradlew(.bat) --stop`, two unchanged retries, then `BLOCKED(IO_LOCK)`.
   - lock triage now forbids command variants and env knob changes (`GRADLE_USER_HOME`, `buildDir`, wrapper env tweaks) unless explicitly instructed.

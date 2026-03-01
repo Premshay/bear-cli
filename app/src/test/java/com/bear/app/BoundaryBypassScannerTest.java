@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -567,6 +568,43 @@ class BoundaryBypassScannerTest {
         assertTrue(findings.stream().anyMatch(f ->
             "SCOPED_IMPORT_POLICY_BYPASS".equals(f.rule())
                 && f.path().endsWith("NetworkHelper.java")
+        ));
+    }
+
+    @Test
+    void ruleAppliesToPathExcludesSharedStateFromPurityAndScopedImportRules() {
+        String statePath = "src/main/java/blocks/_shared/state/StateStore.java";
+        assertFalse(BoundaryBypassScanner.ruleAppliesToPath("SHARED_PURITY_VIOLATION", statePath));
+        assertFalse(BoundaryBypassScanner.ruleAppliesToPath("SCOPED_IMPORT_POLICY_BYPASS", statePath));
+        assertTrue(BoundaryBypassScanner.ruleAppliesToPath(
+            "SHARED_PURITY_VIOLATION",
+            "src/main/java/blocks/_shared/pure/PureHelper.java"
+        ));
+        assertTrue(BoundaryBypassScanner.ruleAppliesToPath(
+            "SCOPED_IMPORT_POLICY_BYPASS",
+            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java"
+        ));
+    }
+
+    @Test
+    void scanBoundaryBypassDoesNotEvaluateSharedStateAgainstPurityOrScopedImportRules(@TempDir Path tempDir) throws Exception {
+        writeWorkingWithdrawImpl(tempDir);
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/state/StateStore.java",
+            "package blocks._shared.state;\n"
+                + "import java.net.URI;\n"
+                + "public final class StateStore {\n"
+                + "  synchronized void updateBalance(String walletId, int balanceCents) {\n"
+                + "    URI.create(\"https://example.com\");\n"
+                + "  }\n"
+                + "}\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
+        assertTrue(findings.stream().noneMatch(f ->
+            ("SHARED_PURITY_VIOLATION".equals(f.rule()) || "SCOPED_IMPORT_POLICY_BYPASS".equals(f.rule()))
+                && f.path().endsWith("StateStore.java")
         ));
     }
 

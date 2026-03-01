@@ -133,6 +133,18 @@ Deterministic handling:
 2. stop immediately; do not continue alternate `pr-check` variants.
 3. include both marker and observed exit in `First failure signature`.
 
+## POLICY_SCOPE_MISMATCH
+
+Use this class when:
+1. `finding.path` matches `_shared/state/**`
+2. `ruleId` is `SHARED_PURITY_VIOLATION` or `SCOPED_IMPORT_POLICY_BYPASS`
+
+Deterministic handling:
+1. classify as policy/tool anomaly.
+2. stop and escalate.
+3. do not alter implementation semantics as workaround.
+4. report blocker as `OTHER` with the exact finding evidence.
+
 ## Lock/IO Environment Branch
 
 When lock signatures appear (for example `.zip.lck`, `Access is denied`, generated-file replacement lock):

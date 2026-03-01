@@ -539,7 +539,7 @@ final class BoundaryBypassScanner {
             return findings;
         }
 
-        if (isSharedJavaOutsidePureOrState(relPath)) {
+        if (ruleAppliesToPath(SHARED_LAYOUT_POLICY_RULE, relPath) && isSharedJavaOutsidePureOrState(relPath)) {
             findings.add(new BoundaryBypassFinding(
                 SHARED_LAYOUT_POLICY_RULE,
                 relPath,
@@ -547,15 +547,17 @@ final class BoundaryBypassScanner {
             ));
         }
 
-        boolean implLane = isImplSourcePath(relPath);
-        boolean pureLane = isSharedPureSourcePath(relPath);
-        boolean stateLane = relPath.startsWith(SHARED_STATE_ROOT_PREFIX);
-        boolean adapterLane = isAdapterSourcePath(relPath);
-        if (!implLane && !pureLane && !stateLane && !adapterLane) {
+        boolean implLane = ruleAppliesToPath(IMPL_PURITY_RULE, relPath);
+        boolean pureLane = ruleAppliesToPath(SHARED_PURITY_RULE, relPath);
+        boolean implStateDependencyLane = ruleAppliesToPath(IMPL_STATE_DEPENDENCY_RULE, relPath);
+        boolean scopedImportLane = ruleAppliesToPath(SCOPED_IMPORT_POLICY_RULE, relPath);
+        boolean stateLane = ruleAppliesToPath(STATE_STORE_NOOP_UPDATE_RULE, relPath);
+        boolean adapterLane = ruleAppliesToPath(STATE_STORE_OP_MISUSE_RULE, relPath);
+        if (!implLane && !pureLane && !implStateDependencyLane && !scopedImportLane && !stateLane && !adapterLane) {
             return findings;
         }
 
-        if (implLane && source.contains("blocks._shared.state.")) {
+        if (implStateDependencyLane && source.contains("blocks._shared.state.")) {
             findings.add(new BoundaryBypassFinding(
                 IMPL_STATE_DEPENDENCY_RULE,
                 relPath,
@@ -563,83 +565,89 @@ final class BoundaryBypassScanner {
             ));
         }
 
-        String forbiddenToken = firstForbiddenPrefixToken(
-            source,
-            implLane ? IMPL_FORBIDDEN_PREFIX_TOKENS : PURE_FORBIDDEN_PREFIX_TOKENS
-        );
-        if (forbiddenToken != null) {
-            findings.add(new BoundaryBypassFinding(
-                SCOPED_IMPORT_POLICY_RULE,
-                relPath,
-                "forbidden package token in " + (implLane ? "impl" : "_shared.pure") + " lane: " + forbiddenToken
-            ));
-        }
-
-        String synchronizedToken = firstSynchronizedToken(sanitized);
-        if (synchronizedToken != null) {
-            findings.add(new BoundaryBypassFinding(
-                implLane ? IMPL_PURITY_RULE : SHARED_PURITY_RULE,
-                relPath,
-                "synchronized usage is forbidden in " + (implLane ? "impl" : "_shared.pure") + " lane"
-            ));
-        }
-
-        String packageName = parsePackageName(sanitized);
-        Map<String, String> explicitImports = parseExplicitImports(sanitized);
-        Set<String> localEnums = parseLocalEnumNames(sanitized);
-        for (StaticFieldStatement statement : parseStaticFieldStatements(sanitized)) {
-            if (!statement.isFinalField()) {
-                findings.add(new BoundaryBypassFinding(
-                    implLane ? IMPL_PURITY_RULE : SHARED_PURITY_RULE,
-                    relPath,
-                    "mutable static field is forbidden: " + normalizeToken(statement.raw())
-                ));
-                continue;
-            }
-
-            if (containsKnownMutableTypeToken(statement.typeRaw())) {
-                findings.add(new BoundaryBypassFinding(
-                    implLane ? IMPL_PURITY_RULE : SHARED_PURITY_RULE,
-                    relPath,
-                    "static final mutable container/atomic/threadlocal is forbidden: " + normalizeToken(statement.raw())
-                ));
-                continue;
-            }
-
-            if (!pureLane) {
-                continue;
-            }
-
-            String declaredTypeFqcn = resolveTypeTokenFqcn(
-                statement.typeRaw(),
-                packageName,
-                explicitImports
+        if (scopedImportLane) {
+            String forbiddenToken = firstForbiddenPrefixToken(
+                source,
+                implLane ? IMPL_FORBIDDEN_PREFIX_TOKENS : PURE_FORBIDDEN_PREFIX_TOKENS
             );
-            if (isAllowedPureConstantType(declaredTypeFqcn)
-                || isAllowlistedImmutableType(declaredTypeFqcn, pureImmutableAllowlist)
-                || isEnumConstantDeclaration(statement, declaredTypeFqcn, localEnums, packageName, explicitImports)) {
-                continue;
+            if (forbiddenToken != null) {
+                findings.add(new BoundaryBypassFinding(
+                    SCOPED_IMPORT_POLICY_RULE,
+                    relPath,
+                    "forbidden package token in " + (implLane ? "impl" : "_shared.pure") + " lane: " + forbiddenToken
+                ));
+            }
+        }
+
+        if (implLane || pureLane) {
+            String purityRule = implLane ? IMPL_PURITY_RULE : SHARED_PURITY_RULE;
+            String laneLabel = implLane ? "impl" : "_shared.pure";
+            String synchronizedToken = firstSynchronizedToken(sanitized);
+            if (synchronizedToken != null) {
+                findings.add(new BoundaryBypassFinding(
+                    purityRule,
+                    relPath,
+                    "synchronized usage is forbidden in " + laneLabel + " lane"
+                ));
             }
 
-            String newTypeToken = extractNewTypeToken(statement.initializerRaw());
-            if (newTypeToken != null) {
-                String newTypeFqcn = resolveTypeTokenFqcn(newTypeToken, packageName, explicitImports);
-                if (!isAllowlistedImmutableType(newTypeFqcn, pureImmutableAllowlist)) {
+            String packageName = parsePackageName(sanitized);
+            Map<String, String> explicitImports = parseExplicitImports(sanitized);
+            Set<String> localEnums = parseLocalEnumNames(sanitized);
+            for (StaticFieldStatement statement : parseStaticFieldStatements(sanitized)) {
+                if (!statement.isFinalField()) {
                     findings.add(new BoundaryBypassFinding(
-                        SHARED_PURITY_RULE,
+                        purityRule,
                         relPath,
-                        "static final `new` initializer is forbidden in _shared.pure unless type is allowlisted immutable: "
-                            + normalizeToken(statement.raw())
+                        "mutable static field is forbidden: " + normalizeToken(statement.raw())
                     ));
+                    continue;
                 }
-                continue;
-            }
 
-            findings.add(new BoundaryBypassFinding(
-                SHARED_PURITY_RULE,
-                relPath,
-                "static final type is not an allowed pure constant type: " + normalizeToken(statement.raw())
-            ));
+                if (containsKnownMutableTypeToken(statement.typeRaw())) {
+                    findings.add(new BoundaryBypassFinding(
+                        purityRule,
+                        relPath,
+                        "static final mutable container/atomic/threadlocal is forbidden: " + normalizeToken(statement.raw())
+                    ));
+                    continue;
+                }
+
+                if (!pureLane) {
+                    continue;
+                }
+
+                String declaredTypeFqcn = resolveTypeTokenFqcn(
+                    statement.typeRaw(),
+                    packageName,
+                    explicitImports
+                );
+                if (isAllowedPureConstantType(declaredTypeFqcn)
+                    || isAllowlistedImmutableType(declaredTypeFqcn, pureImmutableAllowlist)
+                    || isEnumConstantDeclaration(statement, declaredTypeFqcn, localEnums, packageName, explicitImports)) {
+                    continue;
+                }
+
+                String newTypeToken = extractNewTypeToken(statement.initializerRaw());
+                if (newTypeToken != null) {
+                    String newTypeFqcn = resolveTypeTokenFqcn(newTypeToken, packageName, explicitImports);
+                    if (!isAllowlistedImmutableType(newTypeFqcn, pureImmutableAllowlist)) {
+                        findings.add(new BoundaryBypassFinding(
+                            SHARED_PURITY_RULE,
+                            relPath,
+                            "static final `new` initializer is forbidden in _shared.pure unless type is allowlisted immutable: "
+                                + normalizeToken(statement.raw())
+                        ));
+                    }
+                    continue;
+                }
+
+                findings.add(new BoundaryBypassFinding(
+                    SHARED_PURITY_RULE,
+                    relPath,
+                    "static final type is not an allowed pure constant type: " + normalizeToken(statement.raw())
+                ));
+            }
         }
 
         if (stateLane) {
@@ -683,6 +691,21 @@ final class BoundaryBypassScanner {
         return relPath.startsWith(SHARED_ROOT_PREFIX)
             && !relPath.startsWith(SHARED_PURE_ROOT_PREFIX)
             && !relPath.startsWith(SHARED_STATE_ROOT_PREFIX);
+    }
+
+    static boolean ruleAppliesToPath(String ruleId, String relPath) {
+        if (ruleId == null || relPath == null || !relPath.endsWith(".java")) {
+            return false;
+        }
+        return switch (ruleId) {
+            case SHARED_PURITY_RULE -> isSharedPureSourcePath(relPath);
+            case SCOPED_IMPORT_POLICY_RULE -> isImplSourcePath(relPath) || isSharedPureSourcePath(relPath);
+            case IMPL_PURITY_RULE, IMPL_STATE_DEPENDENCY_RULE -> isImplSourcePath(relPath);
+            case STATE_STORE_NOOP_UPDATE_RULE -> relPath.startsWith(SHARED_STATE_ROOT_PREFIX);
+            case STATE_STORE_OP_MISUSE_RULE -> isAdapterSourcePath(relPath);
+            case SHARED_LAYOUT_POLICY_RULE -> relPath.startsWith(SHARED_ROOT_PREFIX);
+            default -> false;
+        };
     }
 
     private static String firstStateStoreNoopUpdateDetail(String source) {

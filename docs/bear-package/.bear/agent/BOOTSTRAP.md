@@ -137,6 +137,20 @@ Read on demand:
 31. Greenfield contract source is current IR + freshly generated sources in `build/generated/bear/**` after compile. Do not mine stale `build*` artifacts or recover signatures via `javap` from prior builds.
 32. This "no artifact mining" rule is an agent contract rule (docs-enforced), not a runtime scanner guarantee.
 
+## POLICY_SCOPE_MISMATCH
+
+Deterministic escalation condition:
+1. If `finding.path` matches `_shared/state/**` AND `ruleId` is one of `{SHARED_PURITY_VIOLATION, SCOPED_IMPORT_POLICY_BYPASS}`, classify as policy/tool anomaly.
+2. Stop and escalate; do not alter implementation semantics as a workaround.
+3. Report blocker under `OTHER` in `.bear/agent/REPORTING.md`.
+
+## GREENFIELD_ARTIFACT_SOURCE_RULE
+
+In greenfield mode:
+1. Contract source of truth is current IR on disk plus freshly generated artifacts under `build/generated/bear/**` from this run.
+2. Do not inspect stale `build*` outputs or run `javap` on prior class directories to recover signatures.
+3. If this rule is violated, classify as process/tool anomaly, stop, and escalate (`Gate blocker: OTHER`).
+
 ## Done Gate Contract
 
 Required evidence before completion:

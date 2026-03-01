@@ -49,6 +49,12 @@ Run report MUST include:
 7. If `pr-check` prints `BOUNDARY_EXPANSION_DETECTED` but exit is not `5`, classify `Gate blocker` as `OTHER` and stop.
 8. For this anomaly, `First failure signature` must include both marker text and observed exit code.
 
+## Blocker And Anomaly Reporting
+
+1. For policy/tool/process anomalies, set `Gate blocker: OTHER`.
+2. For `PR_CHECK_EXIT_ENVELOPE_ANOMALY`, stop immediately and capture exact marker + observed exit in `First failure signature`.
+3. `Gate blocker`, `Stopped after blocker`, `First failing command`, and `First failure signature` are always required.
+
 ## Governance-Signal Disposition Rules
 
 1. `MULTI_BLOCK_PORT_IMPL_ALLOWED: none` is valid when no governance signal lines exist.
