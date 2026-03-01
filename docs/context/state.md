@@ -27,6 +27,11 @@ P2 stabilization and BEAR guardrails hardening:
   - `scripts/clean-demo-branch.ps1` now uses ignored-file cleanup (`git clean -fdx`, preserving `.bear-gradle-user-home` by default) so stale ignored outputs do not survive.
   - post-clean path checks now include `.gradle` and legacy artifact dirs `build2/`, `build3/`, `build4/`.
   - `docs/context/safety-rules.md` demo cleanup contract updated to require removing untracked+ignored files and to list `build2/3/4` explicitly.
+- Hardened demo sync source selection:
+  - `scripts/sync-bear-demo.ps1` now enforces latest-source semantics by selecting installDist artifacts produced by the current build invocation (including Gradle temp build roots when used by environment).
+  - removed packaged CLI fallback behavior for latest-sync path.
+  - `-SkipBuild` now remains strict: explicit `-CliInstallPath` or existing local installDist is required.
+  - updated `docs/context/safety-rules.md` deterministic sync source rule to match runtime behavior.
 - Implemented Guardrails v2.2.5-lite (revised):
   - `BoundaryBypassScanner` now gates rule evaluation through explicit `ruleAppliesToPath(ruleId, relPath)` allowlists.
   - Lane-scope hardening ensures `_shared/state` is excluded from `SHARED_PURITY_VIOLATION` and `SCOPED_IMPORT_POLICY_BYPASS` evaluation.

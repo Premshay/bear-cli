@@ -39,14 +39,6 @@ function Test-CliInstallRoot([string]$root) {
         (Test-Path (Join-Path $root "lib\kernel-0.1.0-SNAPSHOT.jar"))
 }
 
-function Find-PackagedCli([string]$repoRoot) {
-    $packaged = Join-Path $repoRoot "docs\bear-package\.bear\tools\bear-cli"
-    if (Test-CliInstallRoot $packaged) {
-        return (Resolve-Path $packaged).Path
-    }
-    return $null
-}
-
 function Resolve-PackagedAgentRoot([string]$repoRoot) {
     $agentRoot = Join-Path $repoRoot "docs\bear-package\.bear\agent"
     if (-not (Test-Path (Join-Path $agentRoot "BOOTSTRAP.md"))) {
@@ -68,23 +60,63 @@ function Find-InstalledCli([string]$repoRoot, [string]$explicitPath) {
     if (Test-Path (Join-Path $localInstall "bin\bear.bat")) {
         return (Resolve-Path $localInstall).Path
     }
+    throw "Could not locate local installDist output at $localInstall. Run :app:installDist, or pass -CliInstallPath explicitly."
+}
 
-    $tempRoot = Join-Path $env:TEMP "bear-cli-build"
-    if (-not (Test-Path $tempRoot)) {
-        throw "Could not locate installDist output. Expected either $localInstall or $tempRoot."
+function Get-CliInstallStampUtc([string]$installRoot) {
+    $appJar = Join-Path $installRoot "lib\app-0.1.0-SNAPSHOT.jar"
+    $kernelJar = Join-Path $installRoot "lib\kernel-0.1.0-SNAPSHOT.jar"
+    if (-not (Test-Path -LiteralPath $appJar) -or -not (Test-Path -LiteralPath $kernelJar)) {
+        throw "Missing expected CLI jars under install root: $installRoot"
+    }
+    $appStamp = (Get-Item -LiteralPath $appJar).LastWriteTimeUtc
+    $kernelStamp = (Get-Item -LiteralPath $kernelJar).LastWriteTimeUtc
+    if ($appStamp -gt $kernelStamp) {
+        return $appStamp
+    }
+    return $kernelStamp
+}
+
+function Find-FreshBuiltCli([string]$repoRoot, [datetime]$buildStartedUtc) {
+    $candidates = New-Object System.Collections.Generic.List[string]
+    $localInstall = Join-Path $repoRoot "app\build\install\bear"
+    if (Test-CliInstallRoot $localInstall) {
+        $candidates.Add((Resolve-Path -LiteralPath $localInstall).Path)
     }
 
-    $candidates = Get-ChildItem -Path $tempRoot -Directory |
-        Sort-Object LastWriteTime -Descending
-
-    foreach ($dir in $candidates) {
-        $candidate = Join-Path $dir.FullName "app\install\bear"
-        if (Test-CliInstallRoot $candidate) {
-            return $candidate
+    $tempRoot = Join-Path $env:TEMP "bear-cli-build"
+    if (Test-Path -LiteralPath $tempRoot) {
+        $tempDirs = Get-ChildItem -LiteralPath $tempRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending
+        foreach ($dir in $tempDirs) {
+            $candidate = Join-Path $dir.FullName "app\install\bear"
+            if (Test-CliInstallRoot $candidate) {
+                $candidates.Add((Resolve-Path -LiteralPath $candidate).Path)
+            }
         }
     }
 
-    throw "Could not locate installDist output under $tempRoot. Run :app:installDist first."
+    if ($candidates.Count -eq 0) {
+        throw "Could not locate any installDist output after build. Expected local app/build/install/bear or Gradle temp build output."
+    }
+
+    $freshCandidates = @()
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        $stampUtc = Get-CliInstallStampUtc $candidate
+        if ($stampUtc -ge $buildStartedUtc.AddSeconds(-2)) {
+            $freshCandidates += [pscustomobject]@{
+                Path  = $candidate
+                Stamp = $stampUtc
+            }
+        }
+    }
+
+    if ($freshCandidates.Count -eq 0) {
+        throw "Could not locate fresh installDist output from this sync run. Re-run sync, or pass -CliInstallPath explicitly."
+    }
+
+    $selected = $freshCandidates | Sort-Object Stamp -Descending | Select-Object -First 1
+    return $selected.Path
 }
 
 function Confirm-OrThrow([switch]$WhatIf, [switch]$Yes) {
@@ -153,7 +185,6 @@ if (-not (Test-Path (Join-Path $demoRoot ".git"))) {
 }
 
 $packagedAgentRoot = Resolve-PackagedAgentRoot $repoRoot
-$packagedCli = Find-PackagedCli $repoRoot
 
 if (-not $SkipBuild -and -not $CliInstallPath) {
     $gradleWrapper = Join-Path $repoRoot "gradlew.bat"
@@ -161,6 +192,7 @@ if (-not $SkipBuild -and -not $CliInstallPath) {
         throw "Missing gradle wrapper: $gradleWrapper"
     }
     Write-Output "Building bear-cli distribution..."
+    $buildStartedUtc = [DateTime]::UtcNow
     if (-not $WhatIf) {
         Push-Location $repoRoot
         try {
@@ -176,23 +208,17 @@ if (-not $SkipBuild -and -not $CliInstallPath) {
     }
 }
 
-if ($SkipBuild -and $packagedCli -and -not $CliInstallPath) {
-    Write-Output ("SkipBuild enabled; using packaged CLI runtime: {0}" -f $packagedCli)
-}
-
-$installRoot = if ($CliInstallPath) {
-    Find-InstalledCli $repoRoot $CliInstallPath
+$localInstallRoot = Join-Path $repoRoot "app\build\install\bear"
+$installRoot = $null
+if ($CliInstallPath) {
+    $installRoot = Find-InstalledCli $repoRoot $CliInstallPath
+} elseif ($WhatIf -and -not $SkipBuild -and -not (Test-CliInstallRoot $localInstallRoot)) {
+    Write-Output ("WhatIf mode: local installDist not found; assuming post-build source at: {0}" -f $localInstallRoot)
+    $installRoot = $localInstallRoot
+} elseif (-not $SkipBuild) {
+    $installRoot = Find-FreshBuiltCli $repoRoot $buildStartedUtc
 } else {
-    try {
-        Find-InstalledCli $repoRoot $null
-    } catch {
-        if ($packagedCli) {
-            Write-Output ("Falling back to packaged CLI runtime: {0}" -f $packagedCli)
-            $packagedCli
-        } else {
-            throw
-        }
-    }
+    $installRoot = Find-InstalledCli $repoRoot $null
 }
 $dstCliRoot = Join-Path $demoRoot ".bear\tools\bear-cli"
 $dstCliBin = Join-Path $dstCliRoot "bin"

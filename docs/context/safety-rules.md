@@ -111,3 +111,8 @@ Skip build (use already built installDist output):
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\sync-bear-demo.ps1 -SkipBuild
 ```
+
+Deterministic source rule:
+1. Default sync builds latest CLI from current source and syncs from installDist artifacts produced by that same invocation (local or Gradle temp build root).
+2. `-SkipBuild` must use an explicit trusted install path (`-CliInstallPath`) or an already-present local `app/build/install/bear`.
+3. Sync must not use packaged CLI snapshots as fallback when enforcing "latest" behavior.
