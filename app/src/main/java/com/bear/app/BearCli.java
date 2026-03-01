@@ -61,7 +61,7 @@ public final class BearCli {
         String command = args.length == 0 ? "help" : args[0];
         if ("help".equals(command) || "-h".equals(command) || "--help".equals(command)) {
             printUsage(out);
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
         CommandHandler handler = COMMAND_HANDLERS.get(command);
         if (handler != null) {
@@ -69,9 +69,9 @@ public final class BearCli {
         }
         return failWithLegacy(
             err,
-            ExitCode.USAGE,
+            CliCodes.EXIT_USAGE,
             "usage: UNKNOWN_COMMAND: unknown command: " + command,
-            FailureCode.USAGE_UNKNOWN_COMMAND,
+            CliCodes.USAGE_UNKNOWN_COMMAND,
             "cli.command",
             "Run `bear --help` and use a supported command."
         );
@@ -80,15 +80,15 @@ public final class BearCli {
     private static int runValidate(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             printUsage(out);
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
 
         if (args.length != 2) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: expected: bear validate <file>",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Run `bear validate <file>` with exactly one IR file path."
             );
@@ -101,31 +101,31 @@ public final class BearCli {
             BearIr normalized = IR_PIPELINE.parseValidateNormalize(file);
 
             out.print(emitter.toCanonicalYaml(normalized));
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         } catch (BearIrValidationException e) {
             return failWithLegacy(
                 err,
-                ExitCode.VALIDATION,
+                CliCodes.EXIT_VALIDATION,
                 e.formatLine(),
-                FailureCode.IR_VALIDATION,
+                CliCodes.IR_VALIDATION,
                 e.path(),
                 "Fix the IR issue at the reported path and rerun `bear validate <file>`."
             );
         } catch (IOException e) {
             return failWithLegacy(
                 err,
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 "io: IO_ERROR: " + file,
-                FailureCode.IO_ERROR,
+                CliCodes.IO_ERROR,
                 "input.ir",
                 "Ensure the IR file exists and is readable, then rerun `bear validate <file>`."
             );
         } catch (Exception e) {
             return failWithLegacy(
                 err,
-                ExitCode.INTERNAL,
+                CliCodes.EXIT_INTERNAL,
                 "internal: INTERNAL_ERROR:",
-                FailureCode.INTERNAL_ERROR,
+                CliCodes.INTERNAL_ERROR,
                 "internal",
                 "Capture stderr and file an issue against bear-cli."
             );
@@ -135,7 +135,7 @@ public final class BearCli {
     private static int runCompile(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             printUsage(out);
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
 
         if (args.length >= 2 && "--all".equals(args[1])) {
@@ -145,9 +145,9 @@ public final class BearCli {
         if (args.length != 4 || !"--project".equals(args[2])) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: expected: bear compile <ir-file> --project <path>",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Run `bear compile <ir-file> --project <path>` with the expected arguments."
             );
@@ -163,7 +163,7 @@ public final class BearCli {
     private static int runFix(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             printUsage(out);
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
 
         if (args.length >= 2 && "--all".equals(args[1])) {
@@ -173,9 +173,9 @@ public final class BearCli {
         if (args.length != 4 || !"--project".equals(args[2])) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: expected: bear fix <ir-file> --project <path>",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Run `bear fix <ir-file> --project <path>` with the expected arguments."
             );
@@ -198,7 +198,7 @@ public final class BearCli {
     private static int runCheck(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             printUsage(out);
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
 
         if (args.length >= 2 && "--all".equals(args[1])) {
@@ -214,9 +214,9 @@ public final class BearCli {
                 if (i + 1 >= args.length) {
                     return failWithLegacy(
                         err,
-                        ExitCode.USAGE,
+                        CliCodes.EXIT_USAGE,
                         "usage: INVALID_ARGS: expected value after --project",
-                        FailureCode.USAGE_INVALID_ARGS,
+                        CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
                         "Run `bear check <ir-file> --project <path> [--strict-hygiene]` with the expected arguments."
                     );
@@ -231,9 +231,9 @@ public final class BearCli {
             if (token.startsWith("--") || irFile != null) {
                 return failWithLegacy(
                     err,
-                    ExitCode.USAGE,
+                    CliCodes.EXIT_USAGE,
                     "usage: INVALID_ARGS: unexpected argument: " + token,
-                    FailureCode.USAGE_INVALID_ARGS,
+                    CliCodes.USAGE_INVALID_ARGS,
                     "cli.args",
                     "Run `bear check <ir-file> --project <path> [--strict-hygiene]` with the expected arguments."
                 );
@@ -244,9 +244,9 @@ public final class BearCli {
         if (irFile == null || projectRoot == null) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: expected: bear check <ir-file> --project <path> [--strict-hygiene]",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Run `bear check <ir-file> --project <path> [--strict-hygiene]` with the expected arguments."
             );
@@ -259,14 +259,14 @@ public final class BearCli {
     private static int runUnblock(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             printUsage(out);
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
         if (args.length != 3 || !"--project".equals(args[1])) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: expected: bear unblock --project <path>",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Run `bear unblock --project <path>` with the expected arguments."
             );
@@ -275,7 +275,7 @@ public final class BearCli {
         Path marker = projectRoot.resolve(CheckBlockedMarker.RELATIVE_PATH);
         if (!Files.isRegularFile(marker)) {
             out.println("unblock: OK");
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
 
         IOException lastDeleteError = null;
@@ -284,7 +284,7 @@ public final class BearCli {
                 maybeInjectUnblockDeleteFailureForTest(attempt);
                 clearCheckBlockedMarker(projectRoot);
                 out.println("unblock: OK");
-                return ExitCode.OK;
+                return CliCodes.EXIT_OK;
             } catch (IOException e) {
                 lastDeleteError = e;
                 if (attempt < UNBLOCK_DELETE_ATTEMPTS) {
@@ -306,7 +306,7 @@ public final class BearCli {
             + attrs;
         return failWithLegacy(
             err,
-            ExitCode.IO,
+            CliCodes.EXIT_IO,
             line,
             CliCodes.UNBLOCK_LOCKED,
             CheckBlockedMarker.RELATIVE_PATH,
@@ -317,7 +317,7 @@ public final class BearCli {
     private static int runPrCheck(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             printUsage(out);
-            return ExitCode.OK;
+            return CliCodes.EXIT_OK;
         }
         if (args.length >= 2 && "--all".equals(args[1])) {
             return runPrCheckAll(args, out, err);
@@ -325,9 +325,9 @@ public final class BearCli {
         if (args.length != 6 || !"--project".equals(args[2]) || !"--base".equals(args[4])) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: expected: bear pr-check <ir-file> --project <path> --base <ref>",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Run `bear pr-check <ir-file> --project <path> --base <ref>` with the expected arguments."
             );
@@ -338,9 +338,9 @@ public final class BearCli {
         if (irPath.isAbsolute()) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: ir-file must be repo-relative",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Pass a repo-relative `ir-file` path for `bear pr-check`."
             );
@@ -349,9 +349,9 @@ public final class BearCli {
         if (normalizedRelative.startsWith("..") || normalizedRelative.toString().isBlank()) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: ir-file must be repo-relative",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Pass a repo-relative `ir-file` path for `bear pr-check`."
             );
@@ -364,9 +364,9 @@ public final class BearCli {
         if (!headIrPath.startsWith(projectRoot)) {
             return failWithLegacy(
                 err,
-                ExitCode.USAGE,
+                CliCodes.EXIT_USAGE,
                 "usage: INVALID_ARGS: ir-file must be repo-relative",
-                FailureCode.USAGE_INVALID_ARGS,
+                CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
                 "Pass a repo-relative `ir-file` path for `bear pr-check`."
             );
@@ -378,36 +378,36 @@ public final class BearCli {
             } catch (BearIrValidationException e) {
                 return failWithLegacy(
                     err,
-                    ExitCode.VALIDATION,
+                    CliCodes.EXIT_VALIDATION,
                     e.formatLine(),
-                    FailureCode.IR_VALIDATION,
+                    CliCodes.IR_VALIDATION,
                     e.path(),
                     "Fix the IR issue at the reported path and rerun `bear pr-check <ir-file> --project <path> --base <ref>`."
                 );
             } catch (BlockIndexValidationException e) {
                 return failWithLegacy(
                     err,
-                    ExitCode.VALIDATION,
+                    CliCodes.EXIT_VALIDATION,
                     "index: VALIDATION_ERROR: " + e.getMessage(),
-                    FailureCode.IR_VALIDATION,
+                    CliCodes.IR_VALIDATION,
                     e.path(),
                     "Fix `bear.blocks.yaml` and rerun `bear pr-check`."
                 );
             } catch (BlockIdentityResolutionException e) {
                 return failWithLegacy(
                     err,
-                    ExitCode.VALIDATION,
+                    CliCodes.EXIT_VALIDATION,
                     e.line(),
-                    FailureCode.IR_VALIDATION,
+                    CliCodes.IR_VALIDATION,
                     e.path(),
                     e.remediation()
                 );
             } catch (IOException e) {
                 return failWithLegacy(
                     err,
-                    ExitCode.IO,
+                    CliCodes.EXIT_IO,
                     "io: IO_ERROR: " + squash(e.getMessage()),
-                    FailureCode.IO_ERROR,
+                    CliCodes.IO_ERROR,
                     "input.ir",
                     "Ensure the IR file and block index are readable, then rerun `bear pr-check`."
                 );
@@ -428,8 +428,8 @@ public final class BearCli {
     private static int emitCheckResult(CheckResult result, PrintStream out, PrintStream err) {
         printLines(out, result.stdoutLines());
         printLines(err, result.stderrLines());
-        if (result.exitCode() == ExitCode.OK) {
-            return ExitCode.OK;
+        if (result.exitCode() == CliCodes.EXIT_OK) {
+            return CliCodes.EXIT_OK;
         }
         return fail(
             err,
@@ -443,8 +443,8 @@ public final class BearCli {
     private static int emitFixResult(FixResult result, PrintStream out, PrintStream err) {
         printLines(out, result.stdoutLines());
         printLines(err, result.stderrLines());
-        if (result.exitCode() == ExitCode.OK) {
-            return ExitCode.OK;
+        if (result.exitCode() == CliCodes.EXIT_OK) {
+            return CliCodes.EXIT_OK;
         }
         return fail(
             err,
@@ -458,8 +458,8 @@ public final class BearCli {
     private static int emitCompileResult(CompileResult result, PrintStream out, PrintStream err) {
         printLines(out, result.stdoutLines());
         printLines(err, result.stderrLines());
-        if (result.exitCode() == ExitCode.OK) {
-            return ExitCode.OK;
+        if (result.exitCode() == CliCodes.EXIT_OK) {
+            return CliCodes.EXIT_OK;
         }
         return fail(
             err,
@@ -473,8 +473,8 @@ public final class BearCli {
     private static int emitPrCheckResult(PrCheckResult result, PrintStream out, PrintStream err) {
         printLines(out, result.stdoutLines());
         printLines(err, result.stderrLines());
-        if (result.exitCode() == ExitCode.OK) {
-            return ExitCode.OK;
+        if (result.exitCode() == CliCodes.EXIT_OK) {
+            return CliCodes.EXIT_OK;
         }
         return fail(
             err,
@@ -501,53 +501,53 @@ public final class BearCli {
                 );
 
             target.compile(normalized, projectRoot, identity.blockKey());
-            return new FixResult(ExitCode.OK, List.of("fix: OK"), List.of(), null, null, null, null, null);
+            return new FixResult(CliCodes.EXIT_OK, List.of("fix: OK"), List.of(), null, null, null, null, null);
         } catch (BearIrValidationException e) {
             return fixFailure(
-                ExitCode.VALIDATION,
+                CliCodes.EXIT_VALIDATION,
                 List.of(e.formatLine()),
                 "VALIDATION",
-                FailureCode.IR_VALIDATION,
+                CliCodes.IR_VALIDATION,
                 e.path(),
                 "Fix the IR issue at the reported path and rerun `bear fix <ir-file> --project <path>`.",
                 e.formatLine()
             );
         } catch (BlockIndexValidationException e) {
             return fixFailure(
-                ExitCode.VALIDATION,
+                CliCodes.EXIT_VALIDATION,
                 List.of("index: VALIDATION_ERROR: " + e.getMessage()),
                 "VALIDATION",
-                FailureCode.IR_VALIDATION,
+                CliCodes.IR_VALIDATION,
                 e.path(),
                 "Fix `bear.blocks.yaml` and rerun `bear fix`.",
                 "index: VALIDATION_ERROR: " + e.getMessage()
             );
         } catch (BlockIdentityResolutionException e) {
             return fixFailure(
-                ExitCode.VALIDATION,
+                CliCodes.EXIT_VALIDATION,
                 List.of(e.line()),
                 "VALIDATION",
-                FailureCode.IR_VALIDATION,
+                CliCodes.IR_VALIDATION,
                 e.path(),
                 e.remediation(),
                 e.line()
             );
         } catch (IOException e) {
             return fixFailure(
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 List.of("io: IO_ERROR: " + e.getMessage()),
                 "IO_ERROR",
-                FailureCode.IO_ERROR,
+                CliCodes.IO_ERROR,
                 "project.root",
                 "Ensure the IR/project paths are readable and writable, then rerun `bear fix`.",
                 "io: IO_ERROR: " + e.getMessage()
             );
         } catch (Exception e) {
             return fixFailure(
-                ExitCode.INTERNAL,
+                CliCodes.EXIT_INTERNAL,
                 List.of("internal: INTERNAL_ERROR:"),
                 "INTERNAL_ERROR",
-                FailureCode.INTERNAL_ERROR,
+                CliCodes.INTERNAL_ERROR,
                 "internal",
                 "Capture stderr and file an issue against bear-cli.",
                 "internal: INTERNAL_ERROR:"
@@ -570,53 +570,53 @@ public final class BearCli {
                     normalized.block().name()
                 );
             target.compile(normalized, projectRoot, identity.blockKey());
-            return new CompileResult(ExitCode.OK, List.of("compiled: OK"), List.of(), null, null, null, null, null);
+            return new CompileResult(CliCodes.EXIT_OK, List.of("compiled: OK"), List.of(), null, null, null, null, null);
         } catch (BearIrValidationException e) {
             return compileFailure(
-                ExitCode.VALIDATION,
+                CliCodes.EXIT_VALIDATION,
                 List.of(e.formatLine()),
                 "VALIDATION",
-                FailureCode.IR_VALIDATION,
+                CliCodes.IR_VALIDATION,
                 e.path(),
                 "Fix the IR issue at the reported path and rerun `bear compile <ir-file> --project <path>`.",
                 e.formatLine()
             );
         } catch (BlockIndexValidationException e) {
             return compileFailure(
-                ExitCode.VALIDATION,
+                CliCodes.EXIT_VALIDATION,
                 List.of("index: VALIDATION_ERROR: " + e.getMessage()),
                 "VALIDATION",
-                FailureCode.IR_VALIDATION,
+                CliCodes.IR_VALIDATION,
                 e.path(),
                 "Fix `bear.blocks.yaml` and rerun `bear compile`.",
                 "index: VALIDATION_ERROR: " + e.getMessage()
             );
         } catch (BlockIdentityResolutionException e) {
             return compileFailure(
-                ExitCode.VALIDATION,
+                CliCodes.EXIT_VALIDATION,
                 List.of(e.line()),
                 "VALIDATION",
-                FailureCode.IR_VALIDATION,
+                CliCodes.IR_VALIDATION,
                 e.path(),
                 e.remediation(),
                 e.line()
             );
         } catch (IOException e) {
             return compileFailure(
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 List.of("io: IO_ERROR: " + e.getMessage()),
                 "IO_ERROR",
-                FailureCode.IO_ERROR,
+                CliCodes.IO_ERROR,
                 "project.root",
                 "Ensure the IR/project paths are readable and writable, then rerun `bear compile`.",
                 "io: IO_ERROR: " + e.getMessage()
             );
         } catch (Exception e) {
             return compileFailure(
-                ExitCode.INTERNAL,
+                CliCodes.EXIT_INTERNAL,
                 List.of("internal: INTERNAL_ERROR:"),
                 "INTERNAL_ERROR",
-                FailureCode.INTERNAL_ERROR,
+                CliCodes.INTERNAL_ERROR,
                 "internal",
                 "Capture stderr and file an issue against bear-cli.",
                 "internal: INTERNAL_ERROR:"
@@ -657,11 +657,11 @@ public final class BearCli {
         ArrayList<String> stderr = new ArrayList<>(result.stderrLines());
         stderr.add(anomalyLine);
         return new PrCheckResult(
-            ExitCode.INTERNAL,
+            CliCodes.EXIT_INTERNAL,
             result.stdoutLines(),
             List.copyOf(stderr),
             "INTERNAL_ERROR",
-            FailureCode.INTERNAL_ERROR,
+            CliCodes.INTERNAL_ERROR,
             PR_CHECK_ENVELOPE_PATH,
             PR_CHECK_ENVELOPE_REMEDIATION,
             anomalyLine,
@@ -688,12 +688,12 @@ public final class BearCli {
     private static int expectedBoundaryExpansionExitCode() {
         String raw = System.getProperty(PR_CHECK_BOUNDARY_EXIT_OVERRIDE_PROPERTY);
         if (raw == null || raw.isBlank()) {
-            return ExitCode.BOUNDARY_EXPANSION;
+            return CliCodes.EXIT_BOUNDARY_EXPANSION;
         }
         try {
             return Integer.parseInt(raw.trim());
         } catch (NumberFormatException ignored) {
-            return ExitCode.BOUNDARY_EXPANSION;
+            return CliCodes.EXIT_BOUNDARY_EXPANSION;
         }
     }
 
@@ -931,7 +931,7 @@ public final class BearCli {
             block.ir(),
             block.projectRoot(),
             BlockStatus.SKIP,
-            ExitCode.OK,
+            CliCodes.EXIT_OK,
             null,
             null,
             null,
@@ -944,14 +944,14 @@ public final class BearCli {
     }
 
     static BlockExecutionResult toCheckBlockResult(BlockIndexEntry block, CheckResult result) {
-        if (result.exitCode() == ExitCode.OK) {
+        if (result.exitCode() == CliCodes.EXIT_OK) {
             String detail = result.detail() == null || result.detail().isBlank() ? null : result.detail().trim();
             return new BlockExecutionResult(
                 block.name(),
                 block.ir(),
                 block.projectRoot(),
                 BlockStatus.PASS,
-                ExitCode.OK,
+                CliCodes.EXIT_OK,
                 null,
                 null,
                 null,
@@ -980,13 +980,13 @@ public final class BearCli {
     }
 
     static BlockExecutionResult toFixBlockResult(BlockIndexEntry block, FixResult result) {
-        if (result.exitCode() == ExitCode.OK) {
+        if (result.exitCode() == CliCodes.EXIT_OK) {
             return new BlockExecutionResult(
                 block.name(),
                 block.ir(),
                 block.projectRoot(),
                 BlockStatus.PASS,
-                ExitCode.OK,
+                CliCodes.EXIT_OK,
                 null,
                 null,
                 null,
@@ -1015,13 +1015,13 @@ public final class BearCli {
     }
 
     static BlockExecutionResult toCompileBlockResult(BlockIndexEntry block, CompileResult result) {
-        if (result.exitCode() == ExitCode.OK) {
+        if (result.exitCode() == CliCodes.EXIT_OK) {
             return new BlockExecutionResult(
                 block.name(),
                 block.ir(),
                 block.projectRoot(),
                 BlockStatus.PASS,
-                ExitCode.OK,
+                CliCodes.EXIT_OK,
                 null,
                 null,
                 null,
@@ -1099,14 +1099,14 @@ public final class BearCli {
     }
 
     static BlockExecutionResult toPrBlockResult(BlockIndexEntry block, PrCheckResult result) {
-        if (result.exitCode() == ExitCode.OK) {
+        if (result.exitCode() == CliCodes.EXIT_OK) {
             String classification = result.hasDeltas() ? "ORDINARY" : "NO_CHANGES";
             return new BlockExecutionResult(
                 block.name(),
                 block.ir(),
                 block.projectRoot(),
                 BlockStatus.PASS,
-                ExitCode.OK,
+                CliCodes.EXIT_OK,
                 null,
                 null,
                 null,
@@ -1118,7 +1118,7 @@ public final class BearCli {
                 result.governanceLines()
             );
         }
-        String classification = result.exitCode() == ExitCode.BOUNDARY_EXPANSION ? "BOUNDARY_EXPANDING" : null;
+        String classification = result.exitCode() == CliCodes.EXIT_BOUNDARY_EXPANSION ? "BOUNDARY_EXPANDING" : null;
         return new BlockExecutionResult(
             block.name(),
             block.ir(),
@@ -1297,10 +1297,10 @@ public final class BearCli {
             String line = "check: CONTAINMENT_REQUIRED: UNSUPPORTED_TARGET: missing Gradle wrapper";
             diagnostics.add(line);
             return checkFailure(
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 diagnostics,
                 "CONTAINMENT",
-                FailureCode.CONTAINMENT_UNSUPPORTED_TARGET,
+                CliCodes.CONTAINMENT_UNSUPPORTED_TARGET,
                 "project.root",
                 "Allowed dependency containment in P2 requires Java+Gradle with wrapper at project root; remove `impl.allowedDeps` or use supported target, then rerun `bear check`.",
                 line
@@ -1312,10 +1312,10 @@ public final class BearCli {
             String line = "check: CONTAINMENT_REQUIRED: SCRIPT_MISSING: build/generated/bear/gradle/bear-containment.gradle";
             diagnostics.add(line);
             return checkFailure(
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 diagnostics,
                 "CONTAINMENT",
-                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                CliCodes.CONTAINMENT_NOT_VERIFIED,
                 "build/generated/bear/gradle/bear-containment.gradle",
                 "Run `bear compile <ir-file> --project <path>`, ensure Gradle applies the generated containment script, then rerun `bear check`.",
                 line
@@ -1327,10 +1327,10 @@ public final class BearCli {
             String line = "check: CONTAINMENT_REQUIRED: INDEX_MISSING: build/generated/bear/config/containment-required.json";
             diagnostics.add(line);
             return checkFailure(
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 diagnostics,
                 "CONTAINMENT",
-                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                CliCodes.CONTAINMENT_NOT_VERIFIED,
                 "build/generated/bear/config/containment-required.json",
                 "Run `bear compile <ir-file> --project <path>`, then rerun `bear check`.",
                 line
@@ -1342,10 +1342,10 @@ public final class BearCli {
             String line = "check: CONTAINMENT_REQUIRED: MARKER_MISSING: build/bear/containment/applied.marker";
             diagnostics.add(line);
             return checkFailure(
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 diagnostics,
                 "CONTAINMENT",
-                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                CliCodes.CONTAINMENT_NOT_VERIFIED,
                 "build/bear/containment/applied.marker",
                 "Run Gradle build once so BEAR containment compile tasks write markers, then rerun `bear check`.",
                 line
@@ -1358,10 +1358,10 @@ public final class BearCli {
             String line = "check: CONTAINMENT_REQUIRED: MARKER_STALE: build/bear/containment/applied.marker";
             diagnostics.add(line);
             return checkFailure(
-                ExitCode.IO,
+                CliCodes.EXIT_IO,
                 diagnostics,
                 "CONTAINMENT",
-                FailureCode.CONTAINMENT_NOT_VERIFIED,
+                CliCodes.CONTAINMENT_NOT_VERIFIED,
                 "build/bear/containment/applied.marker",
                 "Run Gradle build once after BEAR compile so containment markers refresh, then rerun `bear check`.",
                 line
@@ -1687,39 +1687,7 @@ public final class BearCli {
     private static String normalizeLocator(String raw) {
         return FailureEnvelopeEmitter.normalizeLocator(raw);
     }
-
-    private static final class ExitCode {
-        private static final int OK = 0;
-        private static final int VALIDATION = 2;
-        private static final int DRIFT = 3;
-        private static final int TEST_FAILURE = 4;
-        private static final int BOUNDARY_EXPANSION = 5;
-        private static final int UNDECLARED_REACH = 6;
-        private static final int BOUNDARY_BYPASS = 7;
-        private static final int USAGE = 64;
-        private static final int IO = 74;
-        private static final int INTERNAL = 70;
-    }
-
-    private static final class FailureCode {
-        private static final String USAGE_INVALID_ARGS = "USAGE_INVALID_ARGS";
-        private static final String USAGE_UNKNOWN_COMMAND = "USAGE_UNKNOWN_COMMAND";
-        private static final String IR_VALIDATION = "IR_VALIDATION";
-        private static final String IO_ERROR = "IO_ERROR";
-        private static final String IO_GIT = "IO_GIT";
-        private static final String DRIFT_MISSING_BASELINE = "DRIFT_MISSING_BASELINE";
-        private static final String DRIFT_DETECTED = "DRIFT_DETECTED";
-        private static final String TEST_FAILURE = "TEST_FAILURE";
-        private static final String TEST_TIMEOUT = "TEST_TIMEOUT";
-        private static final String BOUNDARY_EXPANSION = "BOUNDARY_EXPANSION";
-        private static final String UNDECLARED_REACH = "UNDECLARED_REACH";
-        private static final String BOUNDARY_BYPASS = "BOUNDARY_BYPASS";
-        private static final String CONTAINMENT_NOT_VERIFIED = "CONTAINMENT_NOT_VERIFIED";
-        private static final String CONTAINMENT_UNSUPPORTED_TARGET = "CONTAINMENT_UNSUPPORTED_TARGET";
-        private static final String REPO_MULTI_BLOCK_FAILED = "REPO_MULTI_BLOCK_FAILED";
-        private static final String INTERNAL_ERROR = "INTERNAL_ERROR";
-    }
-
 }
+
 
 

@@ -36,3 +36,7 @@ Stability-first quality rollout (aggressive track):
 - Rewired envelope printing in CLI fail paths to shared emitter utility.
 - Rewired blocked marker path/reason constants to a single shared source.
 - Added command-dispatch map in `BearCli` while preserving command surface and behavior.
+- Continued stabilization slice:
+  - migrated `BearCli` from local `ExitCode`/`FailureCode` classes to shared `CliCodes`.
+  - added `RepoCodeQualityGuardsTest` for bounded core-class size ceilings and dedup guards (policy patterns + blocked marker literal centralization).
+  - re-verified local gates: `:app:test`, `:kernel:test`, `compile/check/pr-check --all` (CI fixture index).
