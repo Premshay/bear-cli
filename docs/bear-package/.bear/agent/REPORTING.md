@@ -10,44 +10,64 @@ Run report MUST include:
 1. `Request summary: <one line>`
 2. `Block decision: updated=<...> added=<...>`
 3. `Decomposition evidence: <single-block rationale OR per-block spec citations>`
-4. `IR delta: <files + boundary notes>`
-5. `Implementation delta: <files>`
-6. `Tests delta: <files>`
-7. `Gate results:`
-8. `- bear check --all --project <repoRoot> => <exit>`
-9. `- bear pr-check --all --project <repoRoot> --base <ref> => <exit>`
-10. `Gate run order: <ordered list of executed gates>`
-11. `Run outcome: COMPLETE|BLOCKED`
-12. `Required next action: <...>` (required when `Run outcome: BLOCKED`)
-13. `Gate blocker: IO_LOCK | TEST_FAILURE | BOUNDARY_EXPANSION | OTHER`
-14. `Stopped after blocker: yes|no`
-15. `First failing command: <exact command line>`
-16. `First failure signature: <one copied verbatim line>`
-17. `PR base used: <ref>`
-18. `PR base rationale: <merge-base against target branch OR user-provided base SHA>`
-19. `PR classification interpretation: <expected|unintended> - <brief rationale>`
-20. `Constraint conflicts encountered: none|<list>`
-21. `Escalation decision: none|<reason>`
-22. `Containment sanity check: pass|fail|n/a - <evidence>`
-23. `Infra edits: none|<list>`
-24. `Unblock used: no|yes - <reason>`
-25. `Gate policy acknowledged: yes|no`
-26. `Final git status: <git status --short summary>`
-27. `GOVERNANCE_SIGNAL_DISPOSITION`
-28. `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
-29. `JUSTIFICATION: <required when count > 0>`
-30. `TRADEOFF: <required when count > 0>`
+4. `Decomposition mode: single|multi`
+5. `Decomposition reason: default|trigger:<canonical_name>|spec_explicit`
+6. `Blocks added: [...]`
+7. `IR delta: <files + boundary notes>`
+8. `Implementation delta: <files>`
+9. `Tests delta: <files>`
+10. `Gate results:`
+11. `- bear check --all --project <repoRoot> => <exit>`
+12. `- bear pr-check --all --project <repoRoot> --base <ref> => <exit>`
+13. `Gate run order: <ordered list of executed gates>`
+14. `Run outcome: COMPLETE|BLOCKED|WAITING_FOR_BASELINE_REVIEW`
+15. `Required next action: <...>` (required when `Run outcome` is `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW`)
+16. `Gate blocker: IO_LOCK | TEST_FAILURE | BOUNDARY_EXPANSION | OTHER`
+17. `Stopped after blocker: yes|no`
+18. `First failing command: <exact command line>`
+19. `First failure signature: <one copied verbatim line>`
+20. `PR base used: <ref>`
+21. `PR base rationale: <merge-base against target branch OR user-provided base SHA>`
+22. `PR classification interpretation: <expected|unintended> - <brief rationale>`
+23. `Baseline review scope: <required for WAITING_FOR_BASELINE_REVIEW; must include bear.blocks.yaml and spec/*.bear.yaml>`
+24. `Constraint conflicts encountered: none|<list>`
+25. `Escalation decision: none|<reason>`
+26. `Containment sanity check: pass|fail|n/a - <evidence>`
+27. `Infra edits: none|<list>`
+28. `Unblock used: no|yes - <reason>`
+29. `Gate policy acknowledged: yes|no`
+30. `Final git status: <git status --short summary>`
+31. `GOVERNANCE_SIGNAL_DISPOSITION`
+32. `MULTI_BLOCK_PORT_IMPL_ALLOWED: none|<count>`
+33. `JUSTIFICATION: <required when count > 0>`
+34. `TRADEOFF: <required when count > 0>`
 
 ## Outcome Rules
 
-1. `pr-check` exit is non-zero -> `Run outcome` MUST be `BLOCKED`.
-2. If `Run outcome` is `BLOCKED`, `Required next action` is mandatory.
-3. Both gate exits are `0` -> `Run outcome` MUST be `COMPLETE`.
-4. Do not present `BLOCKED` runs as completion.
-5. Gate policy acknowledged must reflect: completion requires both repo-level gates green.
-6. If `Gate blocker` is `IO_LOCK`, `Stopped after blocker` MUST be `yes`.
-7. If `pr-check` prints `BOUNDARY_EXPANSION_DETECTED` but exit is not `5`, classify `Gate blocker` as `OTHER` and stop.
-8. For this anomaly, `First failure signature` must include both marker text and observed exit code.
+1. Both gate exits are `0` -> `Run outcome` MUST be `COMPLETE`.
+2. `Run outcome` MUST be `WAITING_FOR_BASELINE_REVIEW` only when `GREENFIELD_BASELINE_WAITING_SEMANTICS` criteria are all true.
+3. Any other non-zero `pr-check` result -> `Run outcome` MUST be `BLOCKED`.
+4. If `Run outcome` is `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW`, `Required next action` is mandatory.
+5. Do not present `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW` runs as completion.
+6. Gate policy acknowledged must reflect: completion requires both repo-level gates green.
+7. If `Gate blocker` is `IO_LOCK`, `Stopped after blocker` MUST be `yes`.
+8. If `pr-check` prints `BOUNDARY_EXPANSION_DETECTED` but exit is not `5`, classify `Gate blocker` as `OTHER` and stop.
+9. For this anomaly, `First failure signature` must include both marker text and observed exit code.
+
+## GREENFIELD_BASELINE_WAITING_SEMANTICS
+
+Use `Run outcome: WAITING_FOR_BASELINE_REVIEW` only when all are true:
+1. run is greenfield baseline (`spec/*.bear.yaml` newly introduced in this PR),
+2. `pr-check` fails with `BOUNDARY_EXPANSION_DETECTED`,
+3. expansion corresponds to newly introduced blocks/contracts/ports in this PR.
+
+Deterministic pairing:
+1. `Gate blocker: BOUNDARY_EXPANSION`
+2. `Run outcome: WAITING_FOR_BASELINE_REVIEW`
+
+Non-applicability:
+1. do not use this outcome for unexpected expansion in non-greenfield repos.
+2. do not use this outcome for unrelated failures.
 
 ## Blocker And Anomaly Reporting
 
@@ -58,6 +78,15 @@ Run report MUST include:
 5. If no command failed because failure occurred at preflight observation time, set:
 - `First failing command: none (preflight)`
 - `First failure signature: PROCESS_VIOLATION|<label>|<missing/evidence>`
+
+## Recommended Verification Notes (Optional)
+
+Optional field:
+1. `Recommended verification notes: <summary>`
+
+Guidance:
+1. For ordered/filtered/structured outputs, prefer parsed property assertions over substring-only checks.
+2. This section is advisory and must not be treated as a required gate/report field.
 
 ## Governance-Signal Disposition Rules
 
@@ -108,12 +137,52 @@ GOVERNANCE_SIGNAL_DISPOSITION
 MULTI_BLOCK_PORT_IMPL_ALLOWED: none
 ```
 
+## Minimal WAITING_FOR_BASELINE_REVIEW Example
+
+```text
+Request summary: Initial greenfield wallet baseline
+Block decision: updated=none added=create-wallet,deposit-to-wallet,withdraw-from-wallet,get-wallet-balance,get-wallet-statement
+Decomposition evidence: multiple externally visible operations without explicit command-router contract
+Decomposition mode: multi
+Decomposition reason: trigger:operation_multiplexer_anti_pattern
+Blocks added: [create-wallet, deposit-to-wallet, withdraw-from-wallet, get-wallet-balance, get-wallet-statement]
+IR delta: spec/*.bear.yaml, bear.blocks.yaml
+Implementation delta: src/main/java/blocks/**, src/main/java/com/bear/account/demo/WalletService.java
+Tests delta: src/test/java/com/bear/account/demo/AppTest.java
+Gate results:
+- bear check --all --project . => 0
+- bear pr-check --all --project . --base origin/main => 5
+Gate run order: bear check --all --project . -> bear pr-check --all --project . --base origin/main
+Run outcome: WAITING_FOR_BASELINE_REVIEW
+Required next action: boundary governance review and baseline merge
+Gate blocker: BOUNDARY_EXPANSION
+Stopped after blocker: yes
+First failing command: bear pr-check --all --project . --base origin/main
+First failure signature: DETAIL: pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED
+PR base used: origin/main
+PR base rationale: target branch merge-base reference for this run
+PR classification interpretation: expected - baseline introduces new blocks/contracts/ports
+Baseline review scope: bear.blocks.yaml, spec/*.bear.yaml
+Constraint conflicts encountered: none
+Escalation decision: required - baseline boundary review pending
+Containment sanity check: n/a - no containment/classpath failure signature in check output
+Infra edits: none
+Unblock used: no - not needed
+Gate policy acknowledged: yes
+Final git status: M src/main/java/blocks/... (summary)
+GOVERNANCE_SIGNAL_DISPOSITION
+MULTI_BLOCK_PORT_IMPL_ALLOWED: none
+```
+
 ## Minimal BLOCKED Example
 
 ```text
-Request summary: Add new block in greenfield repo
+Request summary: Non-greenfield boundary expansion without approved scope
 Block decision: updated=none added=wallet
-Decomposition evidence: new externally visible operation required by spec
+Decomposition evidence: requested change added new externally visible operation in existing repo
+Decomposition mode: multi
+Decomposition reason: spec_explicit
+Blocks added: [wallet]
 IR delta: spec/wallet.bear.yaml, bear.blocks.yaml
 Implementation delta: src/main/java/blocks/wallet/impl/WalletImpl.java
 Tests delta: src/test/java/blocks/wallet/WalletImplTest.java
@@ -130,6 +199,7 @@ First failure signature: CATEGORY: BOUNDARY_EXPANSION_DETECTED
 PR base used: origin/main
 PR base rationale: target branch merge-base reference for this completion run
 PR classification interpretation: expected - intentional boundary expansion for new block
+Baseline review scope: n/a
 Constraint conflicts encountered: none
 Escalation decision: required - boundary expansion governance review pending
 Containment sanity check: n/a - no containment/classpath failure signature in check output

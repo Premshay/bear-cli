@@ -153,6 +153,12 @@ Enforcement boundary:
 1. Lane/package purity/import checks are structural token checks for deterministic governance.
 2. These checks enforce layout/usage constraints; they do not prove full semantic correctness of IR/effects behavior.
 
+## Reach Symmetry Deferred Note (Non-Enforced)
+
+1. Semantic reach symmetry for import-form vs FQCN-form usage is planned.
+2. This package version does not enforce that symmetry yet.
+3. Allow/forbid policy for demo local server/network surfaces is deferred to a later release and must not be assumed as enforced now.
+
 ## Semantics Policy (wrapper-owned)
 
 Selection rule:

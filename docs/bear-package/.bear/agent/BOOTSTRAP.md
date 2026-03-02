@@ -29,12 +29,11 @@ Bootstrap guardrails:
 12. Completion requires both gates green:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
-13. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; report `BLOCKED` with required next action.
+13. For expected greenfield baseline `BOUNDARY_EXPANSION_DETECTED`, do not force green; report `WAITING_FOR_BASELINE_REVIEW` per `.bear/agent/REPORTING.md`.
 14. If a spec requirement conflicts with an explicit repo enforcement rule or BEAR contract rule, stop and escalate unless the spec explicitly authorizes changing that rule.
 15. Do not self-edit build/policy/runtime harness files unless explicitly instructed:
 - `build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`
 16. Completion output must follow `.bear/agent/REPORTING.md`.
-17. Scoped import bans are lane/path-scoped (`impl`, `_shared/pure`) and are not app-layer global bans unless explicitly constrained elsewhere (see `CONTRACTS.md`).
 
 ## Routing Map
 
@@ -66,14 +65,11 @@ Read on demand:
 6. Choose smallest valid decomposition:
 - default one block
 - add block only with explicit spec evidence for lifecycle/effect/authority/state split reasons
-- Decomposition signals are defined in `CONTRACTS.md` (single source).
 7. Before gates, run scaffold and boundary quick checks:
 - `rg -n "TODO: replace this entire method body|Do not append logic below this placeholder return" src/main/java/blocks`
 - `rg -n "implements\\s+.*Port" src/main/java`
 - never leave a generated placeholder return before real logic; replace generated stub body fully
 - all generated-port implementations must remain under governed roots (`src/main/java/blocks/**`)
-- package lanes: `blocks/**/impl/**` logic only, `blocks/**/adapter/**` adapter state/integration, `_shared/pure` pure helpers, `_shared/state` state holders
-- `_shared` must not import app packages; app packages must not implement generated ports
 
 ## Mandatory Operating Loop
 
@@ -133,9 +129,8 @@ Read on demand:
 27. If gates fail, fix root cause and rerun; do not bypass with alternate architecture.
 28. Use `bear fix` for generated drift repair only; never for test or IO failures.
 29. Do not claim done without both repo-level gates green.
-30. For expected `BOUNDARY_EXPANSION_DETECTED`, do not attempt to force green; mark run `BLOCKED` with required governance next action.
+30. For expected `BOUNDARY_EXPANSION_DETECTED`, do not force green; report per `.bear/agent/REPORTING.md` deterministic outcome rules.
 31. Greenfield contract source is current IR + freshly generated sources in `build/generated/bear/**` after compile. Do not mine stale `build*` artifacts or recover signatures via `javap` from prior builds.
-32. This "no artifact mining" rule is an agent contract rule (docs-enforced), not a runtime scanner guarantee.
 
 ## POLICY_SCOPE_MISMATCH
 
@@ -171,13 +166,32 @@ If index-required mode is inferred from repo workflow/docs:
 2. if this preflight is unmet, stop and fix index/IR preconditions first.
 3. do not continue to implementation or gates while preflight is unmet.
 
+## GREENFIELD_PR_CHECK_POLICY
+
+1. In a greenfield baseline PR, `bear pr-check` may expectedly fail with `BOUNDARY_EXPANSION_DETECTED` for newly introduced blocks/contracts/ports.
+2. Do not shrink IR/contracts to force green.
+3. Report using deterministic baseline-waiting semantics from `.bear/agent/REPORTING.md` and stop for boundary review.
+
+## DECOMPOSITION_DEFAULT
+
+1. Default decomposition is single-block unless an explicit split trigger applies.
+2. IR does not require endpoint-per-block decomposition by itself.
+
+## DECOMPOSITION_SPLIT_TRIGGERS
+
+Use canonical trigger names:
+1. `lifecycle_split`
+2. `effect_boundary_split`
+3. `authority_split`
+4. `state_domain_split`
+5. `operation_multiplexer_anti_pattern`
+
 ## GREENFIELD_ARTIFACT_SOURCE_RULE
 
 In greenfield mode:
 1. Contract source of truth is current IR on disk plus freshly generated artifacts under `build/generated/bear/**` from this run.
 2. Do not inspect stale `build*` outputs or run `javap` on prior class directories to recover signatures.
 3. If this rule is violated, classify as process/tool anomaly, stop, and escalate (`Gate blocker: OTHER`).
-
 ## Done Gate Contract
 
 Required evidence before completion:

@@ -61,12 +61,17 @@ class BearPackageDocsConsistencyTest {
         assertMatchesHeading(bootstrap, "(?m)^##\\s+AGENT_PACKAGE_PARITY_PRECONDITION\\s*$");
         assertMatchesHeading(bootstrap, "(?m)^##\\s+GREENFIELD_HARD_STOP\\s*$");
         assertMatchesHeading(bootstrap, "(?m)^##\\s+INDEX_REQUIRED_PREFLIGHT\\s*$");
+        assertMatchesHeading(bootstrap, "(?m)^##\\s+GREENFIELD_PR_CHECK_POLICY\\s*$");
+        assertMatchesHeading(bootstrap, "(?m)^##\\s+DECOMPOSITION_DEFAULT\\s*$");
+        assertMatchesHeading(bootstrap, "(?m)^##\\s+DECOMPOSITION_SPLIT_TRIGGERS\\s*$");
         assertMatchesHeading(bootstrap, "(?m)^##\\s+POLICY_SCOPE_MISMATCH\\s*$");
         assertMatchesHeading(bootstrap, "(?m)^##\\s+GREENFIELD_ARTIFACT_SOURCE_RULE\\s*$");
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+IO_LOCK\\s*$");
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+PR_CHECK_EXIT_ENVELOPE_ANOMALY\\s*$");
+        assertMatchesHeading(troubleshooting, "(?m)^##\\s+GREENFIELD_BASELINE_PR\\s*$");
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+POLICY_SCOPE_MISMATCH\\s*$");
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+PROCESS_VIOLATION\\s*$");
+        assertMatchesHeading(reporting, "(?m)^##\\s+GREENFIELD_BASELINE_WAITING_SEMANTICS\\s*$");
         assertMatchesHeading(reporting, "(?m)^##\\s+Blocker\\s+And\\s+Anomaly\\s+Reporting\\s*$");
     }
 

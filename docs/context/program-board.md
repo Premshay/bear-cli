@@ -5,7 +5,7 @@ Context entrypoint:
 
 ## Last Updated
 
-2026-03-01
+2026-03-02
 
 ## Current Milestone
 
@@ -180,6 +180,13 @@ Preview standing note:
    - scanner tests now include white-box rule-scope checks and a non-evaluation regression for `_shared/state`.
    - packaged docs add deterministic `POLICY_SCOPE_MISMATCH` escalation anchors.
    - docs consistency checks were reduced to minimal section-anchor coverage plus package file/legacy checks.
+
+12. `Guardrails v2.2.6: baseline waiting semantics + decomposition determinism`:
+   - packaged docs now define deterministic greenfield baseline waiting semantics (`WAITING_FOR_BASELINE_REVIEW`) with explicit blocker/outcome pairing rules.
+   - bootstrap now includes explicit decomposition default + canonical split-trigger names to prevent endpoint-count dogma drift.
+   - reporting schema now requires deterministic decomposition fields and baseline review scope for waiting outcomes.
+   - docs consistency tests now anchor-check the new baseline/decomposition headings.
+   - reach import/FQCN semantic symmetry is explicitly marked as deferred and non-enforced in this release.
 
 ## Next Feature Specs (Locked)
 

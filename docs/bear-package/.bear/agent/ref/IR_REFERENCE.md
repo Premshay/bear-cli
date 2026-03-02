@@ -8,6 +8,7 @@ Authority rule:
 - This file is the canonical IR contract for the package.
 - Do not reverse engineer binaries to infer missing IR behavior.
 - If a shape/rule is not declared here, do not assume it.
+- IR file = one block; decomposition is an architectural choice governed by BEAR decomposition policy.
 
 ## Required Root Shape
 

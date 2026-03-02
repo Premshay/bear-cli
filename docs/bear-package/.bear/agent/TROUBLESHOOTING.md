@@ -122,6 +122,18 @@ Success criteria:
 5. Do not use `bear unblock` for intentional boundary expansion.
 6. If boundary expansion is expected, report `BLOCKED` with required governance next action.
 
+## GREENFIELD_BASELINE_PR
+
+Use this class when all are true:
+1. repo is greenfield baseline (newly introduced block/spec set in this PR),
+2. `pr-check` reports `BOUNDARY_EXPANSION_DETECTED`,
+3. expansion matches intentional new blocks/contracts/ports.
+
+Deterministic handling:
+1. stop and escalate for human boundary review.
+2. do not shrink IR/contracts as a workaround.
+3. report using `.bear/agent/REPORTING.md` baseline waiting semantics.
+
 ## PR_CHECK_EXIT_ENVELOPE_ANOMALY
 
 Use this class when:

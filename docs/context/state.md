@@ -41,4 +41,9 @@ Stability-first quality rollout (aggressive track):
   - moved validate command scenarios to `BearCliValidateCommandTest` and removed them from `BearCliTest`.
   - reduced `BearCliTest` to 5076 LOC and kept behavior assertions/envelopes unchanged.
   - revalidated parity with `:app:test` (including `BearCliTest` + new class), full `:app:test :kernel:test`, and BEAR `compile/check/pr-check --all`.
+- Implemented `Guardrails v2.2.6` docs/tests-only hardening:
+  - added deterministic greenfield baseline waiting semantics (`WAITING_FOR_BASELINE_REVIEW`) and blocker/outcome pairing in REPORTING.
+  - added decomposition default/split-trigger anchors in BOOTSTRAP and baseline triage anchor in TROUBLESHOOTING.
+  - added docs-consistency anchor checks for new headings and kept exact package parity checks intact.
+  - marked reach import-vs-FQCN symmetry as deferred/non-enforced and added optional verification-hygiene guidance.
 - Full historical details remain in archive docs; this file stays operational and bounded.

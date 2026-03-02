@@ -129,6 +129,12 @@ TRADEOFF: <isolation impact and mitigation>
 `<count>` definition (frozen):
 - number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` governance signal lines emitted by `bear pr-check --all --project . --base <baseRef>` for that run.
 
+## Verification Hygiene (Recommended)
+
+Recommendation:
+1. For ordered/filtered/structured outputs, prefer parsed property assertions over substring-only checks.
+2. Treat this as grading guidance, not a mandatory gate/report field in this release.
+
 ## Pass/fail rubric
 
 Pass (behavioral):
