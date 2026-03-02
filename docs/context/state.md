@@ -48,7 +48,7 @@ Stability-first quality rollout (aggressive track):
   - marked reach import-vs-FQCN symmetry as deferred/non-enforced and added optional verification-hygiene guidance.
 - Fixed GitHub Actions wrapper execution failure on Linux runners:
   - set `gradlew` file mode to executable in git index (`100755`).
-  - added explicit `chmod +x ./gradlew` steps in both CI jobs and set CI concurrency grouping to `${{ github.sha }}` to collapse duplicate push+PR runs per commit.
+  - added explicit `chmod +x ./gradlew` steps in both CI jobs, set CI concurrency grouping to `${{ github.sha }}`, and pinned `GRADLE_USER_HOME=/home/runner/.gradle` + ensured cache dirs to eliminate cache save-path warnings.
 - Fixed Linux-only CI test regressions after wrapper-permission recovery:
   - made `AllModeOptionParserTest.parseAllCheckOptionsRejectsAbsoluteBlocksPath` OS-agnostic by using a runtime absolute path instead of `C:/...`.
   - fixed `ContextDocsConsistencyTest` archive exclusion to normalize path separators (`\\` vs `/`) before matching.

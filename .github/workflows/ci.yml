@@ -17,11 +17,16 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_USER_HOME: /home/runner/.gradle
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Ensure Gradle cache dirs
+        run: mkdir -p "$GRADLE_USER_HOME/caches" "$GRADLE_USER_HOME/wrapper"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -40,11 +45,16 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build-and-test
+    env:
+      GRADLE_USER_HOME: /home/runner/.gradle
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Ensure Gradle cache dirs
+        run: mkdir -p "$GRADLE_USER_HOME/caches" "$GRADLE_USER_HOME/wrapper"
 
       - name: Set up Java
         uses: actions/setup-java@v4
