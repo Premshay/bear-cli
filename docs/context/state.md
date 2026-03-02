@@ -18,9 +18,9 @@ Stability-first quality rollout (aggressive track):
 
 ## Next Concrete Task
 
-1. Continue oversized-class decomposition for `JvmTarget` (largest remaining class), next by extracting sync-lock/file IO helpers and additional emitters with byte-stable output.
-2. Start command-domain test split for `BearCliTest` after next refactor lock is in place.
-3. Add guard slices for long app classes still near threshold (`PrCheckCommandService`, `ProjectTestRunner`).
+1. Continue command-domain test split for `BearCliTest` by extracting `compile`/`fix` command suites.
+2. Add guard slices for long app classes still near threshold (`CheckCommandService`, `PrCheckCommandService`, `ProjectTestRunner`).
+3. Add/extend quality-guard tests for class-size ceilings and deterministic output ordering where missing.
 
 ## Session Notes
 
@@ -31,4 +31,14 @@ Stability-first quality rollout (aggressive track):
   - aligned REPORTING for no-command preflight failures (`First failing command: none (preflight)`).
   - extended docs consistency anchors for the new headings while keeping minimal checks.
 - Kept blocker taxonomy unchanged (`OTHER` for process/tool anomalies).
+- Continued `JvmTarget` decomposition with deterministic file-ops extraction:
+  - added `JvmFileSyncSupport` and moved lock-retry sync/write/delete internals out of `JvmTarget`.
+  - rewired `JvmTarget` to delegate file operations through the new helper with no contract changes.
+  - extracted lexical/type/literal helpers into `JvmLexicalSupport` and removed duplicated logic from `JvmTarget`.
+  - reduced `JvmTarget` to 890 LOC (below 900 threshold).
+  - revalidated full parity: `:kernel:compileJava :app:compileJava`, `:kernel:test --tests com.bear.kernel.JvmTargetTest`, `:app:test :kernel:test`, and BEAR `compile/check/pr-check --all`.
+- Started test architecture split:
+  - moved validate command scenarios to `BearCliValidateCommandTest` and removed them from `BearCliTest`.
+  - reduced `BearCliTest` to 5076 LOC and kept behavior assertions/envelopes unchanged.
+  - revalidated parity with `:app:test` (including `BearCliTest` + new class), full `:app:test :kernel:test`, and BEAR `compile/check/pr-check --all`.
 - Full historical details remain in archive docs; this file stays operational and bounded.

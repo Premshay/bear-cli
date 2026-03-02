@@ -27,49 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BearCliTest {
     @Test
-    void validateFixturePrintsGoldenCanonicalYaml() throws Exception {
-        Path repoRoot = TestRepoPaths.repoRoot();
-        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
-        Path golden = repoRoot.resolve("spec/golden/withdraw.canonical.yaml");
-
-        ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
-        ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
-        int exitCode = BearCli.run(
-            new String[] { "validate", fixture.toString() },
-            new PrintStream(stdoutBytes),
-            new PrintStream(stderrBytes)
-        );
-
-        assertEquals(0, exitCode);
-        assertEquals("", stderrBytes.toString());
-
-        String expected = normalizeLf(Files.readString(golden));
-        String actual = normalizeLf(stdoutBytes.toString());
-        assertEquals(expected, actual);
-    }
-
-    @Test
-    void validateRequiresOneFileArg() {
-        ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
-        ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
-        int exitCode = BearCli.run(
-            new String[] { "validate" },
-            new PrintStream(stdoutBytes),
-            new PrintStream(stderrBytes)
-        );
-
-        assertEquals(64, exitCode);
-        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
-        assertTrue(stderr.startsWith("usage: INVALID_ARGS:"));
-        assertFailureEnvelope(
-            stderr,
-            "USAGE_INVALID_ARGS",
-            "cli.args",
-            "Run `bear validate <file>` with exactly one IR file path."
-        );
-    }
-
-    @Test
     void unknownCommandIsUsageError() {
         ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
@@ -99,61 +56,6 @@ class BearCliTest {
         assertTrue(stdout.contains("bear fix <ir-file> --project <path>"));
         assertTrue(stdout.contains("bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]"));
         assertTrue(stdout.contains("bear unblock --project <path>"));
-    }
-
-    @Test
-    void validateMissingFileReturnsIoExitCode() {
-        ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
-        ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
-        int exitCode = BearCli.run(
-            new String[] { "validate", "does-not-exist.yaml" },
-            new PrintStream(stdoutBytes),
-            new PrintStream(stderrBytes)
-        );
-
-        assertEquals(74, exitCode);
-        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
-        assertTrue(stderr.startsWith("io: IO_ERROR:"));
-        assertFailureEnvelope(
-            stderr,
-            "IO_ERROR",
-            "input.ir",
-            "Ensure the IR file exists and is readable, then rerun `bear validate <file>`."
-        );
-    }
-
-    @Test
-    void validateSchemaErrorPrintsDeterministicPrefix(@TempDir Path tempDir) throws Exception {
-        Path invalid = tempDir.resolve("invalid.bear.yaml");
-        Files.writeString(invalid, ""
-            + "version: v1\n"
-            + "block:\n"
-            + "  name: A\n"
-            + "  kind: logic\n"
-            + "  contract:\n"
-            + "    inputs: [{name: i, type: string}]\n"
-            + "    outputs: [{name: o, type: string}]\n"
-            + "  effects:\n"
-            + "    allow: []\n"
-            + "  extra: true\n");
-
-        ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
-        ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
-        int exitCode = BearCli.run(
-            new String[] { "validate", invalid.toString() },
-            new PrintStream(stdoutBytes),
-            new PrintStream(stderrBytes)
-        );
-
-        assertEquals(2, exitCode);
-        String stderr = stderrBytes.toString(StandardCharsets.UTF_8);
-        assertTrue(stderr.startsWith("schema at block: UNKNOWN_KEY:"));
-        assertFailureEnvelope(
-            stderr,
-            "IR_VALIDATION",
-            "block",
-            "Fix the IR issue at the reported path and rerun `bear validate <file>`."
-        );
     }
 
     @Test
@@ -4301,26 +4203,6 @@ class BearCliTest {
             "spec/withdraw.bear.yaml",
             "Review boundary-expanding deltas and route through explicit boundary review."
         );
-    }
-
-    @Test
-    void validateInjectedInternalFailureIsEnveloped() {
-        String key = "bear.cli.test.failInternal.validate";
-        String previous = System.getProperty(key);
-        try {
-            System.setProperty(key, "true");
-            CliRunResult run = runCli(new String[] { "validate", "spec/fixtures/withdraw.bear.yaml" });
-            assertEquals(70, run.exitCode);
-            assertTrue(run.stderr.startsWith("internal: INTERNAL_ERROR:"));
-            assertFailureEnvelope(
-                run.stderr,
-                "INTERNAL_ERROR",
-                "internal",
-                "Capture stderr and file an issue against bear-cli."
-            );
-        } finally {
-            restoreSystemProperty(key, previous);
-        }
     }
 
     @Test
