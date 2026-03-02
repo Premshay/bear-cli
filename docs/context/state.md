@@ -17,7 +17,7 @@ Stability-first quality rollout (aggressive track):
 
 ## Next Concrete Task
 
-1. Continue oversized-class decomposition for `JvmTarget` (largest remaining class) with byte-stable generator output.
+1. Continue oversized-class decomposition for `JvmTarget` (largest remaining class), next by extracting sync-lock/file IO helpers and additional emitters with byte-stable output.
 2. Start command-domain test split for `BearCliTest` after next refactor lock is in place.
 3. Add guard slices for long app classes still near threshold (`PrCheckCommandService`, `ProjectTestRunner`).
 
@@ -61,4 +61,4 @@ Stability-first quality rollout (aggressive track):
   - removed unused/dead legacy wrapper methods from `BearCli` and extracted all-mode block/orphan marker discovery into `AllModeBlockDiscovery`.
   - updated all all-mode services to call `AllModeBlockDiscovery` directly.
   - reduced `BearCli` from 1342 LOC to 805 LOC (under 900 threshold).
-  - revalidated parity with full tests and BEAR dual gates; continued `JvmTarget` decomposition by extracting structural test render emitters into `JvmStructuralRenderUnits` (with green gates).
+  - revalidated parity with full tests and BEAR dual gates; continued `JvmTarget` decomposition by extracting structural, manifest/wiring, containment JSON emitters, and containment index parsing into `JvmStructuralRenderUnits`, `JvmManifestRenderUnits`, `JvmContainmentRenderUnits`, and `JvmContainmentIndexParser` (with green gates).
