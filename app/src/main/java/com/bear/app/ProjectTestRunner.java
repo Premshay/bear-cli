@@ -24,6 +24,7 @@ final class ProjectTestRunner {
     private static final long RETRY_BACKOFF_MILLIS = 200L;
     private static final Duration STALE_ARTIFACT_THRESHOLD = Duration.ofMinutes(10);
     private static final Pattern FAILED_DELETE_FILE_PATTERN = Pattern.compile("(?i)failed to delete file:\\s*(.+)$");
+    private static final String FORCE_TIMEOUT_TEST_MARKER = ".bear-test-force-timeout";
 
     private enum GradleHomeMode {
         EXTERNAL_ENV("external-env", "external-env-retry"),
@@ -190,7 +191,7 @@ final class ProjectTestRunner {
 
         String output;
         try (InputStream in = process.getInputStream()) {
-            if (forceTimeoutForTest()) {
+            if (forceTimeoutForTest(projectRoot)) {
                 process.destroyForcibly();
                 process.waitFor(5, TimeUnit.SECONDS);
                 output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
@@ -797,7 +798,10 @@ final class ProjectTestRunner {
         }
     }
 
-    private static boolean forceTimeoutForTest() {
-        return "true".equalsIgnoreCase(System.getProperty("bear.check.test.forceTimeout"));
+    private static boolean forceTimeoutForTest(Path projectRoot) {
+        if ("true".equalsIgnoreCase(System.getProperty("bear.check.test.forceTimeout"))) {
+            return true;
+        }
+        return projectRoot != null && Files.isRegularFile(projectRoot.resolve(FORCE_TIMEOUT_TEST_MARKER));
     }
 }
