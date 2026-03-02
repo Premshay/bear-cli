@@ -14,6 +14,7 @@ Stability-first quality rollout (aggressive track):
 - restore green `main` for policy and docs gates
 - add in-repo CI gate contract for test + dual BEAR checks
 - introduce low-risk refactor seams (`IrPipeline`, shared marker/constants, envelope emitter)
+- standardize non-trivial task execution via repo-local `workflow-orchestration` skill + AGENTS registry entry
 
 ## Next Concrete Task
 
@@ -23,6 +24,8 @@ Stability-first quality rollout (aggressive track):
 
 ## Session Notes
 
+- Added repo-local skill `skills/workflow-orchestration/SKILL.md` to encode plan-first + verification-heavy workflow mapped to `docs/context/*` (no `tasks/todo.md`/`tasks/lessons.md` side-tracking by default).
+- Updated `AGENTS.md` with a `Repo Skills` section so this skill is discoverable for future sessions.
 - Removed stale numbered-build path tokens with slash-form from active docs policy surfaces.
 - Compacted this file to keep `Session Notes` bounded and operational.
 - Added shared app seams:

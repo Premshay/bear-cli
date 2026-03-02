@@ -25,3 +25,11 @@ Safety guardrails:
 - Never run recursive deletes outside the repository root.
 - For temp cleanup, prefer `scripts/safe-clean-temp.ps1` over ad-hoc `Remove-Item`.
 - For demo branch cleanup, prefer `scripts/clean-demo-branch.ps1` over ad-hoc cleanup + git commands.
+
+## Repo Skills
+
+The following repo-local skills can be used in this project:
+- workflow-orchestration: plan-first, verification-heavy workflow adapted to BEAR context docs and guardrails. Trigger for non-trivial tasks (3+ steps), architectural/refactor work, bug investigations, or explicit user request. (file: `c:/Dev/rore/bear-cli/skills/workflow-orchestration/SKILL.md`)
+
+Default policy:
+- For non-trivial tasks (3+ steps), load and follow `workflow-orchestration` before implementation.
