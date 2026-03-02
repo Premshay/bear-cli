@@ -145,6 +145,24 @@ Deterministic handling:
 3. do not alter implementation semantics as workaround.
 4. report blocker as `OTHER` with the exact finding evidence.
 
+## PROCESS_VIOLATION
+
+Use this class when contract preconditions were bypassed (for example missing routed docs, greenfield implementation before IR compile, or skipped index preflight).
+
+Required first-failure signature format:
+1. `PROCESS_VIOLATION|<label>|<evidence>`
+
+Labels:
+1. `AGENT_PACKAGE_PARITY_PRECONDITION`
+2. `GREENFIELD_HARD_STOP`
+3. `INDEX_REQUIRED_PREFLIGHT`
+
+Deterministic handling:
+1. classify `Gate blocker` as `OTHER`.
+2. stop immediately.
+3. do not apply workaround implementation edits.
+4. escalate with explicit label + evidence in first-failure signature.
+
 ## Lock/IO Environment Branch
 
 When lock signatures appear (for example `.zip.lck`, `Access is denied`, generated-file replacement lock):

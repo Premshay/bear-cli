@@ -54,6 +54,10 @@ Run report MUST include:
 1. For policy/tool/process anomalies, set `Gate blocker: OTHER`.
 2. For `PR_CHECK_EXIT_ENVELOPE_ANOMALY`, stop immediately and capture exact marker + observed exit in `First failure signature`.
 3. `Gate blocker`, `Stopped after blocker`, `First failing command`, and `First failure signature` are always required.
+4. For process/preflight anomalies, use signature format: `PROCESS_VIOLATION|<label>|<evidence>`.
+5. If no command failed because failure occurred at preflight observation time, set:
+- `First failing command: none (preflight)`
+- `First failure signature: PROCESS_VIOLATION|<label>|<missing/evidence>`
 
 ## Governance-Signal Disposition Rules
 

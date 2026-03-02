@@ -144,6 +144,33 @@ Deterministic escalation condition:
 2. Stop and escalate; do not alter implementation semantics as a workaround.
 3. Report blocker under `OTHER` in `.bear/agent/REPORTING.md`.
 
+## AGENT_PACKAGE_PARITY_PRECONDITION
+
+Before any implementation work starts, the routed package files below MUST exist:
+1. `.bear/agent/CONTRACTS.md`
+2. `.bear/agent/TROUBLESHOOTING.md`
+3. `.bear/agent/REPORTING.md`
+4. `.bear/agent/ref/IR_REFERENCE.md`
+
+If any required file is missing:
+1. classify as process/tool anomaly.
+2. stop immediately and escalate.
+3. do not continue with implementation until package parity is restored.
+
+## GREENFIELD_HARD_STOP
+
+If `spec/*.bear.yaml` is empty:
+1. next action MUST be creating IR files under canonical `spec/`.
+2. run `bear validate` and `bear compile` before any implementation edits.
+3. do not continue to implementation until this precondition is satisfied.
+
+## INDEX_REQUIRED_PREFLIGHT
+
+If index-required mode is inferred from repo workflow/docs:
+1. `bear.blocks.yaml` MUST be created after IR files exist and before `--all` gates.
+2. if this preflight is unmet, stop and fix index/IR preconditions first.
+3. do not continue to implementation or gates while preflight is unmet.
+
 ## GREENFIELD_ARTIFACT_SOURCE_RULE
 
 In greenfield mode:
