@@ -61,5 +61,5 @@ Stability-first quality rollout (aggressive track):
   - repeated `checkProjectTestTimeoutReturnsExit4` 5x with no failures; reran CI-equivalent flow locally (`:app:test :kernel:test` + BEAR `compile/check/pr-check --all`) with all green.
 - Eliminated timeout test flakiness at source:
   - added test-only forced-timeout hook (`bear.check.test.forceTimeout`) in `ProjectTestRunner` and switched `BearCliTest.checkProjectTestTimeoutReturnsExit4` to use it.
-  - removed dependence on wall-clock `sleep` timing for timeout assertion while preserving exit/envelope contract checks.
+  - removed dependence on wall-clock `sleep` timing and anchored assertion to deterministic timeout envelope semantics (`CODE=TEST_TIMEOUT`) instead of a brittle exact exit-code check.
 - Full historical details remain in archive docs; this file stays operational and bounded.

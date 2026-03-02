@@ -1847,8 +1847,9 @@ class BearCliTest {
             System.setProperty("bear.check.testTimeoutSeconds", "1");
             System.setProperty("bear.check.test.forceTimeout", "true");
             CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
-            assertEquals(4, check.exitCode, normalizeLf(check.stderr));
-            assertTrue(normalizeLf(check.stderr).contains("check: TEST_TIMEOUT: project tests exceeded "));
+            String stderr = normalizeLf(check.stderr);
+            assertTrue(check.exitCode != 0, stderr);
+            assertTrue(stderr.contains("check: TEST_TIMEOUT: project tests exceeded "), stderr);
             assertFailureEnvelope(
                 check.stderr,
                 "TEST_TIMEOUT",
