@@ -38,7 +38,7 @@ final class CompileAllCommandService {
             );
         }
 
-        List<BlockIndexEntry> selected = BearCli.selectBlocks(index, options.onlyNames());
+        List<BlockIndexEntry> selected = AllModeBlockDiscovery.selectBlocks(index, options.onlyNames());
         if (selected == null) {
             return BearCli.failWithLegacy(
                 err,
@@ -52,8 +52,8 @@ final class CompileAllCommandService {
 
         try {
             List<String> legacyMarkers = options.strictOrphans()
-                ? BearCli.computeLegacyMarkersRepoWide(options.repoRoot())
-                : BearCli.computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
+                ? AllModeBlockDiscovery.computeLegacyMarkersRepoWide(options.repoRoot())
+                : AllModeBlockDiscovery.computeLegacyMarkersInManagedRoots(options.repoRoot(), selected);
             if (!legacyMarkers.isEmpty()) {
                 return BearCli.failWithLegacy(
                     err,
@@ -66,8 +66,8 @@ final class CompileAllCommandService {
             }
 
             List<String> orphanMarkers = options.strictOrphans()
-                ? BearCli.computeOrphanMarkersRepoWide(options.repoRoot(), index)
-                : BearCli.computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
+                ? AllModeBlockDiscovery.computeOrphanMarkersRepoWide(options.repoRoot(), index)
+                : AllModeBlockDiscovery.computeOrphanMarkersInManagedRoots(options.repoRoot(), selected);
             if (!orphanMarkers.isEmpty()) {
                 return BearCli.failWithLegacy(
                     err,

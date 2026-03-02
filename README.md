@@ -1,7 +1,7 @@
 # BEAR (bear-cli)
 
 <p align="center">
-  <img src="assets/logo/bear.png" alt="BEAR logo" width="360" />
+  <img src="assets/logo/bear-header-1400x320-clean.png" alt="BEAR logo" width="100%" />
 </p>
 
 BEAR is a deterministic governance CLI for agentic backend development: agents implement inside declared IR boundaries, and BEAR turns boundary risk into explicit PR/CI signals.
