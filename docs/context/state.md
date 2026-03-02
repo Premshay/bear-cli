@@ -60,6 +60,6 @@ Stability-first quality rollout (aggressive track):
 - CI execution audit pass:
   - repeated `checkProjectTestTimeoutReturnsExit4` 8x with no failures; reran CI-equivalent flow locally (`:app:test :kernel:test`) with all green.
 - Eliminated timeout test flakiness at source:
-  - added test-only forced-timeout hook (`bear.check.test.forceTimeout`) in `ProjectTestRunner` and switched `BearCliTest.checkProjectTestTimeoutReturnsExit4` to use it.
-  - relaxed the timeout assertion to stable classification matching (`TEST_TIMEOUT`) to avoid brittle message-fragment drift across environments.
+  - added dual timeout forcing in `BearCliTest.checkProjectTestTimeoutReturnsExit4` (system property + `.bear-test-force-timeout` marker) with deterministic property restore in `finally`.
+  - kept timeout assertion classification-based (`TEST_TIMEOUT`) and enriched failure diagnostics with combined stderr/stdout context; stress-ran test 12x and full `:app:test :kernel:test` green.
 - Full historical details remain in archive docs; this file stays operational and bounded.

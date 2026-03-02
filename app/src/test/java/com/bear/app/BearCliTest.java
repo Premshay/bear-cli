@@ -1841,13 +1841,18 @@ class BearCliTest {
             "#!/usr/bin/env sh\necho start\nsleep 3\necho end\nexit 0\n"
         );
 
+        String timeoutPrev = System.getProperty("bear.check.testTimeoutSeconds");
+        String forceTimeoutPrev = System.getProperty("bear.check.test.forceTimeout");
         Path timeoutMarker = tempDir.resolve(".bear-test-force-timeout");
         try {
+            System.setProperty("bear.check.testTimeoutSeconds", "1");
+            System.setProperty("bear.check.test.forceTimeout", "true");
             Files.writeString(timeoutMarker, "true", StandardCharsets.UTF_8);
             CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
             String stderr = normalizeLf(check.stderr);
-            assertTrue(check.exitCode != 0, stderr);
-            assertTrue(stderr.contains("TEST_TIMEOUT"), stderr);
+            String combined = "STDERR:\n" + stderr + "\nSTDOUT:\n" + normalizeLf(check.stdout);
+            assertTrue(check.exitCode != 0, combined);
+            assertTrue(stderr.contains("TEST_TIMEOUT"), combined);
             assertFailureEnvelope(
                 check.stderr,
                 "TEST_TIMEOUT",
@@ -1855,6 +1860,8 @@ class BearCliTest {
                 "Reduce test runtime or increase timeout, then rerun `bear check <ir-file> --project <path>`."
             );
         } finally {
+            restoreSystemProperty("bear.check.testTimeoutSeconds", timeoutPrev);
+            restoreSystemProperty("bear.check.test.forceTimeout", forceTimeoutPrev);
             Files.deleteIfExists(timeoutMarker);
         }
     }
