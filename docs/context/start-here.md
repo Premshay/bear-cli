@@ -38,6 +38,7 @@ Interpretation guardrail:
 - `Current Focus`
 - `Next Concrete Task`
 - short `Session Notes`
+ - keep `Session Notes` within `ContextDocsConsistencyTest` cap; move oldest notes to `docs/context/archive/archive-state-history.md` when needed.
 2. Update `docs/context/program-board.md` if status/queue/risk changed.
 3. Update canonical docs only when semantics changed:
 - `docs/context/ir-spec.md`
@@ -45,3 +46,4 @@ Interpretation guardrail:
 - `docs/context/governance.md`
 - `docs/context/roadmap.md`
 4. Update `docs/context/project-log.md` only for major architectural decisions.
+5. Before push, run docs guard: `./gradlew --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest` (or Windows equivalent).

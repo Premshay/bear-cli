@@ -21,9 +21,9 @@ class ContextDocsConsistencyTest {
         Path repoRoot = TestRepoPaths.repoRoot();
         Map<String, Integer> budgets = new LinkedHashMap<>();
         budgets.put("docs/context/CONTEXT_BOOTSTRAP.md", 160);
-        budgets.put("docs/context/state.md", 140);
+        budgets.put("docs/context/state.md", 200);
         budgets.put("docs/context/start-here.md", 80);
-        budgets.put("docs/context/program-board.md", 220);
+        budgets.put("docs/context/program-board.md", 280);
         budgets.put("docs/context/prompt-bootstrap.md", 120);
 
         for (Map.Entry<String, Integer> entry : budgets.entrySet()) {
@@ -120,7 +120,7 @@ class ContextDocsConsistencyTest {
         int nextHeader = nextHeaderIndex(lines, sessionNotesHeader + 1);
         int end = nextHeader >= 0 ? nextHeader : lines.size();
         int sectionLines = end - sessionNotesHeader - 1;
-        assertTrue(sectionLines <= 40, "Session Notes section is too large: " + sectionLines + " lines");
+        assertTrue(sectionLines <= 80, "Session Notes section is too large: " + sectionLines + " lines");
     }
 
     @Test

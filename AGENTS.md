@@ -15,6 +15,7 @@ Guardrails (v1 preview):
 
 Session hygiene:
 - Update `docs/context/state.md` whenever work progresses (`Last Updated`, `Current Focus`, `Next Concrete Task`, short `Session Notes`).
+- Keep `docs/context/state.md` within `ContextDocsConsistencyTest` budgets; if `Session Notes` approaches/exceeds cap, move oldest notes to `docs/context/archive/archive-state-history.md` and keep only recent operational notes in `state.md`.
 - Update `docs/context/program-board.md` when milestone status/queue/risk entries change.
 - Update `docs/context/project-log.md` only for major architectural shifts/decisions.
 - Before ending a session, follow `docs/context/start-here.md` -> `Session Close Protocol`.
