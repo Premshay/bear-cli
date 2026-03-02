@@ -15,6 +15,7 @@ Stability-first quality rollout (aggressive track):
 - add in-repo CI gate contract for test + dual BEAR checks
 - introduce low-risk refactor seams (`IrPipeline`, shared marker/constants, envelope emitter)
 - standardize non-trivial task execution via repo-local `workflow-orchestration` skill + AGENTS registry entry
+- finalize v2.2.6.3 guardrails hardening (decomposition rubric determinism + reporting precision + noop-update widening)
 
 ## Next Concrete Task
 
@@ -46,6 +47,14 @@ Stability-first quality rollout (aggressive track):
   - added decomposition default/split-trigger anchors in BOOTSTRAP and baseline triage anchor in TROUBLESHOOTING.
   - added docs-consistency anchor checks for new headings and kept exact package parity checks intact.
   - marked reach import-vs-FQCN symmetry as deferred/non-enforced and added optional verification-hygiene guidance.
+- Implemented `Guardrails v2.2.6.3` docs/scanner hardening:
+  - replaced decomposition policy with deterministic grouped rubric tokens + derivation rules in BOOTSTRAP.
+  - removed residual per-operation decomposition mandate language from CONTRACTS and aligned package wording.
+  - tightened REPORTING with strict `DEVELOPER_SUMMARY`, deterministic status line format, grouped decomposition fields, and required `Surface evidence` forms.
+  - added TROUBLESHOOTING non-solutions section (`REACH_REMEDIATION_NON_SOLUTIONS`) forbidding import-to-FQCN bypass remediation.
+  - widened `STATE_STORE_NOOP_UPDATE` detection to include null-guard silent no-op branch with deterministic pattern IDs.
+  - added anti-overreach scanner tests and normalized bootstrap line-budget docs consistency test.
+  - aligned demo simulation runbook with required Developer Summary + Surface evidence reporting fields.
 - Fixed GitHub Actions wrapper execution failure on Linux runners:
   - set `gradlew` file mode to executable in git index (`100755`).
   - added explicit `chmod +x ./gradlew` steps in both CI jobs, set CI concurrency grouping to `${{ github.sha }}`, and pinned `GRADLE_USER_HOME=/home/runner/.gradle` + ensured cache dirs to eliminate cache save-path warnings.

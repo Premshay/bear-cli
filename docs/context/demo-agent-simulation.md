@@ -106,6 +106,8 @@ Capture the full run transcript, including:
 5. test/gate commands with exit outcomes
 6. final summary block with both gate lines and exit codes
 7. completion governance-signal disposition block
+8. required Developer Summary template fields from `.bear/agent/REPORTING.md`
+9. required `Surface evidence` field from `.bear/agent/REPORTING.md`
 
 Minimum completion evidence format:
 
@@ -151,6 +153,7 @@ Fail (behavioral):
 4. Agent bypasses deterministic BEAR flow (manual patching to avoid compile/check flow).
 5. Missing or ambiguous gate evidence.
 6. Missing `GOVERNANCE_SIGNAL_DISPOSITION` block, mismatched `MULTI_BLOCK_PORT_IMPL_ALLOWED` count, or missing required `JUSTIFICATION`/`TRADEOFF` fields when count is non-zero.
+7. Missing/invalid `Surface evidence` reporting form (including invalid deferred reason token).
 
 ## Post-run BEAR analysis (mandatory)
 

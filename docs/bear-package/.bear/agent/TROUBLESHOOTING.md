@@ -108,6 +108,16 @@ Escalation threshold:
 2. In guarded lanes, forbidden package tokens in comments/strings can still trigger violations.
 3. If this happens, remove/rename the token text in guarded-lane comments/strings or move the text out of guarded lanes.
 
+## REACH_REMEDIATION_NON_SOLUTIONS
+
+These are explicitly invalid remediation patterns:
+1. Rewriting forbidden import usage as FQCN usage (for example replacing `import java.net.X` with `new java.net.X(...)`).
+2. "Log and return" without explicit missing-state signaling for update paths.
+
+Required direction:
+1. Fix boundary declaration, lane placement, or explicit not-found signaling semantics.
+2. Do not treat syntax rewrites as policy-compliant remediation.
+
 ## BOUNDARY_EXPANSION_DETECTED
 
 Meaning:

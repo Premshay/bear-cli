@@ -32,28 +32,30 @@ Rule:
 ## Decomposition Signals (Normative)
 
 Default decomposition:
-1. One block is the default when the spec defines one externally visible operation and no explicit split signal is present in spec intent.
+1. Decomposition is an architectural decision based on state/effect/idempotency/lifecycle/authority signals, not endpoint count.
+2. Group operations when they share the same state domain and compatible effect/idempotency/lifecycle/authority boundaries.
 
 Explicit split signals:
-1. Lifecycle split: independently deployable or independently evolving lifecycle boundaries are declared.
-2. Effect split: external capability boundaries (ports/ops) must be isolated for policy/governance reasons.
-3. Authority split: ownership, trust, or approval authority boundaries must be isolated.
-4. State split: state domain boundaries must be isolated to preserve determinism, governance, or auditability.
+1. `lifecycle_split`: independently deployable/evolving lifecycle boundaries.
+2. `effect_boundary_split`: external capability boundaries (ports/ops) must be isolated.
+3. `authority_split`: ownership/trust/approval authority boundaries must be isolated.
+4. `state_domain_split`: state domain boundaries must be isolated.
+5. `idempotency_split`: idempotency key/store shape is incompatible across candidate grouped operations.
+6. `operation_multiplexer_anti_pattern`: unrelated operations are being forced through a mega router/switch contract.
 
 Rule:
-1. Add a new block only when at least one explicit split signal is present in spec evidence.
-2. If spec defines multiple externally visible operations without an explicit command-router contract, IR v1 structural constraints require one IR block per operation.
+1. Add a new block only when at least one explicit split signal is present in spec evidence, or when spec explicitly requires separation.
+2. Multiple external operations may be grouped when compatibility signals are `_same` and no split trigger applies.
 
 IR v1 capability fact:
 1. IR v1 supports one `logic` block per IR file.
-2. This is a structural capability constraint, not a decomposition-signal heuristic.
+2. This is a structural capability fact, not a decomposition mandate.
 
 ## Contract Modeling Anti-Patterns (Normative)
 
-1. MUST NOT encode multiple externally visible operations as an action/command enum multiplexer inside one request unless the spec explicitly defines that command-router contract.
-2. No action/command multiplexer rule does not imply multi-block by itself.
-3. When multiple external operations are required and no explicit command-router contract exists, model them as distinct operations/contracts.
-4. Because IR v1 is one `logic` block per IR file, multiple externally visible operations map to multiple IR blocks unless the spec explicitly defines a command-router contract.
+1. MUST NOT encode unrelated externally visible operations as an action/command enum multiplexer inside one request unless the spec explicitly defines that router contract.
+2. This anti-pattern rule does not imply endpoint-per-block decomposition.
+3. Grouped decomposition is valid when compatibility signals are `_same` and no canonical split trigger applies.
 
 ## Canonical Wiring Recipe
 

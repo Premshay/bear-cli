@@ -1,6 +1,7 @@
 package com.bear.app;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +40,7 @@ final class BoundaryLanePolicyScanner {
     private static final Pattern NEW_TYPE_PATTERN_FOR_FIELDS = Pattern.compile("\\bnew\\s+([A-Za-z_][A-Za-z0-9_\\.]*)");
     private static final Pattern METHOD_SIGNATURE_PATTERN = Pattern.compile(
         "(?m)^\\s*(?:public|protected|private)?\\s*(?:static\\s+)?(?:final\\s+)?(?:synchronized\\s+)?"
-            + "[A-Za-z_][A-Za-z0-9_\\.<>,\\[\\]\\s]*\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\([^;{}]*\\)"
+            + "([A-Za-z_][A-Za-z0-9_\\.<>,\\[\\]\\s]*)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\([^;{}]*\\)"
             + "\\s*(?:throws\\s+[A-Za-z0-9_\\.,\\s]+)?\\s*\\{"
     );
     private static final Pattern UPDATE_METHOD_NAME_PATTERN = Pattern.compile("^(?:update.*|set.*|put.*Balance)$");
@@ -50,6 +51,10 @@ final class BoundaryLanePolicyScanner {
     );
     private static final Pattern NOOP_INLINE_MISSING_RETURN_PATTERN = Pattern.compile(
         "if\\s*\\([^\\)]*==\\s*null[^\\)]*\\)\\s*return\\s*;",
+        Pattern.DOTALL
+    );
+    private static final Pattern LOOKUP_BINDING_PATTERN = Pattern.compile(
+        "(?:final\\s+)?[A-Za-z_][A-Za-z0-9_\\.<>,\\[\\]]*\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*=\\s*[^;]*\\.(?:get|find|lookup|fetch)\\s*\\([^;]*\\)\\s*;",
         Pattern.DOTALL
     );
     private static final Pattern ENUM_CONSTANT_INIT_PATTERN = Pattern.compile(
@@ -279,11 +284,161 @@ final class BoundaryLanePolicyScanner {
             }
             if (NOOP_MISSING_RETURN_PATTERN.matcher(method.body()).find()
                 || NOOP_INLINE_MISSING_RETURN_PATTERN.matcher(method.body()).find()) {
-                return "KIND=STATE_STORE_NOOP_UPDATE: method=" + method.name()
-                    + ": silent missing-state return in _shared/state update path";
+                return stateStoreNoopDetail("EARLY_RETURN_NOOP", method.name());
+            }
+            if (hasNullGuardNoopPattern(method)) {
+                return stateStoreNoopDetail("NULL_GUARD_NOOP", method.name());
             }
         }
         return null;
+    }
+
+    private static boolean hasNullGuardNoopPattern(MethodSlice method) {
+        Set<String> candidates = lookupBindingVariables(method.body());
+        if (candidates.isEmpty()) {
+            return false;
+        }
+        for (String variable : candidates) {
+            String guardBody = firstNullGuardMutationBody(method.body(), variable);
+            if (guardBody == null) {
+                continue;
+            }
+            if (!hasUpdateMutationSignal(guardBody)) {
+                continue;
+            }
+            if (hasExplicitMissingStateSignal(method.body(), variable, method.returnType())) {
+                continue;
+            }
+            if (hasMutationSignalOutsideNullGuard(method.body(), variable)) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static Set<String> lookupBindingVariables(String body) {
+        HashSet<String> variables = new HashSet<>();
+        Matcher matcher = LOOKUP_BINDING_PATTERN.matcher(body);
+        while (matcher.find()) {
+            variables.add(matcher.group(1));
+        }
+        return variables;
+    }
+
+    private static String firstNullGuardMutationBody(String body, String variable) {
+        Pattern blockGuard = Pattern.compile(
+            "if\\s*\\(\\s*" + Pattern.quote(variable) + "\\s*!=\\s*null\\s*\\)\\s*\\{([\\s\\S]*?)\\}",
+            Pattern.DOTALL
+        );
+        Matcher blockMatcher = blockGuard.matcher(body);
+        if (blockMatcher.find()) {
+            return blockMatcher.group(1);
+        }
+        Pattern inlineGuard = Pattern.compile(
+            "if\\s*\\(\\s*" + Pattern.quote(variable) + "\\s*!=\\s*null\\s*\\)\\s*([^\\n;]*;)",
+            Pattern.DOTALL
+        );
+        Matcher inlineMatcher = inlineGuard.matcher(body);
+        if (inlineMatcher.find()) {
+            return inlineMatcher.group(1);
+        }
+        return null;
+    }
+
+    private static boolean hasExplicitMissingStateSignal(String body, String variable, String returnTypeRaw) {
+        Pattern nullBlock = Pattern.compile(
+            "if\\s*\\(\\s*" + Pattern.quote(variable) + "\\s*==\\s*null\\s*\\)\\s*\\{([\\s\\S]*?)\\}",
+            Pattern.DOTALL
+        );
+        Matcher nullBlockMatcher = nullBlock.matcher(body);
+        if (nullBlockMatcher.find() && hasAcceptedMissingStateSignal(nullBlockMatcher.group(1), returnTypeRaw)) {
+            return true;
+        }
+
+        Pattern nullInline = Pattern.compile(
+            "if\\s*\\(\\s*" + Pattern.quote(variable) + "\\s*==\\s*null\\s*\\)\\s*([^\\n;]*;)",
+            Pattern.DOTALL
+        );
+        Matcher nullInlineMatcher = nullInline.matcher(body);
+        if (nullInlineMatcher.find() && hasAcceptedMissingStateSignal(nullInlineMatcher.group(1), returnTypeRaw)) {
+            return true;
+        }
+
+        Pattern elseBranch = Pattern.compile(
+            "if\\s*\\(\\s*" + Pattern.quote(variable) + "\\s*!=\\s*null\\s*\\)\\s*\\{?[\\s\\S]*?\\}?\\s*else\\s*\\{([\\s\\S]*?)\\}",
+            Pattern.DOTALL
+        );
+        Matcher elseMatcher = elseBranch.matcher(body);
+        if (elseMatcher.find() && hasAcceptedMissingStateSignal(elseMatcher.group(1), returnTypeRaw)) {
+            return true;
+        }
+
+        Pattern explicitSignalCall = Pattern.compile("\\b(?:notFound|requirePresent)\\s*\\(");
+        if (explicitSignalCall.matcher(body).find()) {
+            return true;
+        }
+
+        String compactReturnType = returnTypeRaw == null ? "" : returnTypeRaw.replaceAll("\\s+", "");
+        if ("boolean".equals(compactReturnType) && body.contains("return false;")) {
+            return true;
+        }
+        if ((compactReturnType.endsWith("Optional") || compactReturnType.contains(".Optional"))
+            && body.contains("return Optional.empty();")) {
+            return true;
+        }
+        return allowsNullReturn(compactReturnType) && body.contains("return null;");
+    }
+
+    private static boolean hasAcceptedMissingStateSignal(String branchBody, String returnTypeRaw) {
+        if (branchBody.contains("throw ")) {
+            return true;
+        }
+        String compactReturnType = returnTypeRaw == null ? "" : returnTypeRaw.replaceAll("\\s+", "");
+        if ("boolean".equals(compactReturnType) && branchBody.contains("return false;")) {
+            return true;
+        }
+        if ((compactReturnType.endsWith("Optional") || compactReturnType.contains(".Optional"))
+            && branchBody.contains("return Optional.empty();")) {
+            return true;
+        }
+        return allowsNullReturn(compactReturnType) && branchBody.contains("return null;");
+    }
+
+    private static boolean allowsNullReturn(String compactReturnType) {
+        if (compactReturnType.isBlank()) {
+            return false;
+        }
+        return !Set.of("void", "boolean", "byte", "short", "int", "long", "float", "double", "char")
+            .contains(compactReturnType);
+    }
+
+    private static boolean hasMutationSignalOutsideNullGuard(String body, String variable) {
+        String remaining = body
+            .replaceAll(
+                "if\\s*\\(\\s*" + Pattern.quote(variable) + "\\s*!=\\s*null\\s*\\)\\s*\\{[\\s\\S]*?\\}",
+                " "
+            )
+            .replaceAll(
+                "if\\s*\\(\\s*" + Pattern.quote(variable) + "\\s*!=\\s*null\\s*\\)\\s*[^\\n;]*;",
+                " "
+            );
+        return hasUpdateMutationSignal(remaining);
+    }
+
+    private static boolean hasUpdateMutationSignal(String source) {
+        return source.contains("balanceCents")
+            || source.contains("setBalance")
+            || source.contains("updateBalance")
+            || Pattern.compile("\\b(?:set[A-Z][A-Za-z0-9_]*|put[A-Z]?[A-Za-z0-9_]*|update[A-Z]?[A-Za-z0-9_]*)\\s*\\(")
+            .matcher(source)
+            .find();
+    }
+
+    private static String stateStoreNoopDetail(String patternId, String methodName) {
+        return "KIND=STATE_STORE_NOOP_UPDATE|PATTERN=" + patternId
+            + "|method=" + methodName
+            + "|detail=silent missing-state handling in _shared/state update path";
     }
 
     private static String firstStateStoreOpMisuseDetail(String source) {
@@ -320,7 +475,8 @@ final class BoundaryLanePolicyScanner {
         ArrayList<MethodSlice> methods = new ArrayList<>();
         Matcher matcher = METHOD_SIGNATURE_PATTERN.matcher(source);
         while (matcher.find()) {
-            String methodName = matcher.group(1);
+            String returnType = matcher.group(1).trim();
+            String methodName = matcher.group(2);
             int openBrace = source.indexOf('{', matcher.end() - 1);
             if (openBrace < 0) {
                 continue;
@@ -330,7 +486,7 @@ final class BoundaryLanePolicyScanner {
                 continue;
             }
             String body = source.substring(openBrace + 1, closeBrace);
-            methods.add(new MethodSlice(methodName, body));
+            methods.add(new MethodSlice(methodName, body, returnType));
         }
         return methods;
     }
@@ -526,7 +682,8 @@ final class BoundaryLanePolicyScanner {
 
     private record MethodSlice(
         String name,
-        String body
+        String body,
+        String returnType
     ) {
     }
 }

@@ -659,6 +659,114 @@ class BoundaryBypassScannerTest {
         assertTrue(findings.stream().anyMatch(f ->
             "STATE_STORE_NOOP_UPDATE".equals(f.rule())
                 && f.path().endsWith("WalletStateStore.java")
+                && f.detail().startsWith("KIND=STATE_STORE_NOOP_UPDATE|PATTERN=EARLY_RETURN_NOOP|method=updateBalance|")
+        ));
+    }
+
+    @Test
+    void scanBoundaryBypassFlagsStateStoreNullGuardNoopPattern(@TempDir Path tempDir) throws Exception {
+        writeWorkingWithdrawImpl(tempDir);
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/state/WalletStateStore.java",
+            "package blocks._shared.state;\n"
+                + "public final class WalletStateStore {\n"
+                + "  void updateBalance(String walletId, int balanceCents) {\n"
+                + "    Wallet wallet = wallets.get(walletId);\n"
+                + "    if (wallet != null) { wallet.setBalanceCents(balanceCents); }\n"
+                + "  }\n"
+                + "  private final Wallets wallets = new Wallets();\n"
+                + "  static final class Wallet { void setBalanceCents(int value) {} }\n"
+                + "  static final class Wallets { Wallet get(String walletId) { return null; } }\n"
+                + "}\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
+        assertTrue(findings.stream().anyMatch(f ->
+            "STATE_STORE_NOOP_UPDATE".equals(f.rule())
+                && f.path().endsWith("WalletStateStore.java")
+                && f.detail().startsWith("KIND=STATE_STORE_NOOP_UPDATE|PATTERN=NULL_GUARD_NOOP|method=updateBalance|")
+        ));
+    }
+
+    @Test
+    void scanBoundaryBypassDoesNotFlagStateStoreWhenNullPathThrows(@TempDir Path tempDir) throws Exception {
+        writeWorkingWithdrawImpl(tempDir);
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/state/WalletStateStore.java",
+            "package blocks._shared.state;\n"
+                + "public final class WalletStateStore {\n"
+                + "  void updateBalance(String walletId, int balanceCents) {\n"
+                + "    Wallet wallet = wallets.get(walletId);\n"
+                + "    if (wallet == null) { throw new IllegalStateException(\"missing\"); }\n"
+                + "    wallet.setBalanceCents(balanceCents);\n"
+                + "  }\n"
+                + "  private final Wallets wallets = new Wallets();\n"
+                + "  static final class Wallet { void setBalanceCents(int value) {} }\n"
+                + "  static final class Wallets { Wallet get(String walletId) { return null; } }\n"
+                + "}\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
+        assertTrue(findings.stream().noneMatch(f ->
+            "STATE_STORE_NOOP_UPDATE".equals(f.rule()) && f.path().endsWith("WalletStateStore.java")
+        ));
+    }
+
+    @Test
+    void scanBoundaryBypassDoesNotFlagStateStoreWhenElseSignalsNotFound(@TempDir Path tempDir) throws Exception {
+        writeWorkingWithdrawImpl(tempDir);
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/state/WalletStateStore.java",
+            "package blocks._shared.state;\n"
+                + "public final class WalletStateStore {\n"
+                + "  void updateBalance(String walletId, int balanceCents) {\n"
+                + "    Wallet wallet = wallets.get(walletId);\n"
+                + "    if (wallet != null) {\n"
+                + "      wallet.setBalanceCents(balanceCents);\n"
+                + "    } else {\n"
+                + "      throw new IllegalStateException(\"missing\");\n"
+                + "    }\n"
+                + "  }\n"
+                + "  private final Wallets wallets = new Wallets();\n"
+                + "  static final class Wallet { void setBalanceCents(int value) {} }\n"
+                + "  static final class Wallets { Wallet get(String walletId) { return null; } }\n"
+                + "}\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
+        assertTrue(findings.stream().noneMatch(f ->
+            "STATE_STORE_NOOP_UPDATE".equals(f.rule()) && f.path().endsWith("WalletStateStore.java")
+        ));
+    }
+
+    @Test
+    void scanBoundaryBypassDoesNotFlagStateStoreWhenBooleanFailureReturnSignalsNotFound(@TempDir Path tempDir) throws Exception {
+        writeWorkingWithdrawImpl(tempDir);
+        writeJavaFile(
+            tempDir,
+            "src/main/java/blocks/_shared/state/WalletStateStore.java",
+            "package blocks._shared.state;\n"
+                + "public final class WalletStateStore {\n"
+                + "  boolean updateBalance(String walletId, int balanceCents) {\n"
+                + "    Wallet wallet = wallets.get(walletId);\n"
+                + "    if (wallet != null) {\n"
+                + "      wallet.setBalanceCents(balanceCents);\n"
+                + "      return true;\n"
+                + "    }\n"
+                + "    return false;\n"
+                + "  }\n"
+                + "  private final Wallets wallets = new Wallets();\n"
+                + "  static final class Wallet { void setBalanceCents(int value) {} }\n"
+                + "  static final class Wallets { Wallet get(String walletId) { return null; } }\n"
+                + "}\n"
+        );
+
+        List<BoundaryBypassFinding> findings = BoundaryBypassScanner.scanBoundaryBypass(tempDir, List.of(baseManifest()));
+        assertTrue(findings.stream().noneMatch(f ->
+            "STATE_STORE_NOOP_UPDATE".equals(f.rule()) && f.path().endsWith("WalletStateStore.java")
         ));
     }
 

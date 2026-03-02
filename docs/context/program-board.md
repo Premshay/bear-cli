@@ -188,6 +188,14 @@ Preview standing note:
    - docs consistency tests now anchor-check the new baseline/decomposition headings.
    - reach import/FQCN semantic symmetry is explicitly marked as deferred and non-enforced in this release.
 
+13. `Guardrails v2.2.6.3: deterministic decomposition rubric + reporting precision + noop widening`:
+   - BOOTSTRAP decomposition policy now uses canonical rubric tokens and derivation rules for grouped/split decisions.
+   - CONTRACTS decomposition text no longer implies per-operation block mandates; anti-pattern remains router-specific.
+   - REPORTING now enforces strict `DEVELOPER_SUMMARY`, deterministic status line format, grouped decomposition fields, and required `Surface evidence` forms.
+   - TROUBLESHOOTING now includes `REACH_REMEDIATION_NON_SOLUTIONS` to disallow import-to-FQCN bypass remediation.
+   - `STATE_STORE_NOOP_UPDATE` scanner now catches both early-return and null-guard silent no-op patterns with stable `PATTERN=` detail IDs.
+   - docs consistency tests now enforce new heading anchors and normalized bootstrap line-budget ceiling.
+
 ## Next Feature Specs (Locked)
 
 Detailed locked spec text was moved to:

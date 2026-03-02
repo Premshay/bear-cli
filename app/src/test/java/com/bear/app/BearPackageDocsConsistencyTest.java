@@ -71,8 +71,19 @@ class BearPackageDocsConsistencyTest {
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+GREENFIELD_BASELINE_PR\\s*$");
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+POLICY_SCOPE_MISMATCH\\s*$");
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+PROCESS_VIOLATION\\s*$");
+        assertMatchesHeading(troubleshooting, "(?m)^##\\s+REACH_REMEDIATION_NON_SOLUTIONS\\s*$");
+        assertMatchesHeading(reporting, "(?m)^##\\s+DEVELOPER_SUMMARY\\s*$");
         assertMatchesHeading(reporting, "(?m)^##\\s+GREENFIELD_BASELINE_WAITING_SEMANTICS\\s*$");
         assertMatchesHeading(reporting, "(?m)^##\\s+Blocker\\s+And\\s+Anomaly\\s+Reporting\\s*$");
+    }
+
+    @Test
+    void bootstrapStaysWithinLineBudget() throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        String bootstrap = Files.readString(repoRoot.resolve("docs/bear-package/.bear/agent/BOOTSTRAP.md"));
+        String normalized = bootstrap.replace("\r\n", "\n");
+        int lineCount = normalized.split("\n", -1).length;
+        assertTrue(lineCount <= 200, "BOOTSTRAP.md must stay within 200 lines; found " + lineCount);
     }
 
     private static void assertMatchesHeading(String content, String headingRegex) {
