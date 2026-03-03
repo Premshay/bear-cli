@@ -1,4 +1,7 @@
-# Quickstart
+﻿# Quickstart
+
+This quickstart runs BEAR on the demo repo.
+The intended workflow is agent-first: the agent updates code and IR as needed; humans review deterministic gate output.
 
 Prerequisites:
 
@@ -32,15 +35,15 @@ macOS/Linux (bash/zsh):
 
 Expected outcome: CLI usage/help output is displayed.
 
-3. Implement project specs with your agent.
+3. Let your agent implement the project specs.
 
 ```text
 Implement the specs.
 ```
 
-Expected outcome: agent creates or updates governed implementation and IR artifacts.
+Expected outcome: agent creates/updates governed code and IR under the repo.
 
-4. Run the canonical repo gate when index exists.
+4. Run the deterministic enforcement gate.
 
 Windows (PowerShell):
 
@@ -56,25 +59,45 @@ macOS/Linux (bash/zsh):
 
 Expected outcome: all selected blocks are `PASS`, summary `EXIT_CODE: 0`.
 
-Fallback when `bear.blocks.yaml` is missing:
+5. Run the PR governance gate.
 
-1. pick one IR file under `spec/*.bear.yaml`
-2. run single-block check
+For a quick local sanity run, compare against `HEAD`:
+
+```powershell
+.\.bear\tools\bear-cli\bin\bear.bat pr-check --all --project . --base HEAD
+```
+
+Expected outcome: `pr-check: OK: NO_BOUNDARY_EXPANSION` and exit `0`.
+
+In a real PR/CI flow, set `--base` to the merge-base target (for example `origin/main`).
+
+## If `bear.blocks.yaml` is missing
+
+All `--all` commands require `bear.blocks.yaml`.
+
+Minimal valid example:
+
+```yaml
+version: v0
+blocks:
+  - name: withdraw
+    ir: spec/withdraw.bear.yaml
+    projectRoot: .
+```
+
+Fallback if you do not want `--all` yet:
 
 ```powershell
 .\.bear\tools\bear-cli\bin\bear.bat check spec\<block>.bear.yaml --project .
-```
-
-Success signal:
-
-```powershell
-.\.bear\tools\bear-cli\bin\bear.bat check --all --project .
+.\.bear\tools\bear-cli\bin\bear.bat pr-check spec\<block>.bear.yaml --project . --base HEAD
 ```
 
 ## Related
 
-- [INDEX.md](INDEX.md)
-- [INSTALL.md](INSTALL.md)
-- [MODEL.md](MODEL.md)
+- [OVERVIEW.md](OVERVIEW.md)
+- [PR_REVIEW.md](PR_REVIEW.md)
+- [ENFORCEMENT.md](ENFORCEMENT.md)
 - [commands-check.md](commands-check.md)
+- [commands-pr-check.md](commands-pr-check.md)
 - [troubleshooting.md](troubleshooting.md)
+

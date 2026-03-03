@@ -1,6 +1,11 @@
-# Foundations
+﻿# Foundations
 
-For fastest onboarding use [QUICKSTART.md](QUICKSTART.md). For contract guarantees use [ENFORCEMENT.md](ENFORCEMENT.md) and [CONTRACTS.md](CONTRACTS.md).
+This repository is a proof-of-concept reference implementation.
+It is not a production-ready framework; it exists to validate and demonstrate deterministic boundary governance for agentic backend development.
+
+
+For the fastest onboarding use [QUICKSTART.md](QUICKSTART.md).
+For a one-page summary of the hypothesis and workflow, see [OVERVIEW.md](OVERVIEW.md).
 
 ## Why BEAR exists
 
@@ -69,9 +74,8 @@ Key idea:
 
 ## Agent workflow and developer visibility
 
-- BEAR is designed for agent-driven workflows, not as a manual developer checklist.
-- Agent runs the deterministic loop (IR update, generation, gates) under BEAR restrictions.
-- Developer uses BEAR outputs for visibility and governance, especially in PR review and CI.
+BEAR is designed for agent-driven workflows.
+In the intended model, the agent updates IR when it needs new boundary authority; developers mostly review governance signals.
 
 Typical agent loop:
 
@@ -102,8 +106,10 @@ BEAR CLI is split into two modules:
 
 ## Related
 
-- [INDEX.md](INDEX.md)
+- [OVERVIEW.md](OVERVIEW.md)
 - [MODEL.md](MODEL.md)
 - [ENFORCEMENT.md](ENFORCEMENT.md)
+- [PR_REVIEW.md](PR_REVIEW.md)
 - [CONTRACTS.md](CONTRACTS.md)
-- [commands-check.md](commands-check.md)
+
+

@@ -1,4 +1,4 @@
-# BEAR Session State
+﻿# BEAR Session State
 
 This file is the short operational handoff for the current work window.
 For milestone status and backlog ordering, use `docs/context/program-board.md`.
@@ -53,3 +53,16 @@ P2 stabilization v3 hardening:
 - Verification:
   - `:kernel:test` and `:app:test` pass
   - `:app:run --args "check --all --project ."` and `:app:run --args "pr-check --all --project . --base HEAD"` emit deterministic missing-index envelope and terminate with exit `2` (expected without repo-root index)
+
+- Reoriented public docs to the PoC + agent workflow (progressive disclosure):
+  - added docs/public/OVERVIEW.md and docs/public/PR_REVIEW.md
+  - updated README + public index/quickstart/install/model/foundations to emphasize: agent updates IR; humans review deterministic signals
+  - softened CONTRACTS/VERSIONING wording to reflect early-stage nature while keeping automation-stable output contracts
+- Verification:
+  - ran :app:test doc consistency tests (ContextDocsConsistencyTest, BearPackageDocsConsistencyTest)
+
+
+- Added public glossary: docs/public/TERMS.md and linked from OVERVIEW/INDEX/MODEL/PR_REVIEW.
+- Fixed markdown formatting bug (removed literal \\n sequences) in public docs.
+- Verification:
+  - ran :app:test doc consistency tests (ContextDocsConsistencyTest, BearPackageDocsConsistencyTest)

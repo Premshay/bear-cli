@@ -1,8 +1,10 @@
-# Model
+﻿# Model
 
 For rationale see [FOUNDATIONS.md](FOUNDATIONS.md). For guarantees/signals see [ENFORCEMENT.md](ENFORCEMENT.md).
 
 ## Vocabulary
+
+See also: [TERMS.md](TERMS.md) (effects/ports/ops).
 
 - `block`: one governed unit of logic.
 - `IR`: YAML declaration of block contract, effects, and selected semantics.
@@ -25,6 +27,12 @@ Core flow: `IR -> compile -> check`
 
 Governance flow: `pr-check --base <ref>`
 
+## Who edits IR?
+
+In the intended workflow, developers are not expected to hand-author IR as routine work.
+IR is a control surface that the agent updates when it needs new boundary authority.
+Developers primarily review the resulting governance signals.
+
 ## Developer visibility model
 
 - PR signal: `pr-check` marks boundary-expanding vs ordinary changes.
@@ -33,7 +41,8 @@ Governance flow: `pr-check --base <ref>`
 
 ## Related
 
-- [INDEX.md](INDEX.md)
+- [OVERVIEW.md](OVERVIEW.md)
+- [PR_REVIEW.md](PR_REVIEW.md)
 - [ENFORCEMENT.md](ENFORCEMENT.md)
 - [commands-check.md](commands-check.md)
 - [commands-unblock.md](commands-unblock.md)

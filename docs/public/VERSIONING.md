@@ -1,8 +1,8 @@
 ﻿# Versioning
 
-## Preview contract freeze
+## Preview contract stability
 
-Preview freezes the public command contract for automation reliability:
+Preview keeps the public command contract stable for automation reliability:
 
 - command invocation forms
 - output line shapes used by parsers and CI
@@ -13,20 +13,23 @@ These are documented in [CONTRACTS.md](CONTRACTS.md), command pages, [exit-codes
 
 ## What may still change in Preview
 
+This repo is a proof of concept and internals may evolve quickly.
+Within Preview, changes are expected in:
+
 - internal implementation details
 - performance characteristics
 - additional diagnostics that do not break frozen output contracts
-- new capabilities that do not change frozen existing contract behavior
+- new capabilities that do not change existing contract behavior
 
 ## Breaking change policy
 
-Breaking changes to frozen public contracts are deferred to post-Preview version transitions and should be called out explicitly in release notes.
+Breaking changes to the stable public contracts are deferred to post-Preview transitions and should be called out explicitly.
 
 ## Related
 
+- [OVERVIEW.md](OVERVIEW.md)
 - [CONTRACTS.md](CONTRACTS.md)
-- [INDEX.md](INDEX.md)
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
-- [commands-check.md](commands-check.md)
+
 

@@ -1,57 +1,45 @@
-# Public Docs
+﻿# Public Docs
 
-This folder is the developer-facing documentation for BEAR.
+These docs are for understanding and evaluating BEAR (Preview): deterministic boundary governance for agentic backend development.
 
-## Start in 5 minutes
+## Start here
 
-1. [QUICKSTART.md](QUICKSTART.md) - shortest first successful run on the demo repo.
-2. [ENFORCEMENT.md](ENFORCEMENT.md) - what BEAR actually enforces and alerts on.
+1. [OVERVIEW.md](OVERVIEW.md) - what this project is trying to prove, and how it fits into agent workflows.
+2. [QUICKSTART.md](QUICKSTART.md) - run BEAR on the demo repo.
+3. [PR_REVIEW.md](PR_REVIEW.md) - how to interpret BEAR signals in PR/CI.
+4. [TERMS.md](TERMS.md) - minimal vocabulary (effects, ports, ops, wrappers) used in docs and outputs.
 
-## Understand deeper
+## Run and debug
 
-- [FOUNDATIONS.md](FOUNDATIONS.md) - rationale, philosophy, and architecture context.
+- [ENFORCEMENT.md](ENFORCEMENT.md) - what BEAR enforces vs only alerts on.
+- [troubleshooting.md](troubleshooting.md) - look up failures by `CODE=...`.
+
+## Read more
+
+- [FOUNDATIONS.md](FOUNDATIONS.md) - rationale and architecture context.
 - [MODEL.md](MODEL.md) - operating vocabulary and agent/developer flow.
-- [VISION.md](VISION.md) - directional future possibilities (non-committed).
-- [CONTRACTS.md](CONTRACTS.md) - frozen Preview machine contract surface.
-- [VERSIONING.md](VERSIONING.md) - what may change and what is frozen.
+- [VISION.md](VISION.md) - directional ideas (non-committed).
 
-## Integrate in CI
+## Reference (for automation / deeper detail)
 
-- [INSTALL.md](INSTALL.md) - copy the BEAR `.bear` package into your repo.
-- [commands-check.md](commands-check.md) - deterministic enforcement gate.
-- [commands-pr-check.md](commands-pr-check.md) - PR boundary governance gate.
-- [commands-unblock.md](commands-unblock.md) - clear check block marker after lock/bootstrap issues.
-- [exit-codes.md](exit-codes.md) and [output-format.md](output-format.md) - machine parsing contract.
+- Command contracts:
+  - [commands-check.md](commands-check.md)
+  - [commands-pr-check.md](commands-pr-check.md)
+  - [commands-compile.md](commands-compile.md)
+  - [commands-validate.md](commands-validate.md)
+  - [commands-fix.md](commands-fix.md)
+  - [commands-unblock.md](commands-unblock.md)
+- Machine-facing contracts:
+  - [exit-codes.md](exit-codes.md)
+  - [output-format.md](output-format.md)
+- Contract/versioning notes (for parsers/CI):
+  - [CONTRACTS.md](CONTRACTS.md)
+  - [VERSIONING.md](VERSIONING.md)
 
-## Debug failures
+## Install in another repo
 
-- [troubleshooting.md](troubleshooting.md) - `CODE` to exact fix steps.
+- [INSTALL.md](INSTALL.md) - copy the BEAR `.bear` package into your project.
 
-## Full map
+## If you are modifying bear-cli
 
-- [QUICKSTART.md](QUICKSTART.md) - First successful end-to-end run.
-- [INSTALL.md](INSTALL.md) - Install the BEAR `.bear` bundle in another project.
-- [FOUNDATIONS.md](FOUNDATIONS.md) - Why BEAR exists and how it is structured.
-- [MODEL.md](MODEL.md) - Vocabulary and operating model.
-- [VISION.md](VISION.md) - Directional long-horizon product vision (not a delivery plan).
-- [ENFORCEMENT.md](ENFORCEMENT.md) - What BEAR enforces and alerts on.
-- [CONTRACTS.md](CONTRACTS.md) - Frozen Preview contract boundaries.
-- [commands-validate.md](commands-validate.md) - Validate IR.
-- [commands-compile.md](commands-compile.md) - Generate deterministic artifacts.
-- [commands-fix.md](commands-fix.md) - Repair generated artifacts.
-- [commands-check.md](commands-check.md) - Local deterministic enforcement gate.
-- [commands-unblock.md](commands-unblock.md) - Clear blocked check marker.
-- [commands-pr-check.md](commands-pr-check.md) - PR boundary-expansion governance.
-- [exit-codes.md](exit-codes.md) - Numeric registry and aggregation rules.
-- [output-format.md](output-format.md) - Footer, line formats, ordering.
-- [troubleshooting.md](troubleshooting.md) - Common failures and exact fixes.
-- [VERSIONING.md](VERSIONING.md) - Preview freeze and change policy.
-
-## Related
-
-- [QUICKSTART.md](QUICKSTART.md)
-- [ENFORCEMENT.md](ENFORCEMENT.md)
-- [INSTALL.md](INSTALL.md)
-- [VISION.md](VISION.md)
-- [CONTRACTS.md](CONTRACTS.md)
-- [troubleshooting.md](troubleshooting.md)
+Start with [docs/context/CONTEXT_BOOTSTRAP.md](../context/CONTEXT_BOOTSTRAP.md) (repo-maintainer routing and guardrails).

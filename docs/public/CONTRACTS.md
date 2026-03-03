@@ -1,10 +1,11 @@
-# Contracts
+﻿# Contracts
 
-Preview treats command behavior and output contracts as frozen for reliable CI and agent workflows.
+Even as a proof of concept, BEAR depends on deterministic, automatable signals.
+So the *public command surface* is treated as stable in Preview to support CI, parsers, and agent workflows.
 
-## Frozen contract in Preview
+## Stable contract in Preview
 
-Frozen means these interfaces are stable:
+Stable means these interfaces should not change without explicit callout:
 
 - command invocation forms
 - deterministic output line formats used for automation
@@ -16,9 +17,9 @@ Public contract pages:
 - [commands-validate.md](commands-validate.md)
 - [commands-compile.md](commands-compile.md)
 - [commands-check.md](commands-check.md)
-- [commands-unblock.md](commands-unblock.md)
 - [commands-pr-check.md](commands-pr-check.md)
 - [commands-fix.md](commands-fix.md)
+- [commands-unblock.md](commands-unblock.md)
 - [ENFORCEMENT.md](ENFORCEMENT.md)
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
@@ -26,8 +27,9 @@ Public contract pages:
 
 ## Related
 
-- [INDEX.md](INDEX.md)
-- [ENFORCEMENT.md](ENFORCEMENT.md)
+- [OVERVIEW.md](OVERVIEW.md)
 - [VERSIONING.md](VERSIONING.md)
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
+
+

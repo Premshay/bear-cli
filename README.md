@@ -1,29 +1,30 @@
-# BEAR (bear-cli)
+﻿# BEAR (bear-cli)
 
 <p align="center">
   <img src="assets/logo/bear-header-1400x320-clean.png" alt="BEAR logo" width="100%" />
 </p>
 
-BEAR is a deterministic governance CLI for agentic backend development: agents implement inside declared IR boundaries, and BEAR turns boundary risk into explicit PR/CI signals.
+BEAR is a deterministic governance CLI for agentic backend development.
+It is a proof-of-concept reference implementation: a practical way to validate how higher-sensitivity backend work might look in an agentic world.
 
-It is designed for AI-assisted development (or any fast iteration), where boundary expansion and generated-artifact drift can be easy to miss.
+Hypothesis:
+- as agents write more backend code, we may need strict, deterministic enforcement to prevent silent boundary expansion and generated-artifact drift
+- governance should not depend on agent reasoning quality; it should show up as explicit PR/CI signals
 
-BEAR is a compiler and CI gate for architecture and declared semantics. It makes certain constraints non-bypassable by generating the only allowed integration surface and rejecting code that reaches around it. If a behavior is declared in BEAR IR and is supported by the target wrapper and ports, BEAR enforces it by construction; if it is not declared (or not supportable by the underlying ports/runtime), BEAR does not pretend to guarantee it.
+## What BEAR does (plain terms)
 
-## What BEAR Does (Plain Terms)
-
-- You declare what code is allowed to do at the boundary.
-- BEAR generates deterministic guardrails from that declaration.
+- An agent updates code and (when needed) a small YAML IR contract.
+- BEAR generates deterministic guardrails (wrappers/ports) from that declaration.
 - Implementation can evolve freely inside those guardrails.
 - CI gets deterministic governance signals from `check` and `pr-check`.
 
-## What You Get
+## What you get
 
 - Boundary power expansion becomes explicit and machine-parseable in PRs.
 - Generated guardrails cannot drift silently.
 - Every non-zero failure is actionable: `CODE`, `PATH`, `REMEDIATION`.
 
-## What BEAR is not (Preview non-goals)
+## What BEAR is not (preview non-goals)
 
 - Not a business-rules engine.
 - Not a runtime transaction framework.
@@ -65,61 +66,37 @@ macOS/Linux (bash/zsh):
 Implement the specs.
 ```
 
-4. Run the canonical gate when index is present.
-
-Windows (PowerShell):
+4. Run the deterministic enforcement gate.
 
 ```powershell
 .\.bear\tools\bear-cli\bin\bear.bat check --all --project .
 ```
 
-macOS/Linux (bash/zsh):
+5. Run the PR governance gate.
 
-```sh
-./.bear/tools/bear-cli/bin/bear check --all --project .
-```
-
-Fallback if `bear.blocks.yaml` is missing:
-
-1. pick one IR file under `spec/*.bear.yaml`
-2. run single-block check
+Local sanity (base is self):
 
 ```powershell
-.\.bear\tools\bear-cli\bin\bear.bat check spec\<block>.bear.yaml --project .
+.\.bear\tools\bear-cli\bin\bear.bat pr-check --all --project . --base HEAD
 ```
 
-Success = exit `0` and no failing blocks (in `--all`, summary shows `EXIT_CODE: 0`).
-
-## Preview Scope and Coverage
-
-Preview focuses on deterministic contracts and CI-friendly governance.
-Enforcement coverage is intentionally bounded to supported targets/surfaces in Preview.
-
-## How It Works
-
-- BEAR IR: small YAML boundary declaration.
-- `compile`: deterministic BEAR-owned generated artifacts.
-- `check`: deterministic local enforcement gate.
-- `pr-check`: deterministic boundary-governance classification against base.
-
-Pipeline: `IR -> compile -> check`, then `pr-check --base <ref>` for PR governance.
+In a real PR/CI flow, set `--base` to the merge-base target (for example `origin/main`).
 
 ## Links
 
 - Start here: [docs/public/INDEX.md](docs/public/INDEX.md)
+- Overview (what this is trying to prove): [docs/public/OVERVIEW.md](docs/public/OVERVIEW.md)
 - First run: [docs/public/QUICKSTART.md](docs/public/QUICKSTART.md)
+- PR/CI review model: [docs/public/PR_REVIEW.md](docs/public/PR_REVIEW.md)
+- What BEAR enforces: [docs/public/ENFORCEMENT.md](docs/public/ENFORCEMENT.md)
 - Install in another repo: [docs/public/INSTALL.md](docs/public/INSTALL.md)
-- What BEAR protects: [docs/public/ENFORCEMENT.md](docs/public/ENFORCEMENT.md)
-- Operating model: [docs/public/MODEL.md](docs/public/MODEL.md)
-- Directional vision: [docs/public/VISION.md](docs/public/VISION.md)
-- Rationale and architecture: [docs/public/FOUNDATIONS.md](docs/public/FOUNDATIONS.md)
-- Frozen contracts: [docs/public/CONTRACTS.md](docs/public/CONTRACTS.md)
-- Command contracts: [docs/public/commands-check.md](docs/public/commands-check.md), [docs/public/commands-pr-check.md](docs/public/commands-pr-check.md), [docs/public/commands-unblock.md](docs/public/commands-unblock.md)
+- Command contracts: [docs/public/commands-check.md](docs/public/commands-check.md), [docs/public/commands-pr-check.md](docs/public/commands-pr-check.md)
 - Machine-facing behavior: [docs/public/exit-codes.md](docs/public/exit-codes.md), [docs/public/output-format.md](docs/public/output-format.md)
 - Failure triage: [docs/public/troubleshooting.md](docs/public/troubleshooting.md)
-- Optional project context: [docs/context/state.md](docs/context/state.md)
 
-## Supported Targets
+## Supported targets
 
 - JVM/Java target in Preview.
 - Primary containment enforcement path is Java plus Gradle wrapper when `impl.allowedDeps` is declared.
+
+
