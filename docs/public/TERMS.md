@@ -1,4 +1,4 @@
-# Terms
+﻿# Terms
 
 This page defines the minimal vocabulary used in BEAR docs and outputs.
 
@@ -17,11 +17,19 @@ This page defines the minimal vocabulary used in BEAR docs and outputs.
 
 Port entry kinds:
 - Important: this is a `port.kind` distinction. `block.kind` is unchanged and remains `logic` in v1.
+
 - `kind=external`: capability to an external dependency.
-  - Uses `ops` (for example `routeStore.getRoute`, `routeStore.putRoute`).
-- `kind=block`: dependency on another BEAR block.
-  - Uses `targetBlock` + `targetOps` (operation names on the target block).
+  - In `effects.allow` / `uses.allow`: uses `ops` (for example `routeStore.getRoute`, `routeStore.putRoute`).
+
+- `kind=block`: capability to call another BEAR block.
+  - In `effects.allow`: `targetBlock` and `targetOps` are required.
+  - In `uses.allow`: `targetBlock` is forbidden; optional `targetOps` (when present) must be a non-empty subset of the block-level `targetOps`.
   - Cross-block calls are routed through generated block-port clients; direct target internals/wrapper bypass is policy-failing.
+
+## Ownership and layout
+
+- `governed source roots` / `governedSourceRoots`: the directories BEAR treats as "owned" for a block (and the reserved shared root).
+  - BEAR emits this list in wiring metadata and uses it for containment/ownership checks.
 
 ## Generated surface
 
@@ -67,4 +75,3 @@ In this example:
 
 - Agent IR reference: [IR_REFERENCE.md](../bear-package/.bear/agent/ref/IR_REFERENCE.md)
 - Canonical IR spec (bear-cli maintainer): [docs/context/ir-spec.md](../context/ir-spec.md)
-

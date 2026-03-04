@@ -25,6 +25,19 @@ final class ProjectTestRunner {
     private static final Duration STALE_ARTIFACT_THRESHOLD = Duration.ofMinutes(10);
     private static final Pattern FAILED_DELETE_FILE_PATTERN = Pattern.compile("(?i)failed to delete file:\\s*(.+)$");
     private static final String FORCE_TIMEOUT_TEST_MARKER = ".bear-test-force-timeout";
+    private static final int COMPILE_MARKER_TAIL_WINDOW = 400;
+    private static final Pattern TASK_LINE_PATTERN = Pattern.compile("^>\\s*Task\\s+(:[^\\s]+)(?:\\s+.*)?$");
+    private static final List<Pattern> COMPILE_MARKER_PATTERNS = List.of(
+        Pattern.compile("^>\\s*Task\\s+:.+compile.+\\s+FAILED$"),
+        Pattern.compile("^:compileJava FAILED$"),
+        Pattern.compile("^:compileTestJava FAILED$"),
+        Pattern.compile("^Execution failed for task ':compileJava'.$"),
+        Pattern.compile("^Execution failed for task ':compileTestJava'.$"),
+        Pattern.compile("^> Compilation failed; see the compiler error output for details.$"),
+        Pattern.compile("^Compilation failed$"),
+        Pattern.compile(".*error: illegal character:.*"),
+        Pattern.compile(".*illegal character:.*")
+    );
 
     private enum GradleHomeMode {
         EXTERNAL_ENV("external-env", "external-env-retry"),
@@ -44,7 +57,9 @@ final class ProjectTestRunner {
         String label,
         String gradleUserHome,
         ProjectTestStatus status,
-        String output
+        String output,
+        String phase,
+        String lastObservedTask
     ) {
     }
 
@@ -168,10 +183,61 @@ final class ProjectTestRunner {
                 attemptLabel,
                 gradleUserHome,
                 ProjectTestStatus.TIMEOUT,
-                "PROJECT_TEST_FORCED_TIMEOUT"
+                "PROJECT_TEST_FORCED_TIMEOUT",
+                "compile_preflight",
+                "unknown"
             );
         }
 
+        int preflightTimeout = Math.min(testTimeoutSeconds(), 120);
+        PhaseExecution preflight = runGradlePhase(
+            projectRoot,
+            wrapper,
+            gradleUserHome,
+            initScriptRelativePath,
+            "classes",
+            "compile_preflight",
+            preflightTimeout
+        );
+        if (preflight.status() != ProjectTestStatus.PASSED) {
+            return new ProjectTestAttempt(
+                attemptLabel,
+                gradleUserHome,
+                preflight.status(),
+                preflight.output(),
+                preflight.phase(),
+                preflight.lastObservedTask()
+            );
+        }
+
+        PhaseExecution testPhase = runGradlePhase(
+            projectRoot,
+            wrapper,
+            gradleUserHome,
+            initScriptRelativePath,
+            "test",
+            "test",
+            testTimeoutSeconds()
+        );
+        return new ProjectTestAttempt(
+            attemptLabel,
+            gradleUserHome,
+            testPhase.status(),
+            testPhase.output(),
+            testPhase.phase(),
+            testPhase.lastObservedTask()
+        );
+    }
+
+    private static PhaseExecution runGradlePhase(
+        Path projectRoot,
+        Path wrapper,
+        String gradleUserHome,
+        String initScriptRelativePath,
+        String gradleTask,
+        String phase,
+        int timeoutSeconds
+    ) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>();
         if (isWindows()) {
             command.add("cmd");
@@ -187,7 +253,7 @@ final class ProjectTestRunner {
             command.add("-I");
             command.add(normalizedInitScript);
         }
-        command.add("test");
+        command.add(gradleTask);
 
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.directory(projectRoot.toFile());
@@ -200,17 +266,28 @@ final class ProjectTestRunner {
 
         String output;
         try (InputStream in = process.getInputStream()) {
-            boolean finished = process.waitFor(testTimeoutSeconds(), TimeUnit.SECONDS);
+            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
                 process.waitFor(5, TimeUnit.SECONDS);
                 output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                return new ProjectTestAttempt(attemptLabel, gradleUserHome, ProjectTestStatus.TIMEOUT, output);
+                ProjectTestStatus timeoutStatus = firstCompileFailureLine(output) != null
+                    ? ProjectTestStatus.COMPILE_FAILURE
+                    : ProjectTestStatus.TIMEOUT;
+                return new PhaseExecution(timeoutStatus, output, phase, lastObservedTask(output));
             }
             output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
-        ProjectTestStatus status = classifyProjectTestStatus(process.exitValue(), output, gradleUserHome);
-        return new ProjectTestAttempt(attemptLabel, gradleUserHome, status, output);
+        ProjectTestStatus status = classifyProjectTestStatus(process.exitValue(), output, gradleUserHome, phase);
+        return new PhaseExecution(status, output, phase, lastObservedTask(output));
+    }
+
+    private record PhaseExecution(
+        ProjectTestStatus status,
+        String output,
+        String phase,
+        String lastObservedTask
+    ) {
     }
 
     private static String normalizeInitScriptRelativePath(String initScriptRelativePath) {
@@ -224,7 +301,7 @@ final class ProjectTestRunner {
         return normalized.isBlank() ? null : normalized;
     }
 
-    private static ProjectTestStatus classifyProjectTestStatus(int exitValue, String output, String gradleUserHome) {
+    private static ProjectTestStatus classifyProjectTestStatus(int exitValue, String output, String gradleUserHome, String phase) {
         if (exitValue == 0) {
             return ProjectTestStatus.PASSED;
         }
@@ -240,6 +317,9 @@ final class ProjectTestRunner {
         if (isInvariantViolationOutput(output)) {
             return ProjectTestStatus.INVARIANT_VIOLATION;
         }
+        if ("compile_preflight".equals(phase) && firstCompileFailureLine(output) != null) {
+            return ProjectTestStatus.COMPILE_FAILURE;
+        }
         return ProjectTestStatus.FAILED;
     }
 
@@ -253,7 +333,9 @@ final class ProjectTestRunner {
             firstBootstrapLineAcrossAttempts(attempts),
             firstSharedDepsViolationLineAcrossAttempts(attempts),
             cacheModeForLabel(latest.label()),
-            fallbackToUserCache(attempts)
+            fallbackToUserCache(attempts),
+            latest.phase(),
+            latest.lastObservedTask()
         );
     }
 
@@ -627,9 +709,6 @@ final class ProjectTestRunner {
         while (normalized.endsWith("/") && normalized.length() > 1) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
-        if (isWindows()) {
-            normalized = normalized.toLowerCase(Locale.ROOT);
-        }
         return normalized;
     }
 
@@ -652,6 +731,41 @@ final class ProjectTestRunner {
             return lines.get(0);
         }
         return null;
+    }
+    static String firstCompileFailureLine(String output) {
+        List<String> tail = tailNormalizedLines(output, COMPILE_MARKER_TAIL_WINDOW);
+        for (Pattern markerPattern : COMPILE_MARKER_PATTERNS) {
+            for (String line : tail) {
+                if (markerPattern.matcher(line).matches()) {
+                    return line;
+                }
+            }
+        }
+        return null;
+    }
+
+    static String lastObservedTask(String output) {
+        List<String> tail = tailNormalizedLines(output, COMPILE_MARKER_TAIL_WINDOW);
+        for (int i = tail.size() - 1; i >= 0; i--) {
+            Matcher matcher = TASK_LINE_PATTERN.matcher(tail.get(i));
+            if (matcher.matches()) {
+                return matcher.group(1);
+            }
+        }
+        return "unknown";
+    }
+
+    private static List<String> tailNormalizedLines(String output, int maxLines) {
+        List<String> lines = CliText.normalizeLf(output).lines().toList();
+        int from = Math.max(0, lines.size() - maxLines);
+        ArrayList<String> tail = new ArrayList<>();
+        for (int i = from; i < lines.size(); i++) {
+            String trimmed = lines.get(i).trim();
+            if (!trimmed.isEmpty()) {
+                tail.add(trimmed);
+            }
+        }
+        return tail;
     }
 
     static boolean isInvariantViolationOutput(String output) {
@@ -808,3 +922,10 @@ final class ProjectTestRunner {
         return projectRoot != null && Files.isRegularFile(projectRoot.resolve(FORCE_TIMEOUT_TEST_MARKER));
     }
 }
+
+
+
+
+
+
+

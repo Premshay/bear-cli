@@ -99,6 +99,83 @@ class AllModeContractTest {
         );
     }
 
+
+    @Test
+    void checkAllUnknownTargetBlockUsesPinnedValidationPath(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = tempDir.resolve("repo");
+        Files.createDirectories(repoRoot.resolve("spec"));
+        Files.writeString(
+            repoRoot.resolve("bear.blocks.yaml"),
+            "" +
+                "version: v1\n" +
+                "blocks:\n" +
+                "  - name: account\n" +
+                "    ir: spec/account.bear.yaml\n" +
+                "    projectRoot: .\n",
+            StandardCharsets.UTF_8
+        );
+        Files.writeString(repoRoot.resolve("spec/account.bear.yaml"), accountWithUnknownTarget(), StandardCharsets.UTF_8);
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", repoRoot.toString() });
+        assertEquals(2, run.exitCode());
+        String stderr = normalizeLf(run.stderr());
+        assertTrue(stderr.contains("CODE=IR_VALIDATION"));
+        assertTrue(stderr.contains("PATH=spec/account.bear.yaml"));
+    }
+
+    @Test
+    void checkAllUnknownTargetOpUsesPinnedValidationPath(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = tempDir.resolve("repo");
+        Files.createDirectories(repoRoot.resolve("spec"));
+        Files.writeString(
+            repoRoot.resolve("bear.blocks.yaml"),
+            "" +
+                "version: v1\n" +
+                "blocks:\n" +
+                "  - name: account\n" +
+                "    ir: spec/account.bear.yaml\n" +
+                "    projectRoot: .\n" +
+                "  - name: transaction-log\n" +
+                "    ir: spec/transaction-log.bear.yaml\n" +
+                "    projectRoot: .\n",
+            StandardCharsets.UTF_8
+        );
+        Files.writeString(repoRoot.resolve("spec/account.bear.yaml"), accountWithUnknownTargetOp(), StandardCharsets.UTF_8);
+        Files.writeString(repoRoot.resolve("spec/transaction-log.bear.yaml"), txWithSingleOp(), StandardCharsets.UTF_8);
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", repoRoot.toString() });
+        assertEquals(2, run.exitCode());
+        String stderr = normalizeLf(run.stderr());
+        assertTrue(stderr.contains("CODE=IR_VALIDATION"));
+        assertTrue(stderr.contains("PATH=spec/account.bear.yaml#block.effects.allow[0].targetOps[0]"));
+    }
+
+    @Test
+    void checkAllCycleUsesPinnedValidationPath(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = tempDir.resolve("repo");
+        Files.createDirectories(repoRoot.resolve("spec"));
+        Files.writeString(
+            repoRoot.resolve("bear.blocks.yaml"),
+            "" +
+                "version: v1\n" +
+                "blocks:\n" +
+                "  - name: account\n" +
+                "    ir: spec/account.bear.yaml\n" +
+                "    projectRoot: .\n" +
+                "  - name: transaction-log\n" +
+                "    ir: spec/transaction-log.bear.yaml\n" +
+                "    projectRoot: .\n",
+            StandardCharsets.UTF_8
+        );
+        Files.writeString(repoRoot.resolve("spec/account.bear.yaml"), accountCycle(), StandardCharsets.UTF_8);
+        Files.writeString(repoRoot.resolve("spec/transaction-log.bear.yaml"), txCycle(), StandardCharsets.UTF_8);
+
+        CliRunResult run = runCli(new String[] { "check", "--all", "--project", repoRoot.toString() });
+        assertEquals(2, run.exitCode());
+        String stderr = normalizeLf(run.stderr());
+        assertTrue(stderr.contains("CODE=IR_VALIDATION"));
+        assertTrue(stderr.contains("PATH=bear.blocks.yaml"));
+    }
     private static Fixture createSingleBlockFixture(Path repoRoot, boolean slowWrapper) throws Exception {
         Path specDir = repoRoot.resolve("spec");
         Files.createDirectories(specDir);
@@ -219,9 +296,137 @@ class AllModeContractTest {
         return out.toString();
     }
 
+
+    private static String accountWithUnknownTarget() {
+        return """
+            version: v1
+            block:
+              name: Account
+              kind: logic
+              operations:
+                - name: Deposit
+                  contract:
+                    inputs: [{name: accountId, type: string}]
+                    outputs: [{name: balance, type: int}]
+                  uses:
+                    allow:
+                      - port: transactionLog
+                        kind: block
+                        targetOps: [AppendTransaction]
+              effects:
+                allow:
+                  - port: transactionLog
+                    kind: block
+                    targetBlock: missing-block
+                    targetOps: [AppendTransaction]
+            """;
+    }
+
+    private static String accountWithUnknownTargetOp() {
+        return """
+            version: v1
+            block:
+              name: Account
+              kind: logic
+              operations:
+                - name: Deposit
+                  contract:
+                    inputs: [{name: accountId, type: string}]
+                    outputs: [{name: balance, type: int}]
+                  uses:
+                    allow:
+                      - port: transactionLog
+                        kind: block
+                        targetOps: [MissingOp]
+              effects:
+                allow:
+                  - port: transactionLog
+                    kind: block
+                    targetBlock: transaction-log
+                    targetOps: [MissingOp]
+            """;
+    }
+
+    private static String txWithSingleOp() {
+        return """
+            version: v1
+            block:
+              name: TransactionLog
+              kind: logic
+              operations:
+                - name: AppendTransaction
+                  contract:
+                    inputs: [{name: accountId, type: string}]
+                    outputs: [{name: seq, type: int}]
+                  uses:
+                    allow:
+                      - port: txStore
+                        kind: external
+                        ops: [append]
+              effects:
+                allow:
+                  - port: txStore
+                    kind: external
+                    ops: [append]
+            """;
+    }
+
+    private static String accountCycle() {
+        return """
+            version: v1
+            block:
+              name: Account
+              kind: logic
+              operations:
+                - name: Deposit
+                  contract:
+                    inputs: [{name: accountId, type: string}]
+                    outputs: [{name: balance, type: int}]
+                  uses:
+                    allow:
+                      - port: transactionLog
+                        kind: block
+                        targetOps: [AppendTransaction]
+              effects:
+                allow:
+                  - port: transactionLog
+                    kind: block
+                    targetBlock: transaction-log
+                    targetOps: [AppendTransaction]
+            """;
+    }
+
+    private static String txCycle() {
+        return """
+            version: v1
+            block:
+              name: TransactionLog
+              kind: logic
+              operations:
+                - name: AppendTransaction
+                  contract:
+                    inputs: [{name: accountId, type: string}]
+                    outputs: [{name: seq, type: int}]
+                  uses:
+                    allow:
+                      - port: accountBoundary
+                        kind: block
+                        targetOps: [Deposit]
+              effects:
+                allow:
+                  - port: accountBoundary
+                    kind: block
+                    targetBlock: account
+                    targetOps: [Deposit]
+            """;
+    }
     private record Fixture(Path repoRoot, Path serviceRoot) {
     }
 
     private record CliRunResult(int exitCode, String stdout, String stderr) {
     }
 }
+
+
+
+

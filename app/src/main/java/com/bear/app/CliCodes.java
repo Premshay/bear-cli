@@ -26,6 +26,7 @@ final class CliCodes {
     static final String DRIFT_MISSING_BASELINE = "DRIFT_MISSING_BASELINE";
     static final String DRIFT_DETECTED = "DRIFT_DETECTED";
     static final String TEST_FAILURE = "TEST_FAILURE";
+    static final String COMPILE_FAILURE = "COMPILE_FAILURE";
     static final String TEST_TIMEOUT = "TEST_TIMEOUT";
     static final String BOUNDARY_EXPANSION = "BOUNDARY_EXPANSION";
     static final String UNDECLARED_REACH = "UNDECLARED_REACH";
@@ -41,3 +42,4 @@ final class CliCodes {
     static final String INVARIANT_VIOLATION = "INVARIANT_VIOLATION";
     static final String UNBLOCK_LOCKED = "UNBLOCK_LOCKED";
 }
+

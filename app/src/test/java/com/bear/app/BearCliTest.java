@@ -1308,7 +1308,7 @@ class BearCliTest {
     }
 
     @Test
-    void checkAllRunsOneProjectTestInvocationPerContainmentEnabledRoot(@TempDir Path tempDir) throws Exception {
+    void checkAllRunsCompileAndTestInvocationPerContainmentEnabledRoot(@TempDir Path tempDir) throws Exception {
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1361,7 +1361,7 @@ class BearCliTest {
 
         CliRunResult run = runCli(new String[] { "check", "--all", "--project", tempDir.toString() });
         assertEquals(0, run.exitCode);
-        assertEquals("1", Files.readString(invocationCount, StandardCharsets.UTF_8).trim());
+        assertEquals("2", Files.readString(invocationCount, StandardCharsets.UTF_8).trim());
     }
 
     @Test
@@ -5133,6 +5133,7 @@ class BearCliTest {
     private record MultiBlockFixture(Path repoRoot, List<Path> projectRoots) {
     }
 }
+
 
 
 

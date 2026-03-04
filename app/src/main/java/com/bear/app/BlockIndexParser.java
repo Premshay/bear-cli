@@ -41,6 +41,7 @@ final class BlockIndexParser {
             throw new BlockIndexValidationException("INDEX_INVALID: blocks must be a non-empty list", "bear.blocks.yaml");
         }
 
+        String repoRootIdentity = RepoPathNormalizer.normalizePathForIdentity(repoRoot.toAbsolutePath().normalize());
         List<BlockIndexEntry> blocks = new ArrayList<>();
         Set<String> names = new HashSet<>();
         Set<String> tuples = new HashSet<>();
@@ -73,10 +74,12 @@ final class BlockIndexParser {
             );
             boolean enabled = readEnabled(blockMap.get("enabled"), blockPath + ".enabled");
 
-            ensureUnderRepoRoot(repoRoot, ir, blockPath + ".ir");
-            ensureUnderRepoRoot(repoRoot, projectRoot, blockPath + ".projectRoot");
+            ensureUnderRepoRoot(repoRoot, repoRootIdentity, ir, blockPath + ".ir");
+            ensureUnderRepoRoot(repoRoot, repoRootIdentity, projectRoot, blockPath + ".projectRoot");
             if (rejectDuplicateTuple) {
-                String tupleKey = ir + "|" + repoRoot.resolve(projectRoot).normalize().toString().replace('\\', '/');
+                String tupleKey = ir + "|" + RepoPathNormalizer.normalizePathForIdentity(
+                    repoRoot.resolve(projectRoot).toAbsolutePath().normalize()
+                );
                 if (!tuples.add(tupleKey)) {
                     throw new BlockIndexValidationException(
                         "INDEX_INVALID: duplicate (ir,projectRoot) tuple: " + ir + ", " + projectRoot,
@@ -112,7 +115,7 @@ final class BlockIndexParser {
         boolean allowCurrentDirectory
     ) throws BlockIndexValidationException {
         Path normalized = Path.of(rawValue).normalize();
-        String normalizedText = normalized.toString().replace('\\', '/');
+        String normalizedText = RepoPathNormalizer.normalizePathForIdentity(normalized);
         if (normalizedText.isBlank()) {
             if (allowCurrentDirectory) {
                 return ".";
@@ -125,9 +128,15 @@ final class BlockIndexParser {
         return normalizedText;
     }
 
-    private static void ensureUnderRepoRoot(Path repoRoot, String relativePath, String path) throws BlockIndexValidationException {
-        Path resolved = repoRoot.resolve(relativePath).normalize();
-        if (!resolved.startsWith(repoRoot)) {
+    private static void ensureUnderRepoRoot(
+        Path repoRoot,
+        String repoRootIdentity,
+        String relativePath,
+        String path
+    ) throws BlockIndexValidationException {
+        Path resolved = repoRoot.resolve(relativePath).toAbsolutePath().normalize();
+        String resolvedIdentity = RepoPathNormalizer.normalizePathForIdentity(resolved);
+        if (!RepoPathNormalizer.hasSegmentPrefix(resolvedIdentity, repoRootIdentity)) {
             throw new BlockIndexValidationException("INDEX_INVALID: path escapes repo root", path);
         }
     }

@@ -34,12 +34,20 @@ final class BlockPortGraphResolver {
 
     static BlockPortGraph resolveAndValidate(Path repoRoot, Path indexPath)
         throws IOException, BlockIndexValidationException, BearIrValidationException, BlockIdentityResolutionException {
+        return resolveAndValidate(repoRoot, indexPath, null);
+    }
+
+    static BlockPortGraph resolveAndValidate(Path repoRoot, Path indexPath, Set<String> participatingBlockKeys)
+        throws IOException, BlockIndexValidationException, BearIrValidationException, BlockIdentityResolutionException {
         BlockIndex index = new BlockIndexParser().parse(repoRoot, indexPath, true);
 
         TreeMap<String, BearIr> irByBlockKey = new TreeMap<>();
         TreeMap<String, Set<String>> opNamesByBlockKey = new TreeMap<>();
 
         for (BlockIndexEntry entry : index.blocks()) {
+            if (participatingBlockKeys != null && !participatingBlockKeys.isEmpty() && !participatingBlockKeys.contains(entry.name())) {
+                continue;
+            }
             Path irPath = repoRoot.resolve(entry.ir()).normalize();
             BearIr ir = IR_PIPELINE.parseValidateNormalize(irPath);
             BlockIdentityResolver.resolveIndexIdentity(entry.name(), BlockIdentityResolver.formatIndexLocator(entry), ir.block().name());
@@ -55,6 +63,9 @@ final class BlockPortGraphResolver {
         ArrayList<BlockPortEdge> edges = new ArrayList<>();
         TreeMap<String, TreeSet<String>> adjacency = new TreeMap<>();
         for (BlockIndexEntry entry : index.blocks()) {
+            if (participatingBlockKeys != null && !participatingBlockKeys.isEmpty() && !participatingBlockKeys.contains(entry.name())) {
+                continue;
+            }
             String sourceBlockKey = entry.name();
             BearIr ir = irByBlockKey.get(sourceBlockKey);
             for (int i = 0; i < ir.block().effects().allow().size(); i++) {
@@ -112,8 +123,15 @@ final class BlockPortGraphResolver {
     }
 
     static TreeSet<String> inboundTargetWrapperFqcns(BlockPortGraph graph) {
+        return inboundTargetWrapperFqcns(graph, null);
+    }
+
+    static TreeSet<String> inboundTargetWrapperFqcns(BlockPortGraph graph, Set<String> sourceBlockKeys) {
         TreeSet<String> wrappers = new TreeSet<>();
         for (BlockPortEdge edge : graph.edges()) {
+            if (sourceBlockKeys != null && !sourceBlockKeys.isEmpty() && !sourceBlockKeys.contains(edge.sourceBlockKey())) {
+                continue;
+            }
             for (String op : edge.targetOps()) {
                 wrappers.add(wrapperFqcn(edge.targetBlockKey(), op));
             }
@@ -244,3 +262,5 @@ record BlockPortEdge(
     List<String> targetOps
 ) {
 }
+
+

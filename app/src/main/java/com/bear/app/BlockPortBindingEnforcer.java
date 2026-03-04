@@ -47,6 +47,8 @@ final class BlockPortBindingEnforcer {
     private static final Pattern VARIABLE_DECL_PATTERN = Pattern.compile("\\b([A-Za-z_][A-Za-z0-9_\\.]*)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?:=|;)");
     private static final Pattern SHARED_OWNER_ANNOTATION_PATTERN = Pattern.compile("@BearSharedOwner\\s*\\(\\s*\"([^\"]+)\"\\s*\\)");
 
+    private static final Map<String, OwnershipUniverse> OWNERSHIP_CACHE = new HashMap<>();
+
     private BlockPortBindingEnforcer() {
     }
 
@@ -66,11 +68,12 @@ final class BlockPortBindingEnforcer {
 
         TypeIndex userIndex = TypeIndex.scan(projectRoot, projectRoot.resolve(USER_MAIN_ROOT));
         TypeIndex generatedIndex = TypeIndex.scan(projectRoot, projectRoot.resolve(GENERATED_MAIN_ROOT));
+        OwnershipUniverse ownershipUniverse = ownershipUniverseForInvocation(projectRoot, manifests);
 
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
         findings.addAll(enforcePortInterfaceImplementations(contexts, userIndex, generatedIndex));
         findings.addAll(enforceSharedOwnership(userIndex, manifests));
-        findings.addAll(enforceReferenceGuards(projectRoot, contexts, inboundTargetWrapperFqcns));
+        findings.addAll(enforceReferenceGuards(projectRoot, contexts, inboundTargetWrapperFqcns, userIndex, ownershipUniverse));
 
         findings.sort(
             Comparator.comparing(BoundaryBypassFinding::path)
@@ -78,6 +81,30 @@ final class BlockPortBindingEnforcer {
                 .thenComparing(BoundaryBypassFinding::detail)
         );
         return findings;
+    }
+
+    private static OwnershipUniverse ownershipUniverseForInvocation(Path projectRoot, List<WiringManifest> manifests) {
+        String projectRootIdentity = RepoPathNormalizer.normalizePathForIdentity(projectRoot.toAbsolutePath().normalize());
+        ArrayList<String> manifestFingerprintParts = new ArrayList<>();
+        for (WiringManifest manifest : manifests) {
+            ArrayList<String> roots = new ArrayList<>();
+            for (String root : manifest.governedSourceRoots()) {
+                roots.add(RepoPathNormalizer.normalizePathForIdentity(root));
+            }
+            roots.sort(String::compareTo);
+            manifestFingerprintParts.add(manifest.blockKey() + "=>" + String.join(",", roots));
+        }
+        manifestFingerprintParts.sort(String::compareTo);
+        String cacheKey = projectRootIdentity + "|" + String.join("|", manifestFingerprintParts);
+        synchronized (OWNERSHIP_CACHE) {
+            OwnershipUniverse cached = OWNERSHIP_CACHE.get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+            OwnershipUniverse created = OwnershipUniverse.fromManifests(manifests);
+            OWNERSHIP_CACHE.put(cacheKey, created);
+            return created;
+        }
     }
 
     private static List<BlockPortBindingContext> collectBindingContexts(List<WiringManifest> manifests) {
@@ -90,7 +117,6 @@ final class BlockPortBindingEnforcer {
                 }
                 contexts.add(new BlockPortBindingContext(
                     manifest.blockKey(),
-                    manifest.blockRootSourceDir(),
                     binding.port(),
                     binding.targetBlock(),
                     binding.targetOps(),
@@ -208,7 +234,9 @@ final class BlockPortBindingEnforcer {
     private static List<BoundaryBypassFinding> enforceReferenceGuards(
         Path projectRoot,
         List<BlockPortBindingContext> contexts,
-        Set<String> inboundTargetWrapperFqcns
+        Set<String> inboundTargetWrapperFqcns,
+        TypeIndex userIndex,
+        OwnershipUniverse ownershipUniverse
     ) throws IOException {
         if (!Files.isDirectory(projectRoot.resolve(USER_MAIN_ROOT))) {
             return List.of();
@@ -217,6 +245,16 @@ final class BlockPortBindingEnforcer {
         TreeSet<String> inboundSet = new TreeSet<>();
         if (inboundTargetWrapperFqcns != null) {
             inboundSet.addAll(inboundTargetWrapperFqcns);
+        }
+
+        TreeMap<String, List<BlockPortBindingContext>> contextsBySource = new TreeMap<>();
+        TreeSet<String> targetBlockKeys = new TreeSet<>();
+        TreeMap<String, TreeSet<String>> wrappersByTargetBlock = new TreeMap<>();
+        for (BlockPortBindingContext context : contexts) {
+            contextsBySource.computeIfAbsent(context.sourceBlock(), ignored -> new ArrayList<>()).add(context);
+            targetBlockKeys.add(context.targetBlock());
+            wrappersByTargetBlock.computeIfAbsent(context.targetBlock(), ignored -> new TreeSet<>())
+                .addAll(context.targetWrapperFqcns());
         }
 
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
@@ -234,9 +272,95 @@ final class BlockPortBindingEnforcer {
                 continue;
             }
 
-            for (BlockPortBindingContext context : contexts) {
+            if (relPath.startsWith(SHARED_ROOT)) {
+                findings.addAll(findSharedLaneNarrowGuardViolations(
+                    relPath,
+                    source,
+                    sanitized,
+                    userIndex,
+                    targetBlockKeys,
+                    wrappersByTargetBlock
+                ));
+                continue;
+            }
+
+            if (!ownershipUniverse.isEligible(relPath)) {
+                continue;
+            }
+            String ownerBlock = ownershipUniverse.resolveOwnerBlock(relPath);
+            if (ownerBlock == null || ownerBlock.isBlank()) {
+                continue;
+            }
+
+            List<BlockPortBindingContext> sourceContexts = contextsBySource.getOrDefault(ownerBlock, List.of());
+            for (BlockPortBindingContext context : sourceContexts) {
+                if (belongsToTargetPackage(packageName, context.targetBlock())) {
+                    continue;
+                }
                 findings.addAll(findForbiddenInternalReferences(relPath, source, sanitized, packageName, importsBySimple, variableTypes, context));
             }
+        }
+        return findings;
+    }
+
+    private static List<BoundaryBypassFinding> findSharedLaneNarrowGuardViolations(
+        String relPath,
+        String source,
+        String sanitized,
+        TypeIndex userIndex,
+        Set<String> targetBlockKeys,
+        Map<String, TreeSet<String>> wrappersByTargetBlock
+    ) {
+        if (!userIndex.isConcreteSharedGeneratedPortImplementor(relPath)) {
+            return List.of();
+        }
+
+        TreeSet<String> details = new TreeSet<>();
+        for (String targetBlockKey : targetBlockKeys) {
+            String targetBlocksPrefix = "blocks." + sanitizePackageSegment(targetBlockKey);
+
+            Matcher importMatcher = IMPORT_LINE_PATTERN.matcher(source);
+            while (importMatcher.find()) {
+                String imported = importMatcher.group(1);
+                if (imported.startsWith(targetBlocksPrefix + ".") || imported.equals(targetBlocksPrefix)) {
+                    details.add("BLOCK_PORT_REFERENCE_FORBIDDEN: _shared generated-port implementor imports target internals: " + imported);
+                }
+            }
+
+            Matcher fqcnMatcher = FQCN_TOKEN_PATTERN.matcher(sanitized);
+            while (fqcnMatcher.find()) {
+                String token = fqcnMatcher.group();
+                if (token.startsWith(targetBlocksPrefix + ".") || token.equals(targetBlocksPrefix)) {
+                    details.add("BLOCK_PORT_REFERENCE_FORBIDDEN: _shared generated-port implementor references target internals: " + token);
+                }
+            }
+
+            if (sanitized.contains(targetBlocksPrefix + ".")) {
+                details.add("BLOCK_PORT_REFERENCE_FORBIDDEN: _shared generated-port implementor references target internals token: "
+                    + targetBlocksPrefix + ".*");
+            }
+
+            for (String wrapperFqcn : wrappersByTargetBlock.getOrDefault(targetBlockKey, new TreeSet<>())) {
+                Matcher wrapperMatcher = FQCN_TOKEN_PATTERN.matcher(sanitized);
+                while (wrapperMatcher.find()) {
+                    String token = wrapperMatcher.group();
+                    if (wrapperFqcn.equals(token)) {
+                        details.add("BLOCK_PORT_REFERENCE_FORBIDDEN: _shared generated-port implementor references target wrapper FQCN: " + wrapperFqcn);
+                    }
+                }
+            }
+        }
+
+        if (details.isEmpty()) {
+            return List.of();
+        }
+        ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
+        for (String detail : details) {
+            findings.add(new BoundaryBypassFinding(
+                RULE_BLOCK_PORT_REFERENCE_FORBIDDEN,
+                relPath,
+                detail
+            ));
         }
         return findings;
     }
@@ -337,6 +461,14 @@ final class BlockPortBindingEnforcer {
         }
 
         return findings;
+    }
+
+    private static boolean belongsToTargetPackage(String packageName, String targetBlock) {
+        if (packageName == null || packageName.isBlank()) {
+            return false;
+        }
+        String targetBlocksPrefix = "blocks." + sanitizePackageSegment(targetBlock);
+        return packageName.equals(targetBlocksPrefix) || packageName.startsWith(targetBlocksPrefix + ".");
     }
 
     private static String resolveReceiverFqcn(
@@ -442,7 +574,6 @@ final class BlockPortBindingEnforcer {
 
     private record BlockPortBindingContext(
         String sourceBlock,
-        String blockRootSourceDir,
         String port,
         String targetBlock,
         List<String> targetOps,
@@ -450,6 +581,76 @@ final class BlockPortBindingEnforcer {
         String expectedClientImplFqcn,
         TreeSet<String> targetWrapperFqcns
     ) {
+    }
+    private record RootOwner(String blockKey, String rootIdentity, String rootPrefix) {
+    }
+
+    private record OwnershipUniverse(List<RootOwner> rootOwners) {
+        static OwnershipUniverse fromManifests(List<WiringManifest> manifests) {
+            ArrayList<RootOwner> owners = new ArrayList<>();
+            for (WiringManifest manifest : manifests) {
+                for (String root : manifest.governedSourceRoots()) {
+                    String rootIdentity = RepoPathNormalizer.normalizePathForIdentity(root);
+                    if (rootIdentity.isBlank()) {
+                        continue;
+                    }
+                    owners.add(new RootOwner(
+                        manifest.blockKey(),
+                        rootIdentity,
+                        RepoPathNormalizer.normalizePathForPrefix(rootIdentity)
+                    ));
+                }
+            }
+            owners.sort(
+                Comparator.comparing(RootOwner::blockKey)
+                    .thenComparing(RootOwner::rootIdentity)
+            );
+            return new OwnershipUniverse(List.copyOf(owners));
+        }
+
+        boolean isEligible(String relPath) {
+            String normalizedPath = RepoPathNormalizer.normalizePathForIdentity(relPath);
+            for (RootOwner owner : rootOwners) {
+                if (RepoPathNormalizer.hasSegmentPrefix(normalizedPath, owner.rootPrefix())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        String resolveOwnerBlock(String relPath) {
+            String normalizedPath = RepoPathNormalizer.normalizePathForIdentity(relPath);
+            RootOwner best = null;
+            for (RootOwner owner : rootOwners) {
+                if (!RepoPathNormalizer.hasSegmentPrefix(normalizedPath, owner.rootPrefix())) {
+                    continue;
+                }
+                if (best == null) {
+                    best = owner;
+                    continue;
+                }
+                int lengthCompare = Integer.compare(owner.rootIdentity().length(), best.rootIdentity().length());
+                if (lengthCompare > 0) {
+                    best = owner;
+                    continue;
+                }
+                if (lengthCompare < 0) {
+                    continue;
+                }
+                int blockCompare = owner.blockKey().compareTo(best.blockKey());
+                if (blockCompare < 0) {
+                    best = owner;
+                    continue;
+                }
+                if (blockCompare > 0) {
+                    continue;
+                }
+                if (owner.rootIdentity().compareTo(best.rootIdentity()) < 0) {
+                    best = owner;
+                }
+            }
+            return best == null ? null : best.blockKey();
+        }
     }
 
     private enum TypeKind {
@@ -478,15 +679,18 @@ final class BlockPortBindingEnforcer {
 
     private static final class TypeIndex {
         private final Map<String, TypeDecl> types;
+        private final Map<String, List<TypeDecl>> typesByPath;
 
-        private TypeIndex(Map<String, TypeDecl> types) {
+        private TypeIndex(Map<String, TypeDecl> types, Map<String, List<TypeDecl>> typesByPath) {
             this.types = types;
+            this.typesByPath = typesByPath;
         }
 
         static TypeIndex scan(Path projectRoot, Path sourceRoot) throws IOException {
             TreeMap<String, TypeDecl> types = new TreeMap<>();
+            TreeMap<String, ArrayList<TypeDecl>> byPath = new TreeMap<>();
             if (!Files.isDirectory(sourceRoot)) {
-                return new TypeIndex(types);
+                return new TypeIndex(types, Map.of());
             }
             ArrayList<Path> javaFiles = collectJavaFiles(sourceRoot);
             for (Path file : javaFiles) {
@@ -528,7 +732,7 @@ final class BlockPortBindingEnforcer {
                         }
                     }
                     interfaces.sort(String::compareTo);
-                    types.put(fqcn, new TypeDecl(
+                    TypeDecl decl = new TypeDecl(
                         fqcn,
                         kind,
                         abstractType,
@@ -536,14 +740,37 @@ final class BlockPortBindingEnforcer {
                         List.copyOf(interfaces),
                         relPath,
                         sourceRaw
-                    ));
+                    );
+                    types.put(fqcn, decl);
+                    byPath.computeIfAbsent(relPath, ignored -> new ArrayList<>()).add(decl);
                 }
             }
-            return new TypeIndex(types);
+            TreeMap<String, List<TypeDecl>> frozenByPath = new TreeMap<>();
+            for (Map.Entry<String, ArrayList<TypeDecl>> entry : byPath.entrySet()) {
+                entry.getValue().sort(Comparator.comparing(TypeDecl::fqcn));
+                frozenByPath.put(entry.getKey(), List.copyOf(entry.getValue()));
+            }
+            return new TypeIndex(types, Map.copyOf(frozenByPath));
         }
 
         Map<String, TypeDecl> types() {
             return types;
+        }
+
+        boolean isConcreteSharedGeneratedPortImplementor(String relPath) {
+            List<TypeDecl> candidates = typesByPath.getOrDefault(relPath, List.of());
+            for (TypeDecl decl : candidates) {
+                if (!decl.isConcrete()) {
+                    continue;
+                }
+                if (!decl.path().startsWith(SHARED_ROOT)) {
+                    continue;
+                }
+                if (!reachableGeneratedPortInterfaces(decl).isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         List<TypeDecl> findConcreteImplementors(String interfaceFqcn) {
@@ -706,3 +933,15 @@ final class BlockPortBindingEnforcer {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+

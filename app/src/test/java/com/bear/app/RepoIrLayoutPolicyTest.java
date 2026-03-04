@@ -56,6 +56,25 @@ class RepoIrLayoutPolicyTest {
         assertTrue(count > 0, "bear.blocks.yaml must contain at least one ir: path");
     }
 
+
+    @Test
+    void ciIndexIsValidV1WhenPresent() throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path ciIndex = repoRoot.resolve(".ci/bear.blocks.yaml");
+        if (!Files.isRegularFile(ciIndex)) {
+            return;
+        }
+
+        BlockIndex index = new BlockIndexParser().parse(repoRoot, ciIndex, true);
+        assertEquals("v1", index.version());
+        assertTrue(!index.blocks().isEmpty(), ".ci/bear.blocks.yaml must contain at least one block entry");
+
+        for (BlockIndexEntry entry : index.blocks()) {
+            Path irPath = repoRoot.resolve(entry.ir()).normalize();
+            assertTrue(irPath.startsWith(repoRoot), "index ir path must stay under repo root: " + entry.ir());
+            assertTrue(Files.isRegularFile(irPath), "index ir path must exist: " + entry.ir());
+        }
+    }
     private static List<String> gitTrackedBearYaml(Path repoRoot) throws Exception {
         ProcessBuilder pb = new ProcessBuilder("git", "-C", repoRoot.toString(), "ls-files", "--", "*.bear.yaml");
         pb.redirectErrorStream(true);
@@ -77,4 +96,5 @@ class RepoIrLayoutPolicyTest {
         return results;
     }
 }
+
 

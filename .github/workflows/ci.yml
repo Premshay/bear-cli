@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GRADLE_USER_HOME: /home/runner/.gradle
+      BEAR_BLOCKS_PATH: .ci/bear.blocks.yaml
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,6 +48,7 @@ jobs:
       - build-and-test
     env:
       GRADLE_USER_HOME: /home/runner/.gradle
+      BEAR_BLOCKS_PATH: .ci/bear.blocks.yaml
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,10 +83,11 @@ jobs:
           echo "BASE_REF=$BASE_REF" >> "$GITHUB_ENV"
 
       - name: BEAR compile --all
-        run: ./gradlew --no-daemon :app:run --args="compile --all --project . --blocks .ci/bear.blocks.yaml"
+        run: ./gradlew --no-daemon :app:run --args="compile --all --project . --blocks $BEAR_BLOCKS_PATH"
 
       - name: BEAR check --all
-        run: ./gradlew --no-daemon :app:run --args="check --all --project . --blocks .ci/bear.blocks.yaml"
+        run: ./gradlew --no-daemon :app:run --args="check --all --project . --blocks $BEAR_BLOCKS_PATH"
 
       - name: BEAR pr-check --all
-        run: ./gradlew --no-daemon :app:run --args="pr-check --all --project . --base $BASE_REF --blocks .ci/bear.blocks.yaml"
+        run: ./gradlew --no-daemon :app:run --args="pr-check --all --project . --base $BASE_REF --blocks $BEAR_BLOCKS_PATH"
+

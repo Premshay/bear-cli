@@ -123,12 +123,15 @@ final class BlockIdentityResolver {
         String irBlockName
     ) throws BlockIdentityResolutionException {
         List<BlockIndexEntry> matches = new ArrayList<>();
+        String expectedProjectRoot = RepoPathNormalizer.normalizePathForIdentity(projectRootAbsolute.toAbsolutePath().normalize());
         for (BlockIndexEntry entry : index.blocks()) {
             if (!entry.ir().equals(irRelative)) {
                 continue;
             }
-            Path entryProjectRoot = repoRoot.resolve(entry.projectRoot()).normalize();
-            if (!entryProjectRoot.equals(projectRootAbsolute)) {
+            String entryProjectRoot = RepoPathNormalizer.normalizePathForIdentity(
+                repoRoot.resolve(entry.projectRoot()).toAbsolutePath().normalize()
+            );
+            if (!entryProjectRoot.equals(expectedProjectRoot)) {
                 continue;
             }
             matches.add(entry);
@@ -176,16 +179,23 @@ final class BlockIdentityResolver {
     }
 
     private static String toRepoRelativeOrNull(Path repoRoot, Path path) {
-        if (!path.startsWith(repoRoot)) {
+        String repoRootIdentity = RepoPathNormalizer.normalizePathForIdentity(repoRoot.toAbsolutePath().normalize());
+        String pathIdentity = RepoPathNormalizer.normalizePathForIdentity(path.toAbsolutePath().normalize());
+        if (!RepoPathNormalizer.hasSegmentPrefix(pathIdentity, repoRootIdentity)) {
             return null;
         }
-        Path relative = repoRoot.relativize(path).normalize();
-        String value = relative.toString().replace('\\', '/');
+        Path relative;
+        try {
+            relative = repoRoot.toAbsolutePath().normalize().relativize(path.toAbsolutePath().normalize());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+        String value = RepoPathNormalizer.normalizePathForIdentity(relative);
         return value.isBlank() ? null : value;
     }
 
     private static String normalizePathForDisplay(Path path) {
-        return path.toString().replace('\\', '/');
+        return RepoPathNormalizer.normalizePathForIdentity(path);
     }
 }
 

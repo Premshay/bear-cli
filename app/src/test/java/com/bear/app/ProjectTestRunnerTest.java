@@ -41,6 +41,137 @@ class ProjectTestRunnerTest {
     }
 
     @Test
+    void compileFailureMarkersUseDeterministicPriority() {
+        String output = String.join("\n",
+            "line",
+            "Execution failed for task ':compileJava'.",
+            "> Compilation failed; see the compiler error output for details.",
+            "tail"
+        );
+        assertEquals("Execution failed for task ':compileJava'.", ProjectTestRunner.firstCompileFailureLine(output));
+    }
+
+    @Test
+    void genericErrorLineIsNotCompileFailureMarker() {
+        String output = "SomeTest > fails error: assertion mismatch";
+        assertNull(ProjectTestRunner.firstCompileFailureLine(output));
+    }
+
+    @Test
+    void preflightCompileFailureShortCircuitsTestPhase(@TempDir Path tempDir) throws Exception {
+        Path projectRoot = tempDir.resolve("project");
+        Files.createDirectories(projectRoot);
+        Path marker = projectRoot.resolve("test-phase-ran.marker");
+        String markerPath = marker.toString();
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\n"
+                + "echo %* | findstr /C:\"classes\" >nul\r\n"
+                + "if not errorlevel 1 (\r\n"
+                + "  echo :compileJava FAILED\r\n"
+                + "  exit /b 1\r\n"
+                + ")\r\n"
+                + "echo %* | findstr /C:\"test\" >nul\r\n"
+                + "if not errorlevel 1 (\r\n"
+                + "  echo ran>\"" + markerPath + "\"\r\n"
+                + "  exit /b 0\r\n"
+                + ")\r\n"
+                + "exit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "if echo \"$*\" | grep -q \"classes\"; then\n"
+                + "  echo \":compileJava FAILED\"\n"
+                + "  exit 1\n"
+                + "fi\n"
+                + "if echo \"$*\" | grep -q \"test\"; then\n"
+                + "  echo ran > \"" + markerPath.replace("\\", "\\\\") + "\"\n"
+                + "  exit 0\n"
+                + "fi\n"
+                + "exit 0\n"
+        );
+
+        ProjectTestResult result = ProjectTestRunner.runProjectTests(projectRoot);
+        assertEquals(ProjectTestStatus.COMPILE_FAILURE, result.status());
+        assertEquals("compile_preflight", result.phase());
+        assertFalse(Files.exists(marker));
+    }
+
+    @Test
+    void preflightTimeoutReclassifiesToCompileFailureWhenMarkersExist(@TempDir Path tempDir) throws Exception {
+        Path projectRoot = tempDir.resolve("project");
+        Files.createDirectories(projectRoot);
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\n"
+                + "echo %* | findstr /C:\"classes\" >nul\r\n"
+                + "if not errorlevel 1 (\r\n"
+                + "  echo :compileJava FAILED\r\n"
+                + "  powershell -NoProfile -Command \"Start-Sleep -Seconds 3\"\r\n"
+                + "  exit /b 0\r\n"
+                + ")\r\n"
+                + "exit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "if echo \"$*\" | grep -q \"classes\"; then\n"
+                + "  echo \":compileJava FAILED\"\n"
+                + "  sleep 3\n"
+                + "  exit 0\n"
+                + "fi\n"
+                + "exit 0\n"
+        );
+
+        String key = "bear.check.testTimeoutSeconds";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "1");
+            ProjectTestResult result = ProjectTestRunner.runProjectTests(projectRoot);
+            assertEquals(ProjectTestStatus.COMPILE_FAILURE, result.status());
+            assertEquals("compile_preflight", result.phase());
+        } finally {
+            if (previous == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, previous);
+            }
+        }
+    }
+
+    @Test
+    void preflightTimeoutWithoutCompileMarkersStaysTimeout(@TempDir Path tempDir) throws Exception {
+        Path projectRoot = tempDir.resolve("project");
+        Files.createDirectories(projectRoot);
+        writeProjectWrapper(
+            projectRoot,
+            "@echo off\r\n"
+                + "echo %* | findstr /C:\"classes\" >nul\r\n"
+                + "if not errorlevel 1 (\r\n"
+                + "  powershell -NoProfile -Command \"Start-Sleep -Seconds 3\"\r\n"
+                + "  exit /b 0\r\n"
+                + ")\r\n"
+                + "exit /b 0\r\n",
+            "#!/usr/bin/env sh\n"
+                + "if echo \"$*\" | grep -q \"classes\"; then\n"
+                + "  sleep 3\n"
+                + "  exit 0\n"
+                + "fi\n"
+                + "exit 0\n"
+        );
+
+        String key = "bear.check.testTimeoutSeconds";
+        String previous = System.getProperty(key);
+        try {
+            System.setProperty(key, "1");
+            ProjectTestResult result = ProjectTestRunner.runProjectTests(projectRoot);
+            assertEquals(ProjectTestStatus.TIMEOUT, result.status());
+            assertEquals("compile_preflight", result.phase());
+            assertEquals("unknown", result.lastObservedTask());
+        } finally {
+            if (previous == null) {
+                System.clearProperty(key);
+            } else {
+                System.setProperty(key, previous);
+            }
+        }
+    }
+    @Test
     void invariantMarkerParsingIsStrictAndDeterministic() {
         String valid = "BEAR_INVARIANT_VIOLATION|block=withdraw|kind=non_negative|field=balance|observed=\\<null\\>|rule=non_negative";
         assertTrue(ProjectTestRunner.isInvariantViolationOutput("line\n" + valid + "\nline2"));
@@ -371,3 +502,6 @@ class ProjectTestRunnerTest {
         Files.writeString(file, "x");
     }
 }
+
+
+

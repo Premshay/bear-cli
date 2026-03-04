@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -66,6 +67,51 @@ final class CheckAllCommandService {
                 "Use only block names declared in `bear.blocks.yaml`."
             );
         }
+
+        TreeSet<String> participatingBlockKeys = new TreeSet<>();
+        for (BlockIndexEntry block : selected) {
+            if (block.enabled()) {
+                participatingBlockKeys.add(block.name());
+            }
+        }
+
+        BlockPortGraph blockPortGraph;
+        try {
+            blockPortGraph = BlockPortGraphResolver.resolveAndValidate(
+                options.repoRoot(),
+                options.blocksPath(),
+                participatingBlockKeys
+            );
+        } catch (BlockIndexValidationException e) {
+            return BearCli.failWithLegacy(
+                err,
+                CliCodes.EXIT_VALIDATION,
+                "index: VALIDATION_ERROR: " + e.getMessage(),
+                CliCodes.IR_VALIDATION,
+                e.path(),
+                "Fix `bear.blocks.yaml` and rerun `bear check --all`."
+            );
+        } catch (BlockIdentityResolutionException | com.bear.kernel.ir.BearIrValidationException e) {
+            String line = "index: VALIDATION_ERROR: " + CliText.squash(e.getMessage());
+            return BearCli.failWithLegacy(
+                err,
+                CliCodes.EXIT_VALIDATION,
+                line,
+                CliCodes.IR_VALIDATION,
+                "bear.blocks.yaml",
+                "Fix the referenced IR/index error and rerun `bear check --all`."
+            );
+        } catch (IOException e) {
+            return BearCli.failWithLegacy(
+                err,
+                CliCodes.EXIT_IO,
+                "io: IO_ERROR: " + CliText.squash(e.getMessage()),
+                CliCodes.IO_ERROR,
+                "bear.blocks.yaml",
+                "Ensure indexed IR paths are readable and rerun `bear check --all`."
+            );
+        }
+
         out.println("check-all: START project=.");
 
         try {
@@ -278,15 +324,34 @@ final class CheckAllCommandService {
                 }
 
                 List<WiringManifest> wiringManifests = new ArrayList<>();
+                TreeSet<String> rootBlockKeys = new TreeSet<>();
                 for (int idx : entry.getValue()) {
                     String blockKey = blockResults.get(idx).name();
+                    rootBlockKeys.add(blockKey);
                     Path wiringPath = root.resolve("build/generated/bear/wiring/" + blockKey + ".wiring.json");
                     wiringManifests.add(ManifestParsers.parseWiringManifest(wiringPath));
                 }
-                List<BoundaryBypassFinding> bypassFindings = BoundaryBypassScanner.scanBoundaryBypass(
+
+                TreeSet<String> inboundTargetWrapperFqcns = BlockPortGraphResolver.inboundTargetWrapperFqcns(
+                    blockPortGraph,
+                    rootBlockKeys
+                );
+
+                List<BoundaryBypassFinding> bypassFindings = new ArrayList<>();
+                bypassFindings.addAll(BoundaryBypassScanner.scanBoundaryBypass(
                     root,
                     wiringManifests,
                     reflectionAllowlist
+                ));
+                bypassFindings.addAll(BlockPortBindingEnforcer.scan(
+                    root,
+                    wiringManifests,
+                    inboundTargetWrapperFqcns
+                ));
+                bypassFindings.sort(
+                    java.util.Comparator.comparing(BoundaryBypassFinding::path)
+                        .thenComparing(BoundaryBypassFinding::rule)
+                        .thenComparing(BoundaryBypassFinding::detail)
                 );
                 if (!bypassFindings.isEmpty()) {
                     BoundaryBypassFinding first = bypassFindings.get(0);
@@ -448,6 +513,25 @@ final class CheckAllCommandService {
                             "Fix invariant violation and rerun `bear check --all`."
                         ));
                     }
+                } else if (testResult.status() == ProjectTestStatus.COMPILE_FAILURE) {
+                    rootTestFailed++;
+                    String markerLine = ProjectTestRunner.firstCompileFailureLine(testResult.output());
+                    String detail = "root-level compile preflight failed for projectRoot " + entry.getKey();
+                    if (markerLine != null && !markerLine.isBlank()) {
+                        detail += "; line=" + markerLine;
+                    }
+                    detail += phaseTaskSuffix(testResult);
+                    for (int idx : entry.getValue()) {
+                        blockResults.set(idx, BearCli.rootFailure(
+                            blockResults.get(idx),
+                            CliCodes.EXIT_TEST_FAILURE,
+                            "TEST_FAILURE",
+                            CliCodes.COMPILE_FAILURE,
+                            "project.tests",
+                            detail,
+                            "Fix compile errors and rerun `bear check --all`."
+                        ));
+                    }
                 } else if (testResult.status() == ProjectTestStatus.FAILED) {
                     rootTestFailed++;
                     String detail = ProjectTestRunner.projectTestDetail(
@@ -472,7 +556,7 @@ final class CheckAllCommandService {
                         "root-level project tests timed out for projectRoot " + entry.getKey(),
                         ProjectTestRunner.firstRelevantProjectTestFailureLine(testResult.output()),
                         CliText.shortTailSummary(testResult.output(), 3)
-                    );
+                    ) + phaseTaskSuffix(testResult);
                     for (int idx : entry.getValue()) {
                         blockResults.set(idx, BearCli.rootFailure(
                             blockResults.get(idx),
@@ -610,6 +694,10 @@ final class CheckAllCommandService {
             : testResult.cacheMode().trim();
         String fallback = testResult.fallbackToUserCache() ? "to_user_cache" : "none";
         return "; attempts=" + attempts + "; CACHE_MODE=" + cacheMode + "; FALLBACK=" + fallback;
+    }
+
+    private static String phaseTaskSuffix(ProjectTestResult testResult) {
+        return CheckDiagnosticsFormatter.phaseTaskSuffix(testResult);
     }
 
     private static String markerWriteFailureSuffix(IOException error) {
@@ -756,3 +844,9 @@ final class CheckAllCommandService {
         );
     }
 }
+
+
+
+
+
+

@@ -20,4 +20,15 @@ final class CheckDiagnosticsFormatter {
     static String markerWriteFailureSuffix(IOException error) {
         return "; markerWrite=failed:" + CliText.squash(error.getMessage());
     }
+
+    static String phaseTaskSuffix(ProjectTestResult testResult) {
+        String phase = testResult.phase() == null || testResult.phase().isBlank()
+            ? "unknown"
+            : testResult.phase().trim();
+        String lastTask = testResult.lastObservedTask() == null || testResult.lastObservedTask().isBlank()
+            ? "unknown"
+            : testResult.lastObservedTask().trim();
+        return "; phase=" + phase + "; lastTask=" + lastTask;
+    }
 }
+

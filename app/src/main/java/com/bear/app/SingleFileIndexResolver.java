@@ -30,6 +30,6 @@ final class SingleFileIndexResolver {
                 "Pass a valid `--index` path and rerun `bear " + commandName + "`."
             );
         }
-        return indexAbsolute;
+        return Path.of(RepoPathNormalizer.normalizePathForIdentity(indexAbsolute)).toAbsolutePath().normalize();
     }
 }

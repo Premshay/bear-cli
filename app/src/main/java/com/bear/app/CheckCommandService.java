@@ -483,7 +483,10 @@ final class CheckCommandService {
 
             TreeSet<String> inboundTargetWrapperFqcns = blockPortGraph == null
                 ? new TreeSet<>()
-                : BlockPortGraphResolver.inboundTargetWrapperFqcns(blockPortGraph);
+                : BlockPortGraphResolver.inboundTargetWrapperFqcns(
+                    blockPortGraph,
+                    Set.of(baselineWiringManifest.blockKey())
+                );
 
             List<BoundaryBypassFinding> bypassFindings = new ArrayList<>();
             bypassFindings.addAll(BoundaryBypassScanner.scanBoundaryBypass(
@@ -607,6 +610,25 @@ final class CheckCommandService {
                     violationLine
                 );
             }
+            if (testResult.status() == ProjectTestStatus.COMPILE_FAILURE) {
+                String markerLine = ProjectTestRunner.firstCompileFailureLine(testResult.output());
+                String compileLine = "check: COMPILE_FAILURE: project compile preflight failed";
+                if (markerLine != null && !markerLine.isBlank()) {
+                    compileLine += "; line: " + markerLine;
+                }
+                compileLine += phaseTaskSuffix(testResult);
+                diagnostics.add(compileLine);
+                diagnostics.addAll(CliText.tailLines(testResult.output()));
+                return checkFailure(
+                    CliCodes.EXIT_TEST_FAILURE,
+                    diagnostics,
+                    "TEST_FAILURE",
+                    CliCodes.COMPILE_FAILURE,
+                    "project.tests",
+                    "Fix compile errors and rerun `bear check <ir-file> --project <path>`.",
+                    compileLine
+                );
+            }
             if (testResult.status() == ProjectTestStatus.FAILED) {
                 diagnostics.add("check: TEST_FAILED: project tests failed");
                 diagnostics.addAll(CliText.tailLines(testResult.output()));
@@ -638,7 +660,7 @@ final class CheckCommandService {
                 );
             }
             if (testResult.status() == ProjectTestStatus.TIMEOUT) {
-                String timeoutLine = "check: TEST_TIMEOUT: project tests exceeded " + ProjectTestRunner.testTimeoutSeconds() + "s";
+                String timeoutLine = "check: TEST_TIMEOUT: project tests exceeded " + ProjectTestRunner.testTimeoutSeconds() + "s" + phaseTaskSuffix(testResult);
                 diagnostics.add(timeoutLine);
                 diagnostics.addAll(CliText.tailLines(testResult.output()));
                 return checkFailure(
@@ -823,6 +845,10 @@ final class CheckCommandService {
         return CheckDiagnosticsFormatter.testDiagnosticsSuffix(testResult);
     }
 
+    private static String phaseTaskSuffix(ProjectTestResult testResult) {
+        return CheckDiagnosticsFormatter.phaseTaskSuffix(testResult);
+    }
+
     private static String markerWriteFailureSuffix(IOException error) {
         return CheckDiagnosticsFormatter.markerWriteFailureSuffix(error);
     }
@@ -1005,6 +1031,10 @@ final class CheckCommandService {
     }
 
 }
+
+
+
+
 
 
 

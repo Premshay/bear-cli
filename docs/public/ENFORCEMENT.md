@@ -1,12 +1,41 @@
-# Enforcement and Alerts
+﻿# Enforcement and Alerts
 
 For rationale see [FOUNDATIONS.md](FOUNDATIONS.md). For exact command contracts see [CONTRACTS.md](CONTRACTS.md).
+
+If you are new to BEAR vocabulary (effects/ports/ops, governed roots), start with [TERMS.md](TERMS.md).
 
 Promise boundary:
 
 - BEAR is a compiler and CI gate for architecture and declared semantics.
 - It enforces only declared behaviors that the active target can support through generated wrappers/ports.
 - Undeclared or non-supportable behaviors are intentionally outside BEAR guarantees.
+
+## How Enforcement Works (Mental Model)
+
+BEAR enforcement and governance connect three things: the declared boundary (IR), the generated governed surface, and deterministic gates.
+
+1. Declared boundaries (IR is the source of truth)
+- IR declares operations (entrypoints) and the capability boundary (`effects.allow`).
+- Capabilities are expressed as ports:
+  - `kind=external`: external dependency ops (`ops`)
+  - `kind=block`: cross-block calls (`targetBlock` + `targetOps`) at the block boundary
+- `uses.allow` lets each operation select a subset of the block boundary.
+  - for `kind=block`, `uses.allow` never repeats `targetBlock`; it may optionally restrict `targetOps` to a subset.
+
+2. Generated surface and ownership (what is allowed to exist and where)
+- `bear compile` generates wrappers/ports and wiring metadata.
+- Wiring metadata includes:
+  - governed source roots (`governedSourceRoots`) for ownership/containment checks
+  - block-port bindings for cross-block routing and bypass enforcement
+
+3. Deterministic gates and deltas (what changes mean)
+- `bear check` enforces the repo state against the declared boundary and generated layout (drift, covered reach and bypass rules, optional containment) and runs project tests deterministically.
+- `bear pr-check` classifies boundary expansion by comparing normalized deltas against a base ref (exit `5`).
+  - shared policy deltas (`spec/_shared.policy.yaml`) are included in this governance classification.
+
+Practical contract:
+- a green `check` means the repo is consistent with the current declared boundary (and the test gate passed)
+- `pr-check` makes boundary changes explicit, so expansion can be intentionally accepted (or reverted)
 
 ## Preview invariant status model
 
@@ -76,8 +105,8 @@ See [output-format.md](output-format.md) and [exit-codes.md](exit-codes.md).
 ## Related
 
 - [INDEX.md](INDEX.md)
+- [TERMS.md](TERMS.md)
 - [CONTRACTS.md](CONTRACTS.md)
 - [commands-check.md](commands-check.md)
 - [commands-pr-check.md](commands-pr-check.md)
 - [troubleshooting.md](troubleshooting.md)
-

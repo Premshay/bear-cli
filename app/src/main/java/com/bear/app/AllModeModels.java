@@ -441,6 +441,7 @@ final class ManifestParseException extends Exception {
 enum ProjectTestStatus {
     PASSED,
     FAILED,
+    COMPILE_FAILURE,
     SHARED_DEPS_VIOLATION,
     INVARIANT_VIOLATION,
     TIMEOUT,
@@ -456,7 +457,10 @@ record ProjectTestResult(
     String firstBootstrapLine,
     String firstSharedDepsViolationLine,
     String cacheMode,
-    boolean fallbackToUserCache
+    boolean fallbackToUserCache,
+    String phase,
+    String lastObservedTask
 ) {
 }
+
 
