@@ -127,6 +127,26 @@ Escalation threshold:
 1. Escalate only if the same containment/classpath failure signature remains after the single deterministic repair.
 2. Include pre/post `bear check` outputs and pre/post containment snapshots in escalation.
 
+
+## Deterministic `nextAction` Mapping (v1)
+
+When running `bear check` / `bear pr-check` with `--agent`, `nextAction` resolves by strict order:
+
+1. exact key `(category, failureCode, ruleId|reasonKey)`
+2. failure default `(category, failureCode, *)`
+3. category fallback (`INFRA` or `GOVERNANCE`)
+
+Known exact infra keys:
+1. `INFRA|IO_ERROR|PROJECT_TEST_LOCK`
+2. `INFRA|IO_ERROR|PROJECT_TEST_BOOTSTRAP`
+3. `INFRA|IO_GIT|MERGE_BASE_FAILED`
+4. `INFRA|IO_GIT|NOT_A_GIT_REPO`
+5. `INFRA|IO_ERROR|READ_HEAD_FAILED`
+
+Routing intent:
+1. use BEAR-supported bounded commands only (`bear unblock`, `bear compile`, rerun command)
+2. no destructive cleanup advice
+3. if key is unknown, use safe fallback template and escalate with CODE/PATH/REMEDIATION evidence
 ## Forbidden Actions
 
 1. Do not edit `build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, or `bin/bear*` unless explicitly instructed.

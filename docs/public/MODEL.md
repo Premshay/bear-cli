@@ -22,12 +22,13 @@ See also: [TERMS.md](TERMS.md) (effects/ports/ops).
 
 1. Agent updates block boundaries and contract in IR from project specs.
 2. Agent runs `compile` (or `fix`) to materialize deterministic generated artifacts.
-3. Agent runs `check` to enforce sync and policy.
-4. Agent runs `pr-check` to classify boundary changes against base.
+3. Agent runs `check --collect=all --agent` to enforce sync/policy and receive one deterministic `nextAction`.
+4. Agent executes only BEAR commands listed in `nextAction.commands`, then reruns until `status=ok`.
+5. Agent runs `pr-check --base <ref> --collect=all --agent` to classify boundary changes against base.
 
-Core flow: `IR -> compile -> check`
+Core flow: `IR -> compile -> check --agent`
 
-Governance flow: `pr-check --base <ref>`
+Governance flow: `pr-check --base <ref> --agent`
 
 ## Who edits IR?
 

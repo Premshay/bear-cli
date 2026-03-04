@@ -724,7 +724,9 @@ final class CheckAllCommandService {
                 "check",
                 "all",
                 options.collectAll() ? "all" : "first",
-                summary.exitCode(),                problems
+                summary.exitCode(),
+                problems,
+                true
             );
             out.println(AgentDiagnostics.toJson(payload));
             return summary.exitCode();

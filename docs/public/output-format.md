@@ -105,6 +105,66 @@ Wiring drift diagnostics:
 `check --all` block section note:
 - for `PASS` blocks, `DETAIL:` is emitted only when non-blank contextual detail is present.
 
+
+## Agent JSON mode (`--agent`)
+
+Machine contract:
+
+- stdout is JSON-only (`schemaVersion=bear.nextAction.v1`).
+- BEAR emits no normal prose lines to stderr on normal command completion paths.
+- underlying tools may still emit raw stderr.
+
+Top-level JSON fields (v1):
+
+- `schemaVersion`, `command`, `mode`, `collectMode`, `status`, `exitCode`
+- `truncated`, `maxViolations`, `suppressedViolations`
+- `problems[]`, `clusters[]`, `nextAction|null`, `extensions` (empty object in v1)
+
+Problem fields:
+
+- `id`, `category`, `failureCode`, `ruleId|null`, `reasonKey|null`, `severity`
+- `blockId|null`, `file|null`, `span|null`
+- `messageKey`, `message`, `evidence` (object)
+
+Cluster fields:
+
+- `clusterId`, `category`, `failureCode`, `ruleId|null`, `reasonKey|null`, `blockId|null`
+- `count`, `files[]`, `filesTruncated`, `summary`
+
+`nextAction` fields:
+
+- `kind`, `primaryClusterId`, `title`, `steps[]`, `commands[]`, `links[]`
+
+### Deterministic ordering and truncation
+
+Ordering guarantees for arrays:
+
+1. `problems[]`: existing exit-rank logic for the command, then `severity`, `category`, `failureCode`, `ruleId|reasonKey`, `blockId`, `file`, `span`.
+2. `clusters[]`: canonical cluster order derived from ordered problems.
+3. `cluster.files[]`: lexicographic, capped to first 50 (`filesTruncated=true` when capped).
+
+Truncation (`MAX_VIOLATIONS=200`):
+
+1. Primary cluster is selected before truncation.
+2. Primary cluster representative always survives.
+3. Selection is breadth-preserving (one representative per cluster first, then deterministic round-robin).
+4. `suppressedViolations` is deterministic.
+
+### Template lookup and fallback
+
+`nextAction` template resolution is deterministic:
+
+1. exact key: `(category, failureCode, ruleId|reasonKey)`
+2. failure default: `(category, failureCode, *)`
+3. category fallback: `GOVERNANCE` or `INFRA` safe fallback
+
+Known exact infra mappings in v1:
+
+- `INFRA|IO_ERROR|PROJECT_TEST_LOCK` -> clear blocked marker via `bear unblock`, rerun.
+- `INFRA|IO_ERROR|PROJECT_TEST_BOOTSTRAP` -> unblock/bootstrap recovery, rerun.
+- `INFRA|IO_GIT|MERGE_BASE_FAILED` -> capture base-resolution diagnostics, rerun, escalate if persistent.
+- `INFRA|IO_GIT|NOT_A_GIT_REPO` -> run from a git work tree, rerun.
+- `INFRA|IO_ERROR|READ_HEAD_FAILED` -> capture head IR read diagnostics, rerun, escalate if persistent.
 ## Related
 
 - [exit-codes.md](exit-codes.md)

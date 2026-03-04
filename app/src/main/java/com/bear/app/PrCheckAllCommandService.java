@@ -136,7 +136,7 @@ final class PrCheckAllCommandService {
                     CliCodes.IR_VALIDATION,
                     "block.name",
                     mappingError,
-                    "Set `block.name` to match index `name` and rerun `bear pr-check --all`.",
+                    "Set `block.name` to match index name and rerun `bear pr-check --all`.",
                     null,
                     null,
                     List.of()
@@ -229,7 +229,9 @@ final class PrCheckAllCommandService {
                 "pr-check",
                 "all",
                 options.collectAll() ? "all" : "first",
-                summary.exitCode(),                problems
+                summary.exitCode(),
+                problems,
+                true
             );
             out.println(AgentDiagnostics.toJson(payload));
             return summary.exitCode();
@@ -250,4 +252,3 @@ final class PrCheckAllCommandService {
         );
     }
 }
-

@@ -96,7 +96,15 @@ final class PrCheckCommandService {
                     "pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath,
                     List.of(),
                     false,
-                    false
+                    false,
+                    List.of(defaultProblem(
+                        CliCodes.IO_ERROR,
+                        repoRelativePath,
+                        "pr-check: IO_ERROR: READ_HEAD_FAILED: " + repoRelativePath,
+                        null,
+                        null,
+                        "READ_HEAD_FAILED"
+                    ))
                 );
             }
 
@@ -153,7 +161,15 @@ final class PrCheckCommandService {
                     "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
                     List.of(),
                     false,
-                    false
+                    false,
+                    List.of(defaultProblem(
+                        CliCodes.IO_GIT,
+                        "git.repo",
+                        "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
+                        blockKey,
+                        null,
+                        "NOT_A_GIT_REPO"
+                    ))
                 );
             }
 
@@ -169,7 +185,15 @@ final class PrCheckCommandService {
                     "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
                     List.of(),
                     false,
-                    false
+                    false,
+                    List.of(defaultProblem(
+                        CliCodes.IO_GIT,
+                        "git.baseRef",
+                        "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
+                        blockKey,
+                        null,
+                        "MERGE_BASE_FAILED"
+                    ))
                 );
             }
             String mergeBase = mergeBaseResult.stdout().trim();
@@ -715,7 +739,15 @@ final class PrCheckCommandService {
                     "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
                     List.of(),
                     false,
-                    false
+                    false,
+                    List.of(defaultProblem(
+                        CliCodes.IO_GIT,
+                        "git.repo",
+                        "pr-check: IO_ERROR: NOT_A_GIT_REPO: " + projectRoot,
+                        null,
+                        null,
+                        "NOT_A_GIT_REPO"
+                    ))
                 ));
             }
             GitResult mergeBaseResult = runGitForPrCheck(projectRoot, List.of("merge-base", "HEAD", baseRef), "git.baseRef");
@@ -730,7 +762,15 @@ final class PrCheckCommandService {
                     "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
                     List.of(),
                     false,
-                    false
+                    false,
+                    List.of(defaultProblem(
+                        CliCodes.IO_GIT,
+                        "git.baseRef",
+                        "pr-check: IO_ERROR: MERGE_BASE_FAILED: " + baseRef,
+                        null,
+                        null,
+                        "MERGE_BASE_FAILED"
+                    ))
                 ));
             }
             String mergeBase = mergeBaseResult.stdout().trim();

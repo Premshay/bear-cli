@@ -63,27 +63,48 @@ final class AgentTemplateRegistry {
         registerExact(AgentDiagnostics.AgentCategory.INFRA, CliCodes.IO_ERROR, "PROJECT_TEST_LOCK", template(
             "Clear blocked check marker and retry",
             List.of(
-                "Run `bear unblock --project <path>` to clear stale blocked marker.",
+                "Run `bear unblock` to clear stale blocked marker.",
                 "Re-run: {rerunCommand}"
             ),
-            List.of("bear unblock --project <path>", "{rerunCommand}"),
+            List.of("bear unblock", "{rerunCommand}"),
             List.of("troubleshooting#io_error")
         ));
         registerExact(AgentDiagnostics.AgentCategory.INFRA, CliCodes.IO_ERROR, "PROJECT_TEST_BOOTSTRAP", template(
             "Recover from project test bootstrap IO",
             List.of(
-                "Run `bear unblock --project <path>` to clear stale blocked marker.",
+                "Run `bear unblock` to clear stale blocked marker.",
                 "Verify project wrapper/cache accessibility.",
                 "Re-run: {rerunCommand}"
             ),
-            List.of("bear unblock --project <path>", "{rerunCommand}"),
+            List.of("bear unblock", "{rerunCommand}"),
             List.of("troubleshooting#io_error")
         ));
         registerExact(AgentDiagnostics.AgentCategory.INFRA, CliCodes.IO_GIT, "MERGE_BASE_FAILED", template(
-            "Resolve base reference before PR check",
+            "Capture base-resolution diagnostics and escalate",
             List.of(
-                "Ensure `--base <ref>` exists and is fetchable in current git repository.",
-                "Re-run: {rerunCommand}"
+                "Ensure the configured base reference exists in CI/local git context.",
+                "Re-run: {rerunCommand}",
+                "If merge-base still fails, escalate with CODE/PATH diagnostics and base-ref evidence."
+            ),
+            List.of("{rerunCommand}"),
+            List.of("troubleshooting#io_git")
+        ));
+        registerExact(AgentDiagnostics.AgentCategory.INFRA, CliCodes.IO_GIT, "NOT_A_GIT_REPO", template(
+            "Run PR check from a git work tree",
+            List.of(
+                "Ensure command runs from a git work tree with accessible repository metadata.",
+                "Re-run: {rerunCommand}",
+                "If issue persists, escalate with CODE/PATH diagnostics."
+            ),
+            List.of("{rerunCommand}"),
+            List.of("troubleshooting#io_git")
+        ));
+        registerExact(AgentDiagnostics.AgentCategory.INFRA, CliCodes.IO_ERROR, "READ_HEAD_FAILED", template(
+            "Capture head IR read diagnostics and escalate",
+            List.of(
+                "Ensure the IR path exists at HEAD in the current repository state.",
+                "Re-run: {rerunCommand}",
+                "If issue persists, escalate with CODE/PATH diagnostics and failing IR locator."
             ),
             List.of("{rerunCommand}"),
             List.of("troubleshooting#io_git")
@@ -110,8 +131,9 @@ final class AgentTemplateRegistry {
         registerFailureDefault(AgentDiagnostics.AgentCategory.GOVERNANCE, CliCodes.BOUNDARY_EXPANSION, template(
             "Review explicit boundary expansion",
             List.of(
-                "Review boundary-expanding deltas and confirm intent.",
-                "If accepted, proceed with normal review flow and re-run: {rerunCommand}"
+                "Review boundary expansion report items and confirm intent.",
+                "If intentional, record required justification per governance process.",
+                "Re-run: {rerunCommand}"
             ),
             List.of("{rerunCommand}"),
             List.of("troubleshooting#boundary_expansion")
@@ -205,10 +227,12 @@ final class AgentTemplateRegistry {
     static AgentDiagnostics.AgentNextAction render(
         String command,
         String mode,
+        String collectMode,
+        boolean agentMode,
         AgentDiagnostics.AgentCluster cluster
     ) {
         Template template = resolve(cluster);
-        String rerunCommand = "bear " + command + ("all".equals(mode) ? " --all" : "");
+        String rerunCommand = buildRerunCommand(command, mode, collectMode, agentMode);
         ArrayList<String> renderedSteps = new ArrayList<>(template.steps().size());
         for (String step : template.steps()) {
             renderedSteps.add(interpolate(step, rerunCommand));
@@ -225,6 +249,20 @@ final class AgentTemplateRegistry {
             List.copyOf(renderedCommands),
             template.links()
         );
+    }
+
+    private static String buildRerunCommand(String command, String mode, String collectMode, boolean agentMode) {
+        StringBuilder out = new StringBuilder("bear ").append(command);
+        if ("all".equals(mode)) {
+            out.append(" --all");
+        }
+        if ("all".equals(collectMode)) {
+            out.append(" --collect=all");
+        }
+        if (agentMode) {
+            out.append(" --agent");
+        }
+        return out.toString();
     }
 
     private static String interpolate(String template, String rerunCommand) {

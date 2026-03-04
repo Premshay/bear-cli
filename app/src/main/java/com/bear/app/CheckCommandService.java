@@ -704,7 +704,15 @@ final class CheckCommandService {
                     CliCodes.IO_ERROR,
                     "project.tests",
                     "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    ioLine
+                    ioLine,
+                    List.of(defaultProblem(
+                        CliCodes.IO_ERROR,
+                        "project.tests",
+                        ioLine,
+                        blockKey,
+                        null,
+                        "PROJECT_TEST_LOCK"
+                    ))
                 );
             }
             if (testResult.status() == ProjectTestStatus.BOOTSTRAP_IO) {
@@ -733,7 +741,15 @@ final class CheckCommandService {
                     CliCodes.IO_ERROR,
                     "project.tests",
                     "Use BEAR-selected GRADLE_USER_HOME mode, run `bear unblock --project <path>`, then rerun `bear check <ir-file> --project <path>`.",
-                    ioLine
+                    ioLine,
+                    List.of(defaultProblem(
+                        CliCodes.IO_ERROR,
+                        "project.tests",
+                        ioLine,
+                        blockKey,
+                        null,
+                        "PROJECT_TEST_BOOTSTRAP"
+                    ))
                 );
             }
             if (testResult.status() == ProjectTestStatus.SHARED_DEPS_VIOLATION) {
@@ -1240,7 +1256,6 @@ final class CheckCommandService {
     }
 
 }
-
 
 
 

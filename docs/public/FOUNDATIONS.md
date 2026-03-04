@@ -82,8 +82,9 @@ Typical agent loop:
 1. update IR and implementation from project specs
 2. run `bear validate`
 3. run `bear compile` or `bear fix`
-4. run `bear check`
-5. run `bear pr-check` against base for governance classification
+4. run `bear check --collect=all --agent`
+5. apply only the returned `nextAction` commands, then rerun until `status=ok`
+6. run `bear pr-check --base <ref> --collect=all --agent` for governance classification
 
 Developer-facing visibility:
 

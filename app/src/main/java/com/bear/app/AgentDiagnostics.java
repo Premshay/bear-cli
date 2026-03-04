@@ -38,6 +38,9 @@ final class AgentDiagnostics {
     ) {
         String normalizedReasonKey = reasonKey == null || reasonKey.isBlank() ? null : reasonKey;
         String normalizedRuleId = ruleId == null || ruleId.isBlank() ? null : ruleId;
+        if (category == AgentCategory.INFRA && normalizedRuleId != null) {
+            throw new IllegalArgumentException("INFRA problems must not set ruleId");
+        }
         String normalizedFile = file == null || file.isBlank() ? null : file.replace('\\', '/');
         Map<String, String> normalizedEvidence = normalizeEvidence(evidence);
         String templateVariant = normalizedEvidence.getOrDefault("templateVariant", "");
@@ -74,7 +77,8 @@ final class AgentDiagnostics {
             mode,
             collectAll ? "all" : "first",
             result.exitCode(),
-            result.problems()
+            result.problems(),
+            true
         );
     }
 
@@ -84,7 +88,8 @@ final class AgentDiagnostics {
             mode,
             collectAll ? "all" : "first",
             result.exitCode(),
-            result.problems()
+            result.problems(),
+            true
         );
     }
 
@@ -94,6 +99,17 @@ final class AgentDiagnostics {
         String collectMode,
         int exitCode,
         List<AgentProblem> problems
+    ) {
+        return payload(command, mode, collectMode, exitCode, problems, false);
+    }
+
+    static AgentPayload payload(
+        String command,
+        String mode,
+        String collectMode,
+        int exitCode,
+        List<AgentProblem> problems,
+        boolean agentMode
     ) {
         List<AgentProblem> source = problems == null ? List.of() : List.copyOf(problems);
         List<AgentProblem> normalized = new ArrayList<>(source.size());
@@ -120,7 +136,7 @@ final class AgentDiagnostics {
         List<ClusterInternal> retainedClusters = cluster(command, retained);
         AgentNextAction nextAction = primaryCluster == null
             ? null
-            : AgentTemplateRegistry.render(command, mode, primaryCluster.toPublicCluster());
+            : AgentTemplateRegistry.render(command, mode, collectMode, agentMode, primaryCluster.toPublicCluster());
         return new AgentPayload(
             SCHEMA_VERSION,
             command,
@@ -669,6 +685,7 @@ final class AgentDiagnostics {
     private static final class JsonWriter {
         private final StringBuilder out;
         private final ArrayList<Boolean> firstStack = new ArrayList<>();
+        private boolean awaitingFieldValue;
 
         private JsonWriter(StringBuilder out) {
             this.out = Objects.requireNonNull(out);
@@ -683,6 +700,7 @@ final class AgentDiagnostics {
         void endObject() {
             out.append('}');
             firstStack.remove(firstStack.size() - 1);
+            awaitingFieldValue = false;
         }
 
         void beginArray() {
@@ -694,27 +712,32 @@ final class AgentDiagnostics {
         void endArray() {
             out.append(']');
             firstStack.remove(firstStack.size() - 1);
+            awaitingFieldValue = false;
         }
 
         void fieldName(String name) {
             beforeField();
             string(name);
             out.append(':');
+            awaitingFieldValue = true;
         }
 
         void field(String name, String value) {
             fieldName(name);
             string(value);
+            awaitingFieldValue = false;
         }
 
         void field(String name, int value) {
             fieldName(name);
             out.append(value);
+            awaitingFieldValue = false;
         }
 
         void field(String name, boolean value) {
             fieldName(name);
             out.append(value);
+            awaitingFieldValue = false;
         }
 
         void nullableField(String name, String value) {
@@ -724,11 +747,13 @@ final class AgentDiagnostics {
             } else {
                 string(value);
             }
+            awaitingFieldValue = false;
         }
 
         void nullField(String name) {
             fieldName(name);
             out.append("null");
+            awaitingFieldValue = false;
         }
 
         void arrayValue(String value) {
@@ -749,6 +774,10 @@ final class AgentDiagnostics {
         }
 
         private void beforeValue() {
+            if (awaitingFieldValue) {
+                awaitingFieldValue = false;
+                return;
+            }
             if (firstStack.isEmpty()) {
                 return;
             }

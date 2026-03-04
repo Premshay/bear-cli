@@ -39,3 +39,18 @@ Deterministic agent diagnostics v1 for `check` / `pr-check` (`--agent` JSON mode
   - `./gradlew.bat :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.AllModeOptionParserAgentTest`
   - `./gradlew.bat :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`
   - `./gradlew.bat :app:test`
+- Follow-up hardening completed:
+  - Added explicit infra `reasonKey` emission at origin failure sites (`PROJECT_TEST_LOCK`, `PROJECT_TEST_BOOTSTRAP`, `READ_HEAD_FAILED`, `NOT_A_GIT_REPO`, `MERGE_BASE_FAILED`).
+  - Added infra invariant guard in diagnostics builder (`INFRA` problems cannot carry `ruleId`).
+  - Updated rerun command interpolation to preserve mode flags (`--all`, `--collect=all`) and `--agent` when already in agent mode.
+  - Refined template content for git/base diagnostics and boundary-expansion guidance.
+- Fixed agent JSON renderer correctness bug so arrays/objects are emitted as valid JSON values (removed malformed `":,[` pattern risk).
+- Expanded docs with explicit deterministic agent-loop semantics and `nextAction` mapping/fallback contract:
+  - `docs/public/output-format.md`
+  - `docs/public/FOUNDATIONS.md`
+  - `docs/public/MODEL.md`
+  - `docs/bear-package/.bear/agent/TROUBLESHOOTING.md`
+- Additional verification runs (post-fix):
+  - `./gradlew.bat :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.BearCliAgentModeTest`
+  - `./gradlew.bat :app:test`
+  - `./gradlew.bat :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`

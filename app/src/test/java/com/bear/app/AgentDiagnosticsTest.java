@@ -9,6 +9,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AgentDiagnosticsTest {
@@ -141,6 +142,39 @@ class AgentDiagnosticsTest {
         assertNotNull(payload.nextAction());
         assertEquals("INFRA", payload.nextAction().kind());
         assertTrue(payload.nextAction().title().toLowerCase().contains("capture"));
+    }
+
+    @Test
+    void rerunCommandPreservesModeCollectAndAgentFlagsWhenRequested() {
+        AgentDiagnostics.AgentPayload payload = AgentDiagnostics.payload(
+            "check",
+            "all",
+            "all",
+            CliCodes.EXIT_IO,
+            List.of(problem(AgentDiagnostics.AgentCategory.INFRA, CliCodes.IO_ERROR, null, "PROJECT_TEST_LOCK", "project.tests")),
+            true
+        );
+
+        assertNotNull(payload.nextAction());
+        assertTrue(payload.nextAction().commands().contains("bear check --all --collect=all --agent"));
+    }
+
+    @Test
+    void infraProblemsMustNotCarryRuleId() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> AgentDiagnostics.problem(
+            AgentDiagnostics.AgentCategory.INFRA,
+            CliCodes.IO_ERROR,
+            "SHOULD_NOT_BE_SET",
+            "PROJECT_TEST_LOCK",
+            AgentDiagnostics.AgentSeverity.ERROR,
+            "alpha",
+            "project.tests",
+            null,
+            "PROJECT_TEST_LOCK",
+            "io lock",
+            java.util.Map.of()
+        ));
+        assertTrue(ex.getMessage().contains("INFRA"));
     }
 
     private static AgentDiagnostics.AgentProblem problem(
