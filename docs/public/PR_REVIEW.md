@@ -3,23 +3,24 @@
 BEAR is designed so humans can review agent changes via deterministic signals, without needing to understand every implementation detail.
 
 Most PR findings become obvious once you know which "zone" a path belongs to.
+
 Figure: what BEAR governs vs what sits outside, and the two common failure shapes (undeclared reach, bypass into governed code).
 Legend: indigo = governed roots, slate = generated boundary glue, green = adapters, red = a violation.
 
 ```mermaid
 %% id: bear-zones-v1
 flowchart LR
-  GOV[Governed code\n(source roots)]:::groupGov
-  GEN[Generated boundary glue\n(wiring, ports, wrappers)]:::groupGen
-  APP[App / adapters\n(infra, frameworks)]:::groupApp
+  GOV[Governed code source roots]:::groupGov
+  GEN[Generated boundary glue]:::groupGen
+  APP[App and adapters]:::groupApp
 
   GOV -->|compile uses IR| GEN
   APP -->|implements ports| GEN
   GOV -->|calls only declared ports| GEN
 
   X((Violation)):::bad
-  GOV -->|undeclared reach\n(import/call outside contract)| X
-  APP -->|bypass into governed\n(reflection/classloading seam)| X
+  GOV -->|undeclared reach outside contract| X
+  APP -->|bypass into governed seam| X
 
   classDef groupGov fill:#EEF2FF,stroke:#6366F1,color:#0B1220;
   classDef groupGen fill:#F1F5F9,stroke:#64748B,color:#0B1220;

@@ -14,9 +14,9 @@ Legend: yellow = IR you edit, green = BEAR commands, orange = what automation pa
 ```mermaid
 %% id: bear-workflow-v1
 flowchart LR
-  A[Agent / Dev edits code]:::actor --> B[Edit BEAR IR\n(.bear.yaml)]:::ir
+  A[Agent / Dev edits code]:::actor --> B[Edit BEAR IR file]:::ir
   B --> C[bear compile]:::cmd
-  C --> D[Generate boundary glue\n(wiring, ports, wrappers)]:::gen
+  C --> D[Generate boundary glue]:::gen
   D --> E[bear check]:::cmd
   E --> F{CI green?}:::gate
   F -- yes --> G[Merge]:::ok

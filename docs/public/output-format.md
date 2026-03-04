@@ -11,12 +11,13 @@ REMEDIATION=<deterministic-step>
 ```
 
 Automation should treat BEAR output as a deterministic pipeline: scanners produce findings, the CLI orders and formats them, and the footer is the stable machine hook.
+
 Figure: how findings become stable lines + a footer contract.
 
 ```mermaid
 %% id: bear-output-pipeline-v1
 sequenceDiagram
-  participant CLI as bear (command)
+  participant CLI as bear command
   participant Scan as scanners
   participant Report as deterministic formatter
 
