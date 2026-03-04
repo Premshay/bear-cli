@@ -49,3 +49,11 @@ Deterministic agent-loop reliability patch-set (CommandContext rerun fidelity, r
 
 
 
+
+- Boundary SVG legend added (`assets/bear-boundary.svg`): explicit mapping for arrow colors (green = allowed path, red = violation path).
+
+- Boundary SVG clarity pass: reduced arrowhead/stroke weight and moved the "Allowed only through declared port" annotation to the green-flow zone to avoid confusion with the red violation arc.
+
+- Boundary SVG annotation placement: moved "Violation: boundary bypass" label adjacent to the red bypass arc to avoid ambiguity with the governed-boundary outline.
+
+- Boundary SVG label tweak: moved "Violation: boundary bypass" further right to avoid overlap with the adapter box while staying near the red bypass arc.

@@ -58,14 +58,14 @@
       .box { stroke-width: 3; }
     </style>
 
-    <marker id="arrowOk" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 Z" fill="var(--ok)"/>
+    <marker id="arrowOk" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="var(--ok)"/>
     </marker>
-    <marker id="arrowNeutral" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L14,7 L0,14 Z" fill="var(--adapterStroke)"/>
+    <marker id="arrowNeutral" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--adapterStroke)"/>
     </marker>
-    <marker id="arrowBad" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L14,7 L0,14 Z" fill="var(--bad)"/>
+    <marker id="arrowBad" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="var(--bad)"/>
     </marker>
   </defs>
 
@@ -99,10 +99,10 @@
   <text x="800" y="746" text-anchor="middle" class="t s muted">outside blocks</text>
 
   <line x1="620" y1="405" x2="700" y2="330"
-        stroke="var(--ok)" stroke-width="6" marker-end="url(#arrowOk)"/>
+        stroke="var(--ok)" stroke-width="4" marker-end="url(#arrowOk)"/>
   <line x1="900" y1="330" x2="980" y2="405"
-        stroke="var(--ok)" stroke-width="6" marker-end="url(#arrowOk)"/>
-  <text x="800" y="245" text-anchor="middle" class="t s" fill="var(--ok)">Allowed only through declared port</text>
+        stroke="var(--ok)" stroke-width="4" marker-end="url(#arrowOk)"/>
+  <text x="800" y="425" text-anchor="middle" class="t s" fill="var(--ok)">Allowed only through declared port</text>
 
   <line x1="800" y1="660" x2="800" y2="390"
         stroke="var(--adapterStroke)" stroke-width="4" marker-end="url(#arrowNeutral)"/>
@@ -116,7 +116,20 @@
   <path d="M930 720 C1110 690 1160 610 1160 490"
         stroke="var(--bad)" stroke-width="3" stroke-dasharray="8 8"
         fill="none" marker-end="url(#arrowBad)"/>
-  <text x="1180" y="635" class="t s" fill="var(--bad)">Violation: boundary bypass</text>
+  <text x="1125" y="700" class="t s" fill="var(--bad)">Violation: boundary bypass</text>
 
+  <rect x="150" y="640" width="430" height="160" rx="18" ry="18"
+        fill="var(--boundaryLabelBg)" stroke="var(--boundaryLabelBorder)" stroke-width="2"/>
+  <text x="190" y="682" class="t s muted">Legend</text>
+
+  <line x1="190" y1="715" x2="290" y2="715"
+        stroke="var(--ok)" stroke-width="4" marker-end="url(#arrowOk)"/>
+  <text x="320" y="722" class="t s">Allowed path</text>
+
+  <line x1="190" y1="760" x2="290" y2="760"
+        stroke="var(--bad)" stroke-width="3" stroke-dasharray="8 8" marker-end="url(#arrowBad)"/>
+  <text x="320" y="767" class="t s">Violation path</text>
   <text x="800" y="850" text-anchor="middle" class="t s muted">BEAR: declare boundaries in IR, enforce in CI</text>
 </svg>
+
+
