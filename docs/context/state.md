@@ -96,3 +96,5 @@ Deterministic agent diagnostics v1 for `check` / `pr-check` (`--agent` JSON mode
 - Docs readability pass: fixed Markdown fence spacing in public docs, aligned README demo quickstart with `compile -> check -> pr-check`, and cleaned list formatting in `FOUNDATIONS.md` / `ENFORCEMENT.md` for correct rendering.
 - Mermaid compatibility hardening: removed parser-risk node labels in public diagrams (parentheses/newline combinations) to prevent GitHub rich-display parse errors.
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`
+- Diagram rendering tweak: replaced literal `\n` in Mermaid labels with `<br/>` in public docs so line breaks render in GitHub rich display.
+- Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`

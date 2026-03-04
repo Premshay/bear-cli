@@ -23,8 +23,8 @@ flowchart LR
   J -- none --> F
   J -- expansion/bypass --> H
 
-  E -. emits .-> S1[[CI contract output:\nexit code + CODE/PATH/REMEDIATION]]:::signal
-  I -. emits .-> S2[[PR output:\npr-delta + verdict + footer]]:::signal
+  E -. emits .-> S1[[CI contract output:<br/>exit code + CODE/PATH/REMEDIATION]]:::signal
+  I -. emits .-> S2[[PR output:<br/>pr-delta + verdict + footer]]:::signal
 
   classDef actor fill:#EEF2FF,stroke:#6366F1,color:#0B1220;
   classDef ir fill:#FFFBEB,stroke:#F59E0B,color:#0B1220;

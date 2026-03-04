@@ -31,7 +31,7 @@ sequenceDiagram
     Report-->>CLI: lines + verdict + footer
   end
 
-  Note over CLI: Footer fields to parse:\nCODE / PATH / REMEDIATION
+  Note over CLI: Footer fields to parse:<br/>CODE / PATH / REMEDIATION
 ```
 
 - Locator may be repo-relative path or stable pseudo-path token.
