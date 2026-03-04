@@ -38,6 +38,13 @@ Canonical command surface expected by the package:
 - `bear check`
 - `bear pr-check`
 
+## Expected Agent Loop
+
+1. Use machine mode for agent automation: pass `--agent` on `check` / `pr-check`.
+2. In machine mode, stdout is JSON-only (`schemaVersion=bear.nextAction.v1`); treat stderr as diagnostic stream.
+3. Use `--collect=all` for agent runs to reduce rerun churn while keeping lane execution bounded.
+4. Consume exactly one `nextAction` per run, execute only BEAR-supported commands from that payload, then rerun.
+
 ## Package Contract
 
 1. BEAR package is a copyable bundle dropped into any backend project.
@@ -104,8 +111,8 @@ When a project has multiple governed BEAR blocks:
 2. Canonical gates must run `--all` variants (`check --all` / `pr-check --all`).
 3. Removing index files to bypass `--all` governance is invalid workflow.
 4. Canonical agent done-gate evidence requires both:
-- `bear check --all --project <repoRoot>`
-- `bear pr-check --all --project <repoRoot> --base <ref>`
+- `bear check --all --project <repoRoot> [--collect=all] [--agent]`
+- `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]`
 5. Completion report must include governance-signal disposition fields from `.bear/agent/REPORTING.md`.
 
 ## Integration Rule: Existing `AGENTS.md`

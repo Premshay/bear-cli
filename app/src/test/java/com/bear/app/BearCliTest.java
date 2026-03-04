@@ -229,7 +229,7 @@ class BearCliTest {
             run.stderr,
             "USAGE_INVALID_ARGS",
             "cli.args",
-            "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]` with the expected arguments."
+            "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]` with the expected arguments."
         );
     }
 
@@ -2002,7 +2002,7 @@ class BearCliTest {
         Files.writeString(srcRoot.resolve("D.java"), "package example;\nimport org.springframework.web.client.RestTemplate;\nclass D { RestTemplate template; }\n");
         Files.writeString(srcRoot.resolve("E.java"), "package example;\nimport java.net.HttpURLConnection;\nclass E { HttpURLConnection connection; }\n");
 
-        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--collect=all" });
         assertEquals(6, check.exitCode);
         List<String> lines = nonEnvelopeLines(check.stderr).stream()
             .filter(line -> line.startsWith("check: UNDECLARED_REACH: "))
@@ -2055,7 +2055,7 @@ class BearCliTest {
         Files.writeString(a, "package example;\nimport okhttp3.OkHttpClient;\nimport org.springframework.web.client.RestTemplate;\nclass A { OkHttpClient c; RestTemplate t; }\n");
         Files.writeString(b, "package example;\nimport java.net.http.HttpClient;\nclass B { HttpClient c; }\n");
 
-        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--collect=all" });
         assertEquals(6, check.exitCode);
         List<String> lines = nonEnvelopeLines(check.stderr).stream()
             .filter(line -> line.startsWith("check: UNDECLARED_REACH: "))
@@ -2961,7 +2961,7 @@ class BearCliTest {
             + "}\n",
             StandardCharsets.UTF_8
         );
-        CliRunResult semanticSuppression = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        CliRunResult semanticSuppression = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--collect=all" });
         assertEquals(7, semanticSuppression.exitCode);
         assertTrue(
             normalizeLf(semanticSuppression.stderr).contains(
@@ -2979,7 +2979,7 @@ class BearCliTest {
             + "}\n",
             StandardCharsets.UTF_8
         );
-        CliRunResult malformedSuppression = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString() });
+        CliRunResult malformedSuppression = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--collect=all" });
         assertEquals(7, malformedSuppression.exitCode);
         assertTrue(
             normalizeLf(malformedSuppression.stderr).contains(
@@ -3845,7 +3845,7 @@ class BearCliTest {
             run.stderr,
             "USAGE_INVALID_ARGS",
             "cli.args",
-            "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]` with the expected arguments."
+            "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]` with the expected arguments."
         );
     }
 

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 final class PrCheckAllCommandService {
@@ -147,7 +148,9 @@ final class PrCheckAllCommandService {
                 block.ir(),
                 options.baseRef(),
                 false,
-                block.projectRoot()
+                block.projectRoot(),
+                null,
+                options.collectAll()
             );
             prResult = BearCli.enforcePrCheckExitEnvelope(prResult, block.ir());
             blockResults.add(BearCli.toPrBlockResult(block, prResult));
@@ -198,6 +201,40 @@ final class PrCheckAllCommandService {
             summaryBase.rootTestSkippedDueToReach(),
             List.copyOf(repoDeltaLines)
         );
+        if (options.agent()) {
+            ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+            for (BlockExecutionResult blockResult : blockResults) {
+                if (blockResult.problems() != null) {
+                    problems.addAll(blockResult.problems());
+                }
+                if (blockResult.status() == BlockStatus.FAIL && (blockResult.problems() == null || blockResult.problems().isEmpty())) {
+                    problems.add(AgentDiagnostics.problem(
+                        blockResult.exitCode() == CliCodes.EXIT_BOUNDARY_EXPANSION || blockResult.exitCode() == CliCodes.EXIT_BOUNDARY_BYPASS
+                            ? AgentDiagnostics.AgentCategory.GOVERNANCE
+                            : AgentDiagnostics.AgentCategory.INFRA,
+                        blockResult.blockCode() == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockResult.blockCode(),
+                        null,
+                        blockResult.blockCode() == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockResult.blockCode(),
+                        AgentDiagnostics.AgentSeverity.ERROR,
+                        blockResult.name(),
+                        blockResult.blockPath(),
+                        null,
+                        blockResult.blockCode() == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockResult.blockCode(),
+                        blockResult.detail() == null ? "" : blockResult.detail(),
+                        Map.of()
+                    ));
+                }
+            }
+            AgentDiagnostics.AgentPayload payload = AgentDiagnostics.payload(
+                "pr-check",
+                "all",
+                options.collectAll() ? "all" : "first",
+                summary.exitCode(),                problems
+            );
+            out.println(AgentDiagnostics.toJson(payload));
+            return summary.exitCode();
+        }
+
         List<String> lines = AllModeRenderer.renderPrAllOutput(blockResults, summary);
         if (summary.exitCode() == CliCodes.EXIT_OK) {
             CliText.printLines(out, lines);
@@ -213,3 +250,4 @@ final class PrCheckAllCommandService {
         );
     }
 }
+

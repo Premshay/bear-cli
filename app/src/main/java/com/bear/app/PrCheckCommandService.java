@@ -36,7 +36,17 @@ final class PrCheckCommandService {
     }
 
     static PrCheckResult executePrCheck(Path projectRoot, String repoRelativePath, String baseRef, Path explicitIndexPath) {
-        return executePrCheck(projectRoot, repoRelativePath, baseRef, true, ".", explicitIndexPath);
+        return executePrCheck(projectRoot, repoRelativePath, baseRef, explicitIndexPath, false);
+    }
+
+    static PrCheckResult executePrCheck(
+        Path projectRoot,
+        String repoRelativePath,
+        String baseRef,
+        Path explicitIndexPath,
+        boolean collectAll
+    ) {
+        return executePrCheck(projectRoot, repoRelativePath, baseRef, true, ".", explicitIndexPath, collectAll);
     }
 
     static PrCheckResult executePrCheck(
@@ -55,6 +65,18 @@ final class PrCheckCommandService {
         boolean includeSharedPolicyDeltas,
         String projectRootLabel,
         Path explicitIndexPath
+    ) {
+        return executePrCheck(projectRoot, repoRelativePath, baseRef, includeSharedPolicyDeltas, projectRootLabel, explicitIndexPath, false);
+    }
+
+    static PrCheckResult executePrCheck(
+        Path projectRoot,
+        String repoRelativePath,
+        String baseRef,
+        boolean includeSharedPolicyDeltas,
+        String projectRootLabel,
+        Path explicitIndexPath,
+        boolean collectAll
     ) {
         Path tempRoot = null;
         try {
@@ -319,27 +341,43 @@ final class PrCheckCommandService {
                     .thenComparing(BoundaryBypassFinding::detail)
             );
             if (!containmentFindings.isEmpty()) {
+                List<BoundaryBypassFinding> selectedContainmentFindings = collectAll
+                    ? List.copyOf(containmentFindings)
+                    : List.of(containmentFindings.get(0));
                 List<String> detailLines = new ArrayList<>();
-                for (BoundaryBypassFinding finding : containmentFindings) {
+                for (BoundaryBypassFinding finding : selectedContainmentFindings) {
                     String line = "pr-check: BOUNDARY_BYPASS: RULE=" + finding.rule()
                         + ": " + finding.path()
                         + ": " + finding.detail();
                     detailLines.add(line);
                     stderrLines.add(line);
                 }
+                ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+                for (BoundaryBypassFinding finding : selectedContainmentFindings) {
+                    problems.add(defaultProblem(
+                        CliCodes.BOUNDARY_BYPASS,
+                        finding.path(),
+                        finding.detail(),
+                        headIdentity.blockKey(),
+                        finding.rule(),
+                        null
+                    ));
+                }
                 return prFailure(
                     CliCodes.EXIT_BOUNDARY_BYPASS,
                     stderrLines,
                     "BOUNDARY_BYPASS",
                     CliCodes.BOUNDARY_BYPASS,
-                    containmentFindings.get(0).path(),
-                    boundaryBypassRemediation(containmentFindings.get(0).rule()),
+                    selectedContainmentFindings.get(0).path(),
+                    boundaryBypassRemediation(selectedContainmentFindings.get(0).rule()),
                     detailLines.get(0),
                     List.of(),
                     false,
-                    false
+                    false,
+                    List.copyOf(problems)
                 );
             }
+
             TreeSet<String> bypassPaths = new TreeSet<>();
             for (BoundaryBypassFinding finding : containmentFindings) {
                 bypassPaths.add(finding.path());
@@ -386,6 +424,33 @@ final class PrCheckCommandService {
             boolean hasBoundary = deltas.stream().anyMatch(delta -> delta.clazz() == PrClass.BOUNDARY_EXPANDING);
             if (hasBoundary) {
                 stderrLines.add("pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED");
+                ArrayList<AgentDiagnostics.AgentProblem> boundaryProblems = new ArrayList<>();
+                List<PrDelta> selectedBoundaryDeltas = collectAll
+                    ? deltas.stream().filter(delta -> delta.clazz() == PrClass.BOUNDARY_EXPANDING).toList()
+                    : deltas.stream().filter(delta -> delta.clazz() == PrClass.BOUNDARY_EXPANDING).findFirst().map(List::of).orElse(List.of());
+                for (PrDelta delta : selectedBoundaryDeltas) {
+                    if (delta.clazz() != PrClass.BOUNDARY_EXPANDING) {
+                        continue;
+                    }
+                    boundaryProblems.add(AgentDiagnostics.problem(
+                        AgentDiagnostics.AgentCategory.GOVERNANCE,
+                        CliCodes.BOUNDARY_EXPANSION,
+                        null,
+                        "BOUNDARY_EXPANSION",
+                        AgentDiagnostics.AgentSeverity.ERROR,
+                        headIdentity.blockKey(),
+                        repoRelativePath,
+                        null,
+                        "PR_DELTA",
+                        "pr-delta: " + delta.clazz().label + ": " + delta.category().label + ": " + delta.change().label + ": " + delta.key(),
+                        Map.of(
+                            "deltaClass", delta.clazz().label,
+                            "deltaCategory", delta.category().label,
+                            "deltaChange", delta.change().label,
+                            "deltaKey", delta.key()
+                        )
+                    ));
+                }
                 return prFailure(
                     CliCodes.EXIT_BOUNDARY_EXPANSION,
                     stderrLines,
@@ -396,7 +461,8 @@ final class PrCheckCommandService {
                     "pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED",
                     deltaLines,
                     true,
-                    !deltaLines.isEmpty()
+                    !deltaLines.isEmpty(),
+                    List.copyOf(boundaryProblems)
                 );
             }
 
@@ -543,6 +609,34 @@ final class PrCheckCommandService {
         boolean hasBoundary,
         boolean hasDeltas
     ) {
+        return prFailure(
+            exitCode,
+            stderrLines,
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail,
+            deltaLines,
+            hasBoundary,
+            hasDeltas,
+            List.of(defaultProblem(failureCode, failurePath, detail, null, null, failureCode))
+        );
+    }
+
+    private static PrCheckResult prFailure(
+        int exitCode,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail,
+        List<String> deltaLines,
+        boolean hasBoundary,
+        boolean hasDeltas,
+        List<AgentDiagnostics.AgentProblem> problems
+    ) {
         return new PrCheckResult(
             exitCode,
             List.of(),
@@ -554,7 +648,36 @@ final class PrCheckCommandService {
             detail,
             List.copyOf(deltaLines),
             hasBoundary,
-            hasDeltas
+            hasDeltas,
+            List.of(),
+            List.copyOf(problems)
+        );
+    }
+
+    private static AgentDiagnostics.AgentProblem defaultProblem(
+        String failureCode,
+        String failurePath,
+        String detail,
+        String blockId,
+        String ruleId,
+        String reasonKey
+    ) {
+        AgentDiagnostics.AgentCategory category = (CliCodes.BOUNDARY_BYPASS.equals(failureCode)
+            || CliCodes.BOUNDARY_EXPANSION.equals(failureCode))
+            ? AgentDiagnostics.AgentCategory.GOVERNANCE
+            : AgentDiagnostics.AgentCategory.INFRA;
+        return AgentDiagnostics.problem(
+            category,
+            failureCode,
+            ruleId,
+            reasonKey,
+            AgentDiagnostics.AgentSeverity.ERROR,
+            blockId,
+            FailureEnvelopeEmitter.normalizeLocator(failurePath),
+            null,
+            ruleId != null ? ruleId : reasonKey,
+            detail == null ? "" : detail,
+            Map.of()
         );
     }
 
@@ -938,6 +1061,10 @@ final class PrCheckCommandService {
         }
     }
 }
+
+
+
+
 
 
 

@@ -21,6 +21,15 @@ Run report MUST start with this exact template and order:
 1. max 8 comma-separated entries.
 2. when `Run outcome: WAITING_FOR_BASELINE_REVIEW`, first two entries are exactly `bear.blocks.yaml`, `spec/*.bear.yaml` (literal token, not expanded files).
 
+## Agent Loop Contract
+
+Deterministic machine loop when automation consumes BEAR output:
+1. Run `bear check --all --project <repoRoot> --collect=all --agent`.
+2. If `status=fail`, consume `nextAction` from JSON and execute only listed BEAR workflow commands.
+3. Re-run the same command until `status=ok` or a blocker requires escalation.
+4. Run `bear pr-check --all --project <repoRoot> --base <ref> --collect=all --agent`.
+5. If `nextAction` is `null` on failure, escalate using failure footer fields (`CODE`, `PATH`, `REMEDIATION`) and include raw stderr evidence.
+
 ## Required Fields
 
 Run report MUST include:
@@ -40,8 +49,8 @@ Run report MUST include:
 14. `Surface evidence: <file1>,<file2>,...` OR
 15. `Surface deferred: <reason_token>`
 16. `Gate results:`
-17. `- bear check --all --project <repoRoot> => <exit>`
-18. `- bear pr-check --all --project <repoRoot> --base <ref> => <exit>`
+17. `- bear check --all --project <repoRoot> [--collect=all] [--agent] => <exit>`
+18. `- bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent] => <exit>`
 19. `Gate run order: <ordered list of executed gates>`
 20. `Run outcome: COMPLETE|BLOCKED|WAITING_FOR_BASELINE_REVIEW`
 21. `Required next action: <...>` (required when `Run outcome` is `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW`)
@@ -167,7 +176,7 @@ Guidance:
 ## Count Rule (Frozen)
 
 `<count>` equals:
-1. number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` governance signal lines emitted by `bear pr-check --all --project <repoRoot> --base <ref>` for the exact completion run.
+1. number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` governance signal lines emitted by `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]` for the exact completion run.
 2. Copy this count from the command output; do not infer.
 
 ## Minimal COMPLETE Example

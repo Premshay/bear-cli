@@ -271,8 +271,8 @@ For each changed IR:
 1. `bear validate <ir-file>`
 2. `bear compile <ir-file> --project <repoRoot> [--index <path>]` or `bear compile --all --project <repoRoot>`
 3. `bear fix <ir-file> --project <repoRoot> [--index <path>]` (or `fix --all`)
-4. `bear check <ir-file> --project <repoRoot> [--strict-hygiene] [--index <path>]` (or `check --all`)
-5. `bear pr-check <ir-file> --project <repoRoot> --base <ref> [--index <path>]` (or `pr-check --all`)
+4. `bear check <ir-file> --project <repoRoot> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]` (or `check --all [--collect=all] [--agent]`)
+5. `bear pr-check <ir-file> --project <repoRoot> --base <ref> [--index <path>] [--collect=all] [--agent]` (or `pr-check --all [--collect=all] [--agent]`)
 
 
 

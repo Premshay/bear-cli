@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -55,7 +56,8 @@ final class CheckCommandService {
             expectedBlockLocator,
             null,
             true,
-            null
+            null,
+            false
         );
     }
 
@@ -77,7 +79,32 @@ final class CheckCommandService {
             expectedBlockLocator,
             null,
             true,
-            explicitIndexPath
+            explicitIndexPath,
+            false
+        );
+    }
+
+    static CheckResult executeCheck(
+        Path irFile,
+        Path projectRoot,
+        boolean runReachAndTests,
+        boolean strictHygiene,
+        String expectedBlockKey,
+        String expectedBlockLocator,
+        Path explicitIndexPath,
+        boolean collectAll
+    ) {
+        return executeCheck(
+            irFile,
+            projectRoot,
+            runReachAndTests,
+            strictHygiene,
+            expectedBlockKey,
+            expectedBlockLocator,
+            null,
+            true,
+            explicitIndexPath,
+            collectAll
         );
     }
 
@@ -99,7 +126,8 @@ final class CheckCommandService {
             expectedBlockLocator,
             considerContainmentSurfacesOverride,
             true,
-            null
+            null,
+            false
         );
     }
 
@@ -122,7 +150,8 @@ final class CheckCommandService {
             expectedBlockLocator,
             considerContainmentSurfacesOverride,
             runContainmentPreflight,
-            null
+            null,
+            false
         );
     }
 
@@ -136,6 +165,32 @@ final class CheckCommandService {
         Boolean considerContainmentSurfacesOverride,
         boolean runContainmentPreflight,
         Path explicitIndexPath
+    ) {
+        return executeCheck(
+            irFile,
+            projectRoot,
+            runReachAndTests,
+            strictHygiene,
+            expectedBlockKey,
+            expectedBlockLocator,
+            considerContainmentSurfacesOverride,
+            runContainmentPreflight,
+            explicitIndexPath,
+            false
+        );
+    }
+
+    static CheckResult executeCheck(
+        Path irFile,
+        Path projectRoot,
+        boolean runReachAndTests,
+        boolean strictHygiene,
+        String expectedBlockKey,
+        String expectedBlockLocator,
+        Boolean considerContainmentSurfacesOverride,
+        boolean runContainmentPreflight,
+        Path explicitIndexPath,
+        boolean collectAll
     ) {
         Path baselineRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
         Path tempRoot = null;
@@ -451,50 +506,109 @@ final class CheckCommandService {
                 );
                 List<String> unexpectedPaths = HygieneScanner.scanUnexpectedPaths(projectRoot, hygieneAllowlist);
                 if (!unexpectedPaths.isEmpty()) {
-                    String line = "check: HYGIENE_UNEXPECTED_PATHS: " + unexpectedPaths.get(0);
-                    diagnostics.add(line);
+                    List<String> selectedUnexpectedPaths = collectAll
+                        ? List.copyOf(unexpectedPaths)
+                        : List.of(unexpectedPaths.get(0));
+                    ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+                    for (String unexpectedPath : selectedUnexpectedPaths) {
+                        String line = "check: HYGIENE_UNEXPECTED_PATHS: " + unexpectedPath;
+                        diagnostics.add(line);
+                        problems.add(AgentDiagnostics.problem(
+                            AgentDiagnostics.AgentCategory.GOVERNANCE,
+                            CliCodes.HYGIENE_UNEXPECTED_PATHS,
+                            CliCodes.HYGIENE_UNEXPECTED_PATHS,
+                            null,
+                            AgentDiagnostics.AgentSeverity.ERROR,
+                            blockKey,
+                            unexpectedPath,
+                            null,
+                            CliCodes.HYGIENE_UNEXPECTED_PATHS,
+                            line,
+                            Map.of()
+                        ));
+                    }
+                    String firstLine = "check: HYGIENE_UNEXPECTED_PATHS: " + selectedUnexpectedPaths.get(0);
                     return checkFailure(
                         CliCodes.EXIT_UNDECLARED_REACH,
                         diagnostics,
                         "HYGIENE",
                         CliCodes.HYGIENE_UNEXPECTED_PATHS,
-                        unexpectedPaths.get(0),
+                        selectedUnexpectedPaths.get(0),
                         "Remove unexpected tool directories or allowlist them in `.bear/policy/hygiene-allowlist.txt`, then rerun `bear check`.",
-                        line
+                        firstLine,
+                        problems
                     );
                 }
             }
 
             List<UndeclaredReachFinding> undeclaredReach = UndeclaredReachScanner.scanUndeclaredReach(projectRoot);
             if (!undeclaredReach.isEmpty()) {
-                for (UndeclaredReachFinding finding : undeclaredReach) {
-                    diagnostics.add("check: UNDECLARED_REACH: " + finding.path() + ": " + finding.surface());
+                List<UndeclaredReachFinding> selectedUndeclaredReach = collectAll
+                    ? List.copyOf(undeclaredReach)
+                    : List.of(undeclaredReach.get(0));
+                ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+                for (UndeclaredReachFinding finding : selectedUndeclaredReach) {
+                    String line = "check: UNDECLARED_REACH: " + finding.path() + ": " + finding.surface();
+                    diagnostics.add(line);
+                    problems.add(AgentDiagnostics.problem(
+                        AgentDiagnostics.AgentCategory.GOVERNANCE,
+                        CliCodes.UNDECLARED_REACH,
+                        CliCodes.UNDECLARED_REACH,
+                        null,
+                        AgentDiagnostics.AgentSeverity.ERROR,
+                        blockKey,
+                        finding.path(),
+                        null,
+                        CliCodes.UNDECLARED_REACH,
+                        line,
+                        Map.of()
+                    ));
                 }
                 return checkFailure(
                     CliCodes.EXIT_UNDECLARED_REACH,
                     diagnostics,
                     "UNDECLARED_REACH",
                     CliCodes.UNDECLARED_REACH,
-                    undeclaredReach.get(0).path(),
+                    selectedUndeclaredReach.get(0).path(),
                     "Declare a port/op in IR, run bear compile, and route call through generated port interface.",
-                    diagnostics.get(diagnostics.size() - 1)
+                    diagnostics.get(diagnostics.size() - 1),
+                    problems
                 );
             }
 
             List<UndeclaredReachFinding> reflectionDispatchFindings =
                 GovernedReflectionDispatchScanner.scanForbiddenReflectionDispatch(projectRoot, List.of(baselineWiringManifest));
             if (!reflectionDispatchFindings.isEmpty()) {
-                for (UndeclaredReachFinding finding : reflectionDispatchFindings) {
-                    diagnostics.add("check: UNDECLARED_REACH: " + finding.path() + ": " + finding.surface());
+                List<UndeclaredReachFinding> selectedReflectionFindings = collectAll
+                    ? List.copyOf(reflectionDispatchFindings)
+                    : List.of(reflectionDispatchFindings.get(0));
+                ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+                for (UndeclaredReachFinding finding : selectedReflectionFindings) {
+                    String line = "check: UNDECLARED_REACH: " + finding.path() + ": " + finding.surface();
+                    diagnostics.add(line);
+                    problems.add(AgentDiagnostics.problem(
+                        AgentDiagnostics.AgentCategory.GOVERNANCE,
+                        CliCodes.REFLECTION_DISPATCH_FORBIDDEN,
+                        CliCodes.REFLECTION_DISPATCH_FORBIDDEN,
+                        null,
+                        AgentDiagnostics.AgentSeverity.ERROR,
+                        blockKey,
+                        finding.path(),
+                        null,
+                        CliCodes.REFLECTION_DISPATCH_FORBIDDEN,
+                        line,
+                        Map.of()
+                    ));
                 }
                 return checkFailure(
                     CliCodes.EXIT_UNDECLARED_REACH,
                     diagnostics,
                     "UNDECLARED_REACH",
                     CliCodes.REFLECTION_DISPATCH_FORBIDDEN,
-                    reflectionDispatchFindings.get(0).path(),
+                    selectedReflectionFindings.get(0).path(),
                     "Remove reflection/method-handle dynamic dispatch from governed roots and route through declared generated boundaries.",
-                    diagnostics.get(diagnostics.size() - 1)
+                    diagnostics.get(diagnostics.size() - 1),
+                    problems
                 );
             }
 
@@ -522,24 +636,41 @@ final class CheckCommandService {
                     .thenComparing(BoundaryBypassFinding::detail)
             );
             if (!bypassFindings.isEmpty()) {
-                for (BoundaryBypassFinding finding : bypassFindings) {
-                    diagnostics.add(
-                        "check: BOUNDARY_BYPASS: RULE="
-                            + finding.rule()
-                            + ": "
-                            + finding.path()
-                            + ": "
-                            + finding.detail()
-                    );
+                List<BoundaryBypassFinding> selectedBypassFindings = collectAll
+                    ? List.copyOf(bypassFindings)
+                    : List.of(bypassFindings.get(0));
+                ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+                for (BoundaryBypassFinding finding : selectedBypassFindings) {
+                    String line = "check: BOUNDARY_BYPASS: RULE="
+                        + finding.rule()
+                        + ": "
+                        + finding.path()
+                        + ": "
+                        + finding.detail();
+                    diagnostics.add(line);
+                    problems.add(AgentDiagnostics.problem(
+                        AgentDiagnostics.AgentCategory.GOVERNANCE,
+                        CliCodes.BOUNDARY_BYPASS,
+                        finding.rule(),
+                        null,
+                        AgentDiagnostics.AgentSeverity.ERROR,
+                        blockKey,
+                        finding.path(),
+                        null,
+                        finding.rule(),
+                        line,
+                        Map.of()
+                    ));
                 }
                 return checkFailure(
                     CliCodes.EXIT_BOUNDARY_BYPASS,
                     diagnostics,
                     "BOUNDARY_BYPASS",
                     CliCodes.BOUNDARY_BYPASS,
-                    bypassFindings.get(0).path(),
-                    boundaryBypassRemediation(bypassFindings.get(0).rule()),
-                    diagnostics.get(diagnostics.size() - 1)
+                    selectedBypassFindings.get(0).path(),
+                    boundaryBypassRemediation(selectedBypassFindings.get(0).rule()),
+                    diagnostics.get(diagnostics.size() - 1),
+                    problems
                 );
             }
 
@@ -1004,6 +1135,28 @@ final class CheckCommandService {
         String failureRemediation,
         String detail
     ) {
+        return checkFailure(
+            exitCode,
+            stderrLines,
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail,
+            List.of(defaultProblem(failureCode, failurePath, detail, null, null, failureCode))
+        );
+    }
+
+    private static CheckResult checkFailure(
+        int exitCode,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail,
+        List<AgentDiagnostics.AgentProblem> problems
+    ) {
         return new CheckResult(
             exitCode,
             List.of(),
@@ -1012,8 +1165,47 @@ final class CheckCommandService {
             failureCode,
             failurePath,
             failureRemediation,
-            detail
+            detail,
+            List.copyOf(problems)
         );
+    }
+
+    private static AgentDiagnostics.AgentProblem defaultProblem(
+        String failureCode,
+        String failurePath,
+        String detail,
+        String blockId,
+        String ruleId,
+        String reasonKey
+    ) {
+        AgentDiagnostics.AgentCategory category = isGovernanceFailureCode(failureCode)
+            ? AgentDiagnostics.AgentCategory.GOVERNANCE
+            : AgentDiagnostics.AgentCategory.INFRA;
+        return AgentDiagnostics.problem(
+            category,
+            failureCode,
+            ruleId,
+            reasonKey,
+            AgentDiagnostics.AgentSeverity.ERROR,
+            blockId,
+            FailureEnvelopeEmitter.normalizeLocator(failurePath),
+            null,
+            ruleId != null ? ruleId : reasonKey,
+            detail == null ? "" : detail,
+            Map.of()
+        );
+    }
+
+    private static boolean isGovernanceFailureCode(String failureCode) {
+        if (failureCode == null) {
+            return false;
+        }
+        return CliCodes.BOUNDARY_BYPASS.equals(failureCode)
+            || CliCodes.UNDECLARED_REACH.equals(failureCode)
+            || CliCodes.REFLECTION_DISPATCH_FORBIDDEN.equals(failureCode)
+            || CliCodes.HYGIENE_UNEXPECTED_PATHS.equals(failureCode)
+            || CliCodes.BOUNDARY_EXPANSION.equals(failureCode)
+            || GovernanceRuleRegistry.PUBLIC_RULE_IDS.contains(failureCode);
     }
 
     private static String sha256Hex(byte[] bytes) {
@@ -1048,3 +1240,9 @@ final class CheckCommandService {
     }
 
 }
+
+
+
+
+
+

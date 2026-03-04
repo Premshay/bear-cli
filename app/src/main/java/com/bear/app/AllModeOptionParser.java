@@ -17,6 +17,8 @@ final class AllModeOptionParser {
         boolean failFast = false;
         boolean strictOrphans = false;
         boolean strictHygiene = false;
+        boolean collectAll = false;
+        boolean agent = false;
         for (int i = 2; i < args.length; i++) {
             String token = args[i];
             switch (token) {
@@ -65,14 +67,27 @@ final class AllModeOptionParser {
                 case "--fail-fast" -> failFast = true;
                 case "--strict-orphans" -> strictOrphans = true;
                 case "--strict-hygiene" -> strictHygiene = true;
+                case "--collect=all" -> collectAll = true;
+                case "--agent" -> agent = true;
                 default -> {
+                    if (token.startsWith("--collect=")) {
+                        BearCli.failWithLegacy(
+                            err,
+                            CliCodes.EXIT_USAGE,
+                            "usage: INVALID_ARGS: unsupported value for --collect",
+                            CliCodes.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Use `--collect=all` or omit the flag."
+                        );
+                        return null;
+                    }
                     BearCli.failWithLegacy(
                         err,
                         CliCodes.EXIT_USAGE,
                         "usage: INVALID_ARGS: unexpected argument: " + token,
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene]`."
+                        "Run `bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene] [--collect=all] [--agent]`."
                     );
                     return null;
                 }
@@ -117,9 +132,8 @@ final class AllModeOptionParser {
             );
             return null;
         }
-        return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans, strictHygiene);
+        return new AllCheckOptions(repoRoot, blocksPath, onlyNames, failFast, strictOrphans, strictHygiene, collectAll, agent);
     }
-
     static AllCompileOptions parseAllCompileOptions(String[] args, PrintStream err) {
         Path repoRoot = null;
         String blocksArg = null;
@@ -342,6 +356,8 @@ final class AllModeOptionParser {
         String onlyArg = null;
         String baseRef = null;
         boolean strictOrphans = false;
+        boolean collectAll = false;
+        boolean agent = false;
         for (int i = 2; i < args.length; i++) {
             String token = args[i];
             switch (token) {
@@ -402,14 +418,27 @@ final class AllModeOptionParser {
                     baseRef = args[++i];
                 }
                 case "--strict-orphans" -> strictOrphans = true;
+                case "--collect=all" -> collectAll = true;
+                case "--agent" -> agent = true;
                 default -> {
+                    if (token.startsWith("--collect=")) {
+                        BearCli.failWithLegacy(
+                            err,
+                            CliCodes.EXIT_USAGE,
+                            "usage: INVALID_ARGS: unsupported value for --collect",
+                            CliCodes.USAGE_INVALID_ARGS,
+                            "cli.args",
+                            "Use `--collect=all` or omit the flag."
+                        );
+                        return null;
+                    }
                     BearCli.failWithLegacy(
                         err,
                         CliCodes.EXIT_USAGE,
                         "usage: INVALID_ARGS: unexpected argument: " + token,
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]`."
+                        "Run `bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans] [--collect=all] [--agent]`."
                     );
                     return null;
                 }
@@ -454,9 +483,8 @@ final class AllModeOptionParser {
             );
             return null;
         }
-        return new AllPrCheckOptions(repoRoot, blocksPath, onlyNames, strictOrphans, baseRef);
+        return new AllPrCheckOptions(repoRoot, blocksPath, onlyNames, strictOrphans, baseRef, collectAll, agent);
     }
-
     static Path resolveBlocksPath(Path repoRoot, String blocksArg) {
         if (blocksArg == null) {
             return repoRoot.resolve("bear.blocks.yaml").normalize();

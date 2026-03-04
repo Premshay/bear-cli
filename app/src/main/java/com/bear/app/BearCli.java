@@ -313,7 +313,7 @@ public final class BearCli {
         String expectedBlockKey,
         String expectedBlockLocator
     ) {
-        return executeCheck(irFile, projectRoot, runReachAndTests, strictHygiene, expectedBlockKey, expectedBlockLocator, null);
+        return executeCheck(irFile, projectRoot, runReachAndTests, strictHygiene, expectedBlockKey, expectedBlockLocator, null, false);
     }
 
     static CheckResult executeCheck(
@@ -325,6 +325,28 @@ public final class BearCli {
         String expectedBlockLocator,
         Path explicitIndexPath
     ) {
+        return executeCheck(
+            irFile,
+            projectRoot,
+            runReachAndTests,
+            strictHygiene,
+            expectedBlockKey,
+            expectedBlockLocator,
+            explicitIndexPath,
+            false
+        );
+    }
+
+    static CheckResult executeCheck(
+        Path irFile,
+        Path projectRoot,
+        boolean runReachAndTests,
+        boolean strictHygiene,
+        String expectedBlockKey,
+        String expectedBlockLocator,
+        Path explicitIndexPath,
+        boolean collectAll
+    ) {
         return CheckCommandService.executeCheck(
             irFile,
             projectRoot,
@@ -332,7 +354,8 @@ public final class BearCli {
             strictHygiene,
             expectedBlockKey,
             expectedBlockLocator,
-            explicitIndexPath
+            explicitIndexPath,
+            collectAll
         );
     }
 
@@ -392,11 +415,21 @@ public final class BearCli {
     }
 
     static PrCheckResult executePrCheck(Path projectRoot, String repoRelativePath, String baseRef) {
-        return executePrCheck(projectRoot, repoRelativePath, baseRef, null);
+        return executePrCheck(projectRoot, repoRelativePath, baseRef, null, false);
     }
 
     static PrCheckResult executePrCheck(Path projectRoot, String repoRelativePath, String baseRef, Path explicitIndexPath) {
-        return PrCheckCommandService.executePrCheck(projectRoot, repoRelativePath, baseRef, explicitIndexPath);
+        return executePrCheck(projectRoot, repoRelativePath, baseRef, explicitIndexPath, false);
+    }
+
+    static PrCheckResult executePrCheck(
+        Path projectRoot,
+        String repoRelativePath,
+        String baseRef,
+        Path explicitIndexPath,
+        boolean collectAll
+    ) {
+        return PrCheckCommandService.executePrCheck(projectRoot, repoRelativePath, baseRef, explicitIndexPath, collectAll);
     }
 
     private static CheckResult checkFailure(
@@ -540,7 +573,9 @@ public final class BearCli {
             result.failureRemediation(),
             null,
             null,
-            List.of()
+            List.of(),
+            List.of(),
+            result.problems()
         );
     }
 
@@ -623,6 +658,22 @@ public final class BearCli {
         String detail,
         String remediation
     ) {
+        AgentDiagnostics.AgentCategory agentCategory = isGovernanceCode(blockCode)
+            ? AgentDiagnostics.AgentCategory.GOVERNANCE
+            : AgentDiagnostics.AgentCategory.INFRA;
+        AgentDiagnostics.AgentProblem problem = AgentDiagnostics.problem(
+            agentCategory,
+            blockCode == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockCode,
+            agentCategory == AgentDiagnostics.AgentCategory.GOVERNANCE ? blockCode : null,
+            agentCategory == AgentDiagnostics.AgentCategory.INFRA ? (blockCode == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockCode) : null,
+            AgentDiagnostics.AgentSeverity.ERROR,
+            base.name(),
+            normalizeLocator(blockPath),
+            null,
+            blockCode == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockCode,
+            detail == null ? "" : detail,
+            Map.of()
+        );
         return new BlockExecutionResult(
             base.name(),
             base.ir(),
@@ -637,7 +688,8 @@ public final class BearCli {
             null,
             base.classification(),
             base.deltaLines(),
-            base.governanceLines()
+            base.governanceLines(),
+            List.of(problem)
         );
     }
 
@@ -698,7 +750,8 @@ public final class BearCli {
             null,
             classification,
             result.deltaLines(),
-            result.governanceLines()
+            result.governanceLines(),
+            result.problems()
         );
     }
 
@@ -815,11 +868,11 @@ public final class BearCli {
         out.println("       bear compile --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
         out.println("       bear fix <ir-file> --project <path> [--index <path>]");
         out.println("       bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]");
-        out.println("       bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]");
-        out.println("       bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene]");
+        out.println("       bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]");
+        out.println("       bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene] [--collect=all] [--agent]");
         out.println("       bear unblock --project <path>");
-        out.println("       bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]");
-        out.println("       bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]");
+        out.println("       bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]");
+        out.println("       bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans] [--collect=all] [--agent]");
         out.println("       bear --help");
     }
 
@@ -845,10 +898,28 @@ public final class BearCli {
         return FailureEnvelopeEmitter.fail(err, exitCode, code, pathLocator, remediation);
     }
 
+    private static boolean isGovernanceCode(String code) {
+        if (code == null) {
+            return false;
+        }
+        return code.equals(CliCodes.BOUNDARY_BYPASS)
+            || code.equals(CliCodes.BOUNDARY_EXPANSION)
+            || code.equals(CliCodes.UNDECLARED_REACH)
+            || code.equals(CliCodes.REFLECTION_DISPATCH_FORBIDDEN)
+            || code.equals(CliCodes.HYGIENE_UNEXPECTED_PATHS)
+            || code.equals(CliCodes.PORT_IMPL_OUTSIDE_GOVERNED_ROOT)
+            || code.equals(CliCodes.MULTI_BLOCK_PORT_IMPL_FORBIDDEN)
+            || GovernanceRuleRegistry.PUBLIC_RULE_IDS.contains(code);
+    }
     private static String normalizeLocator(String raw) {
         return FailureEnvelopeEmitter.normalizeLocator(raw);
     }
 }
+
+
+
+
+
 
 
 

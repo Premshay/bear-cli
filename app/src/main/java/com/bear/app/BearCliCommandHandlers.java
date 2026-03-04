@@ -228,6 +228,8 @@ final class BearCliCommandHandlers {
         Path projectRoot = null;
         Path indexPath = null;
         boolean strictHygiene = false;
+        boolean collectAll = false;
+        boolean agent = false;
         for (int i = 1; i < args.length; i++) {
             String token = args[i];
             if ("--project".equals(token)) {
@@ -238,7 +240,7 @@ final class BearCliCommandHandlers {
                         "usage: INVALID_ARGS: expected value after --project",
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]` with the expected arguments."
+                        "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]` with the expected arguments."
                     );
                 }
                 projectRoot = Path.of(args[++i]);
@@ -248,6 +250,24 @@ final class BearCliCommandHandlers {
                 strictHygiene = true;
                 continue;
             }
+            if ("--agent".equals(token)) {
+                agent = true;
+                continue;
+            }
+            if ("--collect=all".equals(token)) {
+                collectAll = true;
+                continue;
+            }
+            if (token.startsWith("--collect=")) {
+                return BearCli.failWithLegacy(
+                    err,
+                    CliCodes.EXIT_USAGE,
+                    "usage: INVALID_ARGS: unsupported value for --collect",
+                    CliCodes.USAGE_INVALID_ARGS,
+                    "cli.args",
+                    "Use `--collect=all` or omit the flag."
+                );
+            }
             if ("--index".equals(token)) {
                 if (i + 1 >= args.length) {
                     return BearCli.failWithLegacy(
@@ -256,7 +276,7 @@ final class BearCliCommandHandlers {
                         "usage: INVALID_ARGS: expected value after --index",
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]` with the expected arguments."
+                        "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]` with the expected arguments."
                     );
                 }
                 indexPath = Path.of(args[++i]);
@@ -269,7 +289,7 @@ final class BearCliCommandHandlers {
                     "usage: INVALID_ARGS: unexpected argument: " + token,
                     CliCodes.USAGE_INVALID_ARGS,
                     "cli.args",
-                    "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]` with the expected arguments."
+                    "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]` with the expected arguments."
                 );
             }
             irFile = Path.of(token);
@@ -279,17 +299,20 @@ final class BearCliCommandHandlers {
             return BearCli.failWithLegacy(
                 err,
                 CliCodes.EXIT_USAGE,
-                "usage: INVALID_ARGS: expected: bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]",
+                "usage: INVALID_ARGS: expected: bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]",
                 CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
-                "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]` with the expected arguments."
+                "Run `bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]` with the expected arguments."
             );
         }
 
-        CheckResult result = BearCli.executeCheck(irFile, projectRoot, true, strictHygiene, null, null, indexPath);
+        CheckResult result = BearCli.executeCheck(irFile, projectRoot, true, strictHygiene, null, null, indexPath, collectAll);
+        if (agent) {
+            out.println(AgentDiagnostics.toJson(AgentDiagnostics.payloadForCheck(result, "single", collectAll)));
+            return result.exitCode();
+        }
         return BearCli.emitCheckResult(result, out, err);
     }
-
     static int runUnblock(String[] args, PrintStream out, PrintStream err) {
         if (args.length == 2 && ("--help".equals(args[1]) || "-h".equals(args[1]))) {
             BearCli.printUsage(out);
@@ -361,6 +384,8 @@ final class BearCliCommandHandlers {
         Path projectRoot = null;
         String baseRef = null;
         Path indexPath = null;
+        boolean collectAll = false;
+        boolean agent = false;
 
         for (int i = 1; i < args.length; i++) {
             String token = args[i];
@@ -372,7 +397,7 @@ final class BearCliCommandHandlers {
                         "usage: INVALID_ARGS: expected value after --project",
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]` with the expected arguments."
+                        "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]` with the expected arguments."
                     );
                 }
                 projectRoot = Path.of(args[++i]).toAbsolutePath().normalize();
@@ -386,7 +411,7 @@ final class BearCliCommandHandlers {
                         "usage: INVALID_ARGS: expected value after --base",
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]` with the expected arguments."
+                        "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]` with the expected arguments."
                     );
                 }
                 baseRef = args[++i];
@@ -400,11 +425,29 @@ final class BearCliCommandHandlers {
                         "usage: INVALID_ARGS: expected value after --index",
                         CliCodes.USAGE_INVALID_ARGS,
                         "cli.args",
-                        "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]` with the expected arguments."
+                        "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]` with the expected arguments."
                     );
                 }
                 indexPath = Path.of(args[++i]);
                 continue;
+            }
+            if ("--agent".equals(token)) {
+                agent = true;
+                continue;
+            }
+            if ("--collect=all".equals(token)) {
+                collectAll = true;
+                continue;
+            }
+            if (token.startsWith("--collect=")) {
+                return BearCli.failWithLegacy(
+                    err,
+                    CliCodes.EXIT_USAGE,
+                    "usage: INVALID_ARGS: unsupported value for --collect",
+                    CliCodes.USAGE_INVALID_ARGS,
+                    "cli.args",
+                    "Use `--collect=all` or omit the flag."
+                );
             }
             if (token.startsWith("--") || irArg != null) {
                 return BearCli.failWithLegacy(
@@ -413,7 +456,7 @@ final class BearCliCommandHandlers {
                     "usage: INVALID_ARGS: unexpected argument: " + token,
                     CliCodes.USAGE_INVALID_ARGS,
                     "cli.args",
-                    "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]` with the expected arguments."
+                    "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]` with the expected arguments."
                 );
             }
             irArg = token;
@@ -423,10 +466,10 @@ final class BearCliCommandHandlers {
             return BearCli.failWithLegacy(
                 err,
                 CliCodes.EXIT_USAGE,
-                "usage: INVALID_ARGS: expected: bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]",
+                "usage: INVALID_ARGS: expected: bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]",
                 CliCodes.USAGE_INVALID_ARGS,
                 "cli.args",
-                "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]` with the expected arguments."
+                "Run `bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]` with the expected arguments."
             );
         }
 
@@ -466,10 +509,14 @@ final class BearCliCommandHandlers {
             );
         }
 
-        PrCheckResult result = BearCli.executePrCheck(projectRoot, repoRelativePath, baseRef, indexPath);
-        return BearCli.emitPrCheckResult(BearCli.enforcePrCheckExitEnvelope(result, repoRelativePath), out, err);
+        PrCheckResult result = BearCli.executePrCheck(projectRoot, repoRelativePath, baseRef, indexPath, collectAll);
+        result = BearCli.enforcePrCheckExitEnvelope(result, repoRelativePath);
+        if (agent) {
+            out.println(AgentDiagnostics.toJson(AgentDiagnostics.payloadForPrCheck(result, "single", collectAll)));
+            return result.exitCode();
+        }
+        return BearCli.emitPrCheckResult(result, out, err);
     }
-
     private static int runFixAll(String[] args, PrintStream out, PrintStream err) {
         return FixAllCommandService.runFixAll(args, out, err);
     }

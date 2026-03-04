@@ -112,7 +112,9 @@ final class CheckAllCommandService {
             );
         }
 
-        out.println("check-all: START project=.");
+        if (!options.agent()) {
+            out.println("check-all: START project=.");
+        }
 
         try {
             List<String> legacyMarkers = options.strictOrphans()
@@ -206,7 +208,9 @@ final class CheckAllCommandService {
         boolean failed = false;
         boolean failFastTriggered = false;
         for (BlockIndexEntry block : selected) {
-            emitBlockStart(out, block);
+            if (!options.agent()) {
+                emitBlockStart(out, block);
+            }
             if (!block.enabled()) {
                 blockResults.add(BearCli.skipBlock(block, "DISABLED"));
                 continue;
@@ -225,7 +229,9 @@ final class CheckAllCommandService {
                 block.name(),
                 BearCli.indexLocator(block),
                 rootContainmentRequiredBySelection.getOrDefault(block.projectRoot(), false),
-                false
+                false,
+                null,
+                options.collectAll()
             );
             BlockExecutionResult blockResult = BearCli.toCheckBlockResult(block, checkResult);
             blockResults.add(blockResult);
@@ -688,6 +694,42 @@ final class CheckAllCommandService {
             rootTestFailed,
             rootTestSkippedDueToReach
         );
+        if (options.agent()) {
+            ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+            for (BlockExecutionResult blockResult : blockResults) {
+                if (blockResult.problems() != null) {
+                    problems.addAll(blockResult.problems());
+                }
+                if (blockResult.status() == BlockStatus.FAIL && (blockResult.problems() == null || blockResult.problems().isEmpty())) {
+                    problems.add(AgentDiagnostics.problem(
+                        blockResult.blockCode() != null && (
+                            CliCodes.BOUNDARY_BYPASS.equals(blockResult.blockCode())
+                                || CliCodes.UNDECLARED_REACH.equals(blockResult.blockCode())
+                                || CliCodes.REFLECTION_DISPATCH_FORBIDDEN.equals(blockResult.blockCode())
+                        ) ? AgentDiagnostics.AgentCategory.GOVERNANCE : AgentDiagnostics.AgentCategory.INFRA,
+                        blockResult.blockCode() == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockResult.blockCode(),
+                        null,
+                        blockResult.blockCode() == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockResult.blockCode(),
+                        AgentDiagnostics.AgentSeverity.ERROR,
+                        blockResult.name(),
+                        blockResult.blockPath(),
+                        null,
+                        blockResult.blockCode() == null ? CliCodes.REPO_MULTI_BLOCK_FAILED : blockResult.blockCode(),
+                        blockResult.detail() == null ? "" : blockResult.detail(),
+                        Map.of()
+                    ));
+                }
+            }
+            AgentDiagnostics.AgentPayload payload = AgentDiagnostics.payload(
+                "check",
+                "all",
+                options.collectAll() ? "all" : "first",
+                summary.exitCode(),                problems
+            );
+            out.println(AgentDiagnostics.toJson(payload));
+            return summary.exitCode();
+        }
+
         List<String> lines = AllModeRenderer.renderCheckAllOutput(blockResults, summary);
         if (summary.exitCode() == CliCodes.EXIT_OK) {
             CliText.printLines(out, lines);
@@ -868,3 +910,6 @@ final class CheckAllCommandService {
         );
     }
 }
+
+
+

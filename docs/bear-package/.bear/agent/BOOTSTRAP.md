@@ -25,14 +25,14 @@ Bootstrap guardrails:
 8. Implement against generated BEAR contracts/ports only.
 9. Multi-block governance requires index + `--all`; do not bypass by deleting `bear.blocks.yaml`.
 10. `pr-check` base must be merge-base against target branch (or provided base SHA).
-11. Completion requires both gates:
-- `bear check --all --project <repoRoot>`
-- `bear pr-check --all --project <repoRoot> --base <ref>`
+11. Completion requires both gates; for machine agent loops, pass `--agent` (usually with `--collect=all`):
+- `bear check --all --project <repoRoot> [--collect=all] [--agent]`
+- `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]`
 12. For expected greenfield baseline `BOUNDARY_EXPANSION_DETECTED`, do not force green; report `WAITING_FOR_BASELINE_REVIEW` per `.bear/agent/REPORTING.md`.
 13. If spec conflicts with explicit enforcement/contract rules, stop and escalate unless spec explicitly authorizes rule changes.
 14. Do not self-edit build/policy/runtime harness files unless explicitly instructed:
 - `build.gradle`, `settings.gradle`, `gradlew`, `gradlew.bat`, `.bear/**`, `bin/bear*`
-15. Completion output must follow `.bear/agent/REPORTING.md`.
+15. Completion output must follow `.bear/agent/REPORTING.md`; in `--agent` mode, stdout is JSON-only.
 
 ## Routing Map
 
@@ -81,8 +81,8 @@ Read on demand:
 - `bear fix <ir-file> --project <repoRoot>` or `bear fix --all --project <repoRoot>`
 8. Implement only in user-owned sources/tests.
 9. Run completion gates:
-- `bear check --all --project <repoRoot>`
-- `bear pr-check --all --project <repoRoot> --base <ref>`
+- `bear check --all --project <repoRoot> [--collect=all] [--agent]`
+- `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]`
 10. Report results using `.bear/agent/REPORTING.md`.
 
 ## Always-On Rules
@@ -191,8 +191,8 @@ In greenfield mode:
 ## Done Gate Contract
 
 Required evidence before completion:
-1. `bear check --all --project <repoRoot> => 0`
-2. `bear pr-check --all --project <repoRoot> --base <ref> => 0`
+1. `bear check --all --project <repoRoot> [--collect=all] [--agent] => 0`
+2. `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent] => 0`
 3. Completion report follows `.bear/agent/REPORTING.md` exactly.
 
 

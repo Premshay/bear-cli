@@ -17,8 +17,21 @@ record CheckResult(
     String failureCode,
     String failurePath,
     String failureRemediation,
-    String detail
+    String detail,
+    List<AgentDiagnostics.AgentProblem> problems
 ) {
+    CheckResult(
+        int exitCode,
+        List<String> stdoutLines,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail
+    ) {
+        this(exitCode, stdoutLines, stderrLines, category, failureCode, failurePath, failureRemediation, detail, List.of());
+    }
 }
 
 record PrCheckResult(
@@ -33,7 +46,8 @@ record PrCheckResult(
     List<String> deltaLines,
     boolean hasBoundary,
     boolean hasDeltas,
-    List<String> governanceLines
+    List<String> governanceLines,
+    List<AgentDiagnostics.AgentProblem> problems
 ) {
     PrCheckResult(
         int exitCode,
@@ -60,6 +74,38 @@ record PrCheckResult(
             deltaLines,
             hasBoundary,
             hasDeltas,
+            List.of(),
+            List.of()
+        );
+    }
+
+    PrCheckResult(
+        int exitCode,
+        List<String> stdoutLines,
+        List<String> stderrLines,
+        String category,
+        String failureCode,
+        String failurePath,
+        String failureRemediation,
+        String detail,
+        List<String> deltaLines,
+        boolean hasBoundary,
+        boolean hasDeltas,
+        List<String> governanceLines
+    ) {
+        this(
+            exitCode,
+            stdoutLines,
+            stderrLines,
+            category,
+            failureCode,
+            failurePath,
+            failureRemediation,
+            detail,
+            deltaLines,
+            hasBoundary,
+            hasDeltas,
+            governanceLines,
             List.of()
         );
     }
@@ -109,7 +155,8 @@ record BlockExecutionResult(
     String reason,
     String classification,
     List<String> deltaLines,
-    List<String> governanceLines
+    List<String> governanceLines,
+    List<AgentDiagnostics.AgentProblem> problems
 ) {
     BlockExecutionResult(
         String name,
@@ -140,6 +187,42 @@ record BlockExecutionResult(
             reason,
             classification,
             deltaLines,
+            List.of(),
+            List.of()
+        );
+    }
+
+    BlockExecutionResult(
+        String name,
+        String ir,
+        String project,
+        BlockStatus status,
+        int exitCode,
+        String category,
+        String blockCode,
+        String blockPath,
+        String detail,
+        String blockRemediation,
+        String reason,
+        String classification,
+        List<String> deltaLines,
+        List<String> governanceLines
+    ) {
+        this(
+            name,
+            ir,
+            project,
+            status,
+            exitCode,
+            category,
+            blockCode,
+            blockPath,
+            detail,
+            blockRemediation,
+            reason,
+            classification,
+            deltaLines,
+            governanceLines,
             List.of()
         );
     }
@@ -223,7 +306,9 @@ record AllCheckOptions(
     Set<String> onlyNames,
     boolean failFast,
     boolean strictOrphans,
-    boolean strictHygiene
+    boolean strictHygiene,
+    boolean collectAll,
+    boolean agent
 ) {
 }
 
@@ -250,10 +335,11 @@ record AllPrCheckOptions(
     Path blocksPath,
     Set<String> onlyNames,
     boolean strictOrphans,
-    String baseRef
+    String baseRef,
+    boolean collectAll,
+    boolean agent
 ) {
 }
-
 enum DriftType {
     ADDED("ADDED", 0),
     REMOVED("REMOVED", 1),

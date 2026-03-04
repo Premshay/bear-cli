@@ -165,7 +165,7 @@ Optional flags:
 ### 4. Local gate (drift + tests)
 
 ```text
-bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]
+bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]
 ```
 
 Use when:
@@ -215,7 +215,7 @@ Behavior:
 ### 4b. Repo gate (multi-block)
 
 ```text
-bear check --all --project <repoRoot> [--strict-hygiene]
+bear check --all --project <repoRoot> [--strict-hygiene] [--collect=all] [--agent]
 ```
 
 Optional flags:
@@ -250,7 +250,7 @@ Behavior:
 ### 5. PR governance gate (base diff classification)
 
 ```text
-bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]
+bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]
 ```
 
 Use when:
@@ -270,7 +270,7 @@ Behavior:
 ### 5b. PR governance gate (multi-block)
 
 ```text
-bear pr-check --all --project <repoRoot> --base <ref>
+bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]
 ```
 
 Optional flags:
@@ -425,7 +425,7 @@ All non-zero command exits include deterministic footer lines:
 6. If generated artifacts need deterministic repair, run `bear fix <ir-file> --project <path> [--index <path>]` (or `fix --all`).
 7. Agent implements user-owned logic/tests.
 8. Agent runs `bear check --all --project <repoRoot>`.
-9. Agent runs `bear pr-check --all --project <repoRoot> --base <ref>`.
+9. Agent runs `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]`.
 10. Agent completion report includes governance-signal disposition block:
 ```text
 GOVERNANCE_SIGNAL_DISPOSITION

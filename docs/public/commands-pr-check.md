@@ -10,8 +10,8 @@ Run deterministic PR governance checks:
 ## Invocation forms
 
 ```text
-bear pr-check <ir-file> --project <path> --base <ref> [--index <path>]
-bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans]
+bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]
+bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans] [--collect=all] [--agent]
 ```
 
 ## Missing index envelope (`--all`)
@@ -32,6 +32,8 @@ REMEDIATION=Create bear.blocks.yaml or run non---all command
 - for `kind=block`, single mode resolves index path as: explicit `--index` if provided, else `<project>/bear.blocks.yaml`; then validates normalized `(ir, projectRoot)` tuple membership.
 - `<ir-file>` must be repo-relative.
 - `--all` mode uses index selection and optional `--blocks`, `--only`, `--strict-orphans`.
+- `--collect=all` collects additional findings within lanes that already run (does not force extra lane execution).
+- `--agent` emits JSON-only diagnostics to stdout (`schemaVersion=bear.nextAction.v1`).
 - completion workflows should pair:
   - `bear check --all --project <repoRoot>`
   - `bear pr-check --all --project <repoRoot> --base <ref>`
@@ -112,3 +114,10 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 - [troubleshooting.md](troubleshooting.md)
 
 
+
+
+## Agent JSON mode
+
+- `--agent` writes JSON to stdout only (no prose output mixed into stdout).
+- JSON includes deterministic `problems`, `clusters`, and one `nextAction` item selected by severity/rank rules.
+- stream contract: BEAR itself emits no normal prose lines to stderr on normal command completion paths.

@@ -11,8 +11,8 @@ Completion pairing note:
 ## Invocation forms
 
 ```text
-bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>]
-bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene]
+bear check <ir-file> --project <path> [--strict-hygiene] [--index <path>] [--collect=all] [--agent]
+bear check --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans] [--strict-hygiene] [--collect=all] [--agent]
 ```
 
 If `bear.blocks.yaml` is missing for `check --all`, failure envelope is deterministic (exit `2`):
@@ -35,6 +35,8 @@ REMEDIATION=Create bear.blocks.yaml or run non---all command
 - `--fail-fast` stops block execution after first failure.
 - `--strict-orphans` enables strict marker-orphan checks.
 - `--strict-hygiene` enables opt-in unexpected-path hygiene checks (`.g`, `.gradle-user`) with exact-path allowlist support.
+- `--collect=all` collects additional findings within reached enforcement lanes (default remains first/fail-fast behavior).
+- `--agent` emits JSON-only diagnostics to stdout (`schemaVersion=bear.nextAction.v1`) with deterministic `problems`, `clusters`, and `nextAction`.
 
 Optional policy files:
 - `.bear/policy/reflection-allowlist.txt`
@@ -219,3 +221,10 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
 - [troubleshooting.md](troubleshooting.md)
+
+
+## Agent JSON mode
+
+- `--agent` writes JSON to stdout only (no prose output mixed into stdout).
+- `collectMode` in JSON is `first` by default and `all` when `--collect=all` is set.
+- stream contract: BEAR itself emits no normal prose lines to stderr on normal command completion paths.
