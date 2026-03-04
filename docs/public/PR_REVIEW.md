@@ -25,13 +25,7 @@ flowchart LR
   classDef bad fill:#FEE2E2,stroke:#EF4444,color:#0B1220;
 ```
 
-<sub>
-Figure: what BEAR governs vs what sits outside, and the two common failure shapes (undeclared reach, bypass into governed code).<br>
-Legend: indigo = governed roots, slate = generated boundary glue, green = adapters, red = a violation.
-</sub>
-
-<br>
-
+<p><sub>Figure: what BEAR governs vs what sits outside, and the two common failure shapes (undeclared reach, bypass into governed code).<br/>Legend: indigo = governed roots, slate = generated boundary glue, green = adapters, red = a violation.</sub></p>
 
 In a PR or CI job, the canonical pair is:
 

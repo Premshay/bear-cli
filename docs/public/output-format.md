@@ -31,12 +31,7 @@ sequenceDiagram
 
   Note over CLI: Footer fields to parse:<br/>CODE / PATH / REMEDIATION
 ```
-<sub>
-Figure: how findings become stable lines + a footer contract.
-</sub>
-
-<br>
-
+<p><sub>Figure: how findings become stable lines + a footer contract.</sub></p>
 
 - Locator may be repo-relative path or stable pseudo-path token.
 - Absolute filesystem paths are not allowed.

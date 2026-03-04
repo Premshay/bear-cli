@@ -35,13 +35,7 @@ flowchart LR
   classDef bad fill:#FEE2E2,stroke:#EF4444,color:#0B1220;
   classDef signal fill:#FFF7ED,stroke:#F97316,color:#0B1220;
 ```
-<sub>
-Figure: the BEAR workflow (compile -> check -> pr-check) and the outputs CI should consume.<br>
-Legend: yellow = IR you edit, green = BEAR commands, orange = what automation parses.
-</sub>
-
-<br>
-
+<p><sub>Figure: the BEAR workflow (compile -> check -> pr-check) and the outputs CI should consume.<br/>Legend: yellow = IR you edit, green = BEAR commands, orange = what automation parses.</sub></p>
 
 ## What BEAR does (plain terms)
 
