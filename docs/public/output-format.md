@@ -12,8 +12,6 @@ REMEDIATION=<deterministic-step>
 
 Automation should treat BEAR output as a deterministic pipeline: scanners produce findings, the CLI orders and formats them, and the footer is the stable machine hook.
 
-Figure: how findings become stable lines + a footer contract.
-
 ```mermaid
 %% id: bear-output-pipeline-v1
 sequenceDiagram
@@ -33,6 +31,12 @@ sequenceDiagram
 
   Note over CLI: Footer fields to parse:<br/>CODE / PATH / REMEDIATION
 ```
+<sub>
+Figure: how findings become stable lines + a footer contract.
+</sub>
+
+<br>
+
 
 - Locator may be repo-relative path or stable pseudo-path token.
 - Absolute filesystem paths are not allowed.
