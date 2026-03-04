@@ -33,4 +33,5 @@ Deterministic agent diagnostics v1 for `check` / `pr-check` (`--agent` JSON mode
   - added a plain-language `block` definition in "What BEAR does"
   - added acronym expansion line before non-goals: `BEAR = Block Enforceable Architectural Representation`
 - Verification (latest):
-  - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`- Caption hierarchy adjusted: figure/legend text in `README.md`, `docs/public/PR_REVIEW.md`, and `docs/public/output-format.md` now uses compact `<p><sub>...</sub></p>` with clean spacing before regular body text.
+  - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`
+- Caption hierarchy adjusted: figure/legend text in `README.md`, `docs/public/PR_REVIEW.md`, and `docs/public/output-format.md` now uses compact `<p><sub>...</sub></p>` with clean spacing before regular body text.
