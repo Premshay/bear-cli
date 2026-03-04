@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -264,22 +265,58 @@ final class ProjectTestRunner {
         }
         Process process = pb.start();
 
-        String output;
-        try (InputStream in = process.getInputStream()) {
-            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            if (!finished) {
-                process.destroyForcibly();
-                process.waitFor(5, TimeUnit.SECONDS);
-                output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                ProjectTestStatus timeoutStatus = firstCompileFailureLine(output) != null
-                    ? ProjectTestStatus.COMPILE_FAILURE
-                    : ProjectTestStatus.TIMEOUT;
-                return new PhaseExecution(timeoutStatus, output, phase, lastObservedTask(output));
+        ByteArrayOutputStream outputBuffer = new ByteArrayOutputStream();
+        Thread outputReader = new Thread(() -> {
+            try (InputStream in = process.getInputStream()) {
+                in.transferTo(outputBuffer);
+            } catch (IOException ignored) {
+                // Best-effort capture only; timeout classification should still continue.
             }
-            output = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }, "bear-project-test-output-reader");
+        outputReader.setDaemon(true);
+        outputReader.start();
+
+        boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+        if (!finished) {
+            destroyProcessTree(process);
+            process.waitFor(5, TimeUnit.SECONDS);
+            joinOutputReader(outputReader);
+            String output = outputBuffer.toString(StandardCharsets.UTF_8);
+            ProjectTestStatus timeoutStatus = firstCompileFailureLine(output) != null
+                ? ProjectTestStatus.COMPILE_FAILURE
+                : ProjectTestStatus.TIMEOUT;
+            return new PhaseExecution(timeoutStatus, output, phase, lastObservedTask(output));
         }
+
+        joinOutputReader(outputReader);
+        String output = outputBuffer.toString(StandardCharsets.UTF_8);
         ProjectTestStatus status = classifyProjectTestStatus(process.exitValue(), output, gradleUserHome, phase);
         return new PhaseExecution(status, output, phase, lastObservedTask(output));
+    }
+
+    private static void destroyProcessTree(Process process) {
+        if (process == null) {
+            return;
+        }
+        try {
+            process.toHandle().descendants().forEach(child -> {
+                if (child.isAlive()) {
+                    child.destroyForcibly();
+                }
+            });
+        } catch (Exception ignored) {
+            // Best effort: continue with parent process kill.
+        }
+        if (process.isAlive()) {
+            process.destroyForcibly();
+        }
+    }
+
+    private static void joinOutputReader(Thread outputReader) throws InterruptedException {
+        if (outputReader == null) {
+            return;
+        }
+        outputReader.join(2000L);
     }
 
     private record PhaseExecution(
@@ -922,6 +959,11 @@ final class ProjectTestRunner {
         return projectRoot != null && Files.isRegularFile(projectRoot.resolve(FORCE_TIMEOUT_TEST_MARKER));
     }
 }
+
+
+
+
+
 
 
 

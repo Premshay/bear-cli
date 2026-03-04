@@ -10,51 +10,21 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-Patch Plan v3.3 implementation and stabilization in `bear-cli`:
-- deterministic ownership-scoped block-port enforcement
-- compile-first project-test classification with two-phase runner (`classes` then `test`)
-- stable failure contracts and check/check-all parity
+Patch Plan v3.3 stabilization and CI reliability for block-port + compile-first checks.
 
 ## Next Concrete Task
 
-1. Run full `:app:test` and `:kernel:test` once after the last doc/state sync.
-2. If green, finalize patch summary and prepare PR notes with behavior deltas (`COMPILE_FAILURE`, timeout context, ownership resolution).
+1. Push the timeout process-tree fix and rerun GitHub workflows (`build-and-test`, `bear-gates`).
+2. If green, publish the v3.3 patch summary and close the CI regression.
 
 ## Session Notes
 
-- Added `RepoPathNormalizer` and migrated path identity/prefix callers to explicit normalization APIs.
-- Updated block-port enforcer ownership model:
-  - owner universe is built from participating manifests only
-  - segment-safe longest-prefix owner resolution with deterministic tie-break
-  - files outside governed-root union are ignored for forbidden-reference scans
-- Implemented lane rules in enforcer:
-  - app lane (`src/main/java/com/**`) inbound wrapper execute checks
-  - `_shared` excluded from full lexical bypass scans
-  - `_shared` narrow guard for concrete generated `*Port` implementors against target internals/wrappers
-- Added compile-first runner behavior:
-  - two-phase execution per attempt: `compile_preflight` (`classes`) then `test`
-  - compile marker classifier added with strict prioritized signatures (tail window)
-  - timeout reclassification to `COMPILE_FAILURE` when compile markers are present
-  - timeout details now include `phase` and `lastObservedTask`
-- Added new status/code:
-  - `ProjectTestStatus.COMPILE_FAILURE`
-  - `CliCodes.COMPILE_FAILURE` (exit lane unchanged: 4)
-- Added check/check-all parity updates:
-  - block-port graph is resolved once in `check --all`
-  - inbound wrapper deny set is filtered by participating source block keys
-  - graph failures are surfaced through validation lane contracts
-- CI/doc hardening:
-  - CI workflow now uses `BEAR_BLOCKS_PATH=.ci/bear.blocks.yaml`
-  - added `.ci` index smoke policy test and user-guide note
-- Expanded/updated tests:
-  - `BlockPortBindingEnforcerTest` ownership/lane/tie-break/_shared scenarios
-  - `ProjectTestRunnerTest` compile marker, timeout, and preflight behaviors
-  - `AllModeContractTest` graph failure path contracts
-  - `RepoPathNormalizerTest` normalization and segment-safe prefix checks
-  - adjusted `BearCliTest` root invocation expectation to account for compile+test phases
-
-- Tightened public docs accuracy:
-  - TERMS.md now matches IR rules for kind=block (effects.allow requires 	argetBlock/	argetOps, uses.allow forbids 	argetBlock and may restrict 	argetOps).
-  - ENFORCEMENT.md mental model now reflects uses.allow subset semantics and notes wiring includes lockPortBindings.
+- Implemented deterministic path normalization + ownership-scoped block-port enforcement and check/check-all graph parity.
+- Added compile-first project test execution (`classes` preflight then `test`) with `COMPILE_FAILURE` classification and timeout detail context (`phase`, `lastObservedTask`).
+- CI/index hardening is in place (`BEAR_BLOCKS_PATH=.ci/bear.blocks.yaml`) with `.ci` index smoke coverage.
+- CI regression fix (Linux timeout tests):
+  - `ProjectTestRunner.runGradlePhase` now captures process output via a background reader thread, avoiding timeout-path IO exceptions.
+  - timeout now kills full process tree (`destroyProcessTree`) to prevent orphan `sleep` children and TempDir cleanup failures.
 - Verification:
-  - ran :app:test doc consistency tests (ContextDocsConsistencyTest, BearPackageDocsConsistencyTest)
+  - `./gradlew --no-daemon :app:test --tests com.bear.app.ProjectTestRunnerTest`
+  - `./gradlew --no-daemon :app:test :kernel:test`
