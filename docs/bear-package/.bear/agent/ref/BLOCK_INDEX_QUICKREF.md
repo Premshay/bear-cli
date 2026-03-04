@@ -31,6 +31,7 @@ Per block:
 2. `projectRoot: .` is valid and means repo root.
 3. `name` is canonical block key and must match normalized IR `block.name`.
 4. Multi-block repos must keep `bear.blocks.yaml`; do not bypass governance by deleting it.
+5. Single-file commands on IRs with `kind=block` effects require `--index <path-to-bear.blocks.yaml>` and tuple membership `(ir, projectRoot)`.
 
 ## Common Mistakes and Fixes
 
@@ -50,8 +51,16 @@ Fix:
 - use `.` for repo root when applicable
 
 3. Mistake:
+- running single-file `compile`/`fix`/`check`/`pr-check` on a block-port IR without `--index`
+
+Fix:
+- pass `--index <path-to-bear.blocks.yaml>`
+- ensure exact `(ir, projectRoot)` tuple exists in index
+
+4. Mistake:
 - block `name` does not match IR block name normalization
 
 Fix:
 - align index `name` with normalized IR block name
 - rerun `check --all`
+

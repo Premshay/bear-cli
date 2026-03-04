@@ -76,6 +76,10 @@ Multi-block adapter opt-in:
 3. Marker MUST be exact `// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL`.
 4. Marker MUST appear within 5 non-empty lines above class declaration.
 5. Completion report MUST include required governance-signal disposition fields.
+Block-port discipline:
+1. For `kind=block` dependencies, do not implement generated block-port interfaces under `src/main/java/**`; generated block clients are the only valid implementation path.
+2. Do not call target block internals/wrappers directly from source block code; cross-block calls must route through generated block clients.
+3. App wiring lane is `src/main/java/com/**`; direct execute of inbound target wrappers is forbidden.
 
 ## Policy Contract (`check`)
 
@@ -181,3 +185,4 @@ Implications:
 2. In multi-block state, canonical done gates are repository-level `--all` commands.
 3. Removing `bear.blocks.yaml` to force per-IR fallback is invalid.
 4. Governance-signal disposition requirements are defined in `.bear/agent/REPORTING.md`.
+

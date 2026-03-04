@@ -41,7 +41,11 @@ Explicit non-remediations:
 1. `CODE=POLICY_INVALID`:
 - fix `.bear/policy/*.txt` format/order/path exactness.
 
-2. Drift lane (`exit 3`):
+2. `CODE=BLOCK_PORT_INDEX_REQUIRED`:
+- single-file command on IR with `kind=block` effects requires `--index <path-to-bear.blocks.yaml>`.
+- ensure the IR tuple `(ir, projectRoot)` exists in that index.
+
+3. Drift lane (`exit 3`):
 - use `bear fix` / `fix --all` for generated artifacts.
 - or rerun compile for changed IR.
 
@@ -52,7 +56,7 @@ IR schema cutover reminders:
 4. If `operation.idempotency.mode=use`, operation `uses` must include idempotency store `getOp` and `putOp`.
 5. Operation invariants must be subset of block allowed invariants.
 
-3. Boundary bypass lane (`exit 7`):
+4. Boundary bypass lane (`exit 7`):
 - remove direct impl usage from production seams.
 - remove classloading reflection unless allowlisted.
 - remove governed logic->governed impl service/module bindings.
@@ -67,11 +71,11 @@ IR schema cutover reminders:
 - for `STATE_STORE_OP_MISUSE`: in adapter lane, split update-path behavior from create calls (`createWallet`/`create*`) and keep explicit not-found semantics.
 - for `STATE_STORE_NOOP_UPDATE`: in `_shared/state`, replace silent missing-state returns with explicit not-found behavior.
 
-4. Test failure lane (`exit 4`):
+5. Test failure lane (`exit 4`):
 - fix business/test logic.
 - for generated `*Impl.java` placeholder stubs, replace generated stub body fully.
 
-5. Boundary expansion lane (`exit 5`, `pr-check`):
+6. Boundary expansion lane (`exit 5`, `pr-check`):
 - treat as governance review signal, not random failure.
 - verify `--base` selection first; `--base HEAD` can misclassify or hide intended delta unless explicitly instructed.
 - operation add/remove is boundary-expanding surface change.
@@ -79,22 +83,22 @@ IR schema cutover reminders:
 - operation contract deltas are operation-attributed (for example `op.ExecuteWithdraw:input.note:string`).
 - if output contains `BOUNDARY_EXPANSION_DETECTED` but exit is not boundary-expansion exit (`5`), classify as tool anomaly (`OTHER`) and stop.
 
-6. Greenfield artifact-mining contract lane:
+7. Greenfield artifact-mining contract lane:
 - in greenfield, only trust current IR plus fresh generated contracts under `build/generated/bear/**` after compile.
 - do not read stale `build*` outputs, run `javap` on prior class dirs, or copy signatures from prior builds.
 - this is a hard agent contract rule and must be reported as a process violation if broken.
 
-7. Schema/path mismatch or missing routed docs:
+8. Schema/path mismatch or missing routed docs:
 - rerun package sync from canonical source package.
 - verify destination `.bear/agent/**` tree exactly matches source package tree.
 - rerun the failing gate after parity is restored.
 
-8. `SPEC_POLICY_CONFLICT`:
+9. `SPEC_POLICY_CONFLICT`:
 - apply conflict checklist in this file.
 - if checklist confirms conflict, escalate and stop implementation edits.
 - do not patch harness/policy/runtime files unless explicitly instructed.
 
-9. `CONTAINMENT_METADATA_MISMATCH`:
+10. `CONTAINMENT_METADATA_MISMATCH`:
 - trigger this diagnosis only when `bear check` fails with containment/classpath signatures.
 - inspect containment metadata for diagnostic evidence.
 - run exactly one deterministic repair: `bear compile --all --project <repoRoot>`.
@@ -249,3 +253,4 @@ Deterministic flow:
 3. Use `bear unblock --project <repoRoot>` only to clear stale marker state.
 4. For containment markers, rerun `compile` then `check` after fixing stale/missing marker causes.
 5. Do not use `bear unblock` to force expected boundary expansion green.
+

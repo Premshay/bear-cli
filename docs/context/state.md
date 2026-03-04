@@ -6,11 +6,11 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-03
+2026-03-04
 
 ## Current Focus
 
-Block Ports v1 freeze implementation hardening:
+Block Ports v1 docs/contract sync hardening:
 - single-command `--index` plumbing for `compile`/`fix`/`check`/`pr-check`
 - deterministic block-edge graph validation + cycle canonicalization + single-file tuple membership
 - block-port enforcement path (generated-client binding checks, app-lane inbound wrapper deny, user-root impl ban)
@@ -78,4 +78,10 @@ Block Ports v1 freeze implementation hardening:
   - full suites: `:kernel:test` and `:app:test` pass
   - repo-level BEAR gates via `:app:run` return deterministic missing-index envelope (`INDEX_REQUIRED_MISSING`, exit 2) because repo root intentionally has no `bear.blocks.yaml`
 
+- Public + agent docs sync pass completed for block-port/index behavior:
+  - updated `commands-compile`/`commands-fix`/`commands-validate`/`commands-check`/`commands-pr-check` and `QUICKSTART` for single-file `--index` and deterministic missing-index envelope consistency
+  - refreshed `TERMS` and `ENFORCEMENT` language for `external ops` vs `block targetOps`
+  - updated agent package refs (`IR_REFERENCE`, `BLOCK_INDEX_QUICKREF`, `BEAR_PRIMER`, `BOOTSTRAP`, `TROUBLESHOOTING`, `CONTRACTS`) to include block-port semantics and index requirements
+- Verification:
+  - `:app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest` pass
 

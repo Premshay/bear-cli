@@ -35,7 +35,7 @@ Primary enforcement happens in `bear check`:
 
 - contract and generation consistency between IR and generated artifacts
 - drift detection for BEAR-owned outputs
-- static boundary policy checks (for example undeclared reach and boundary bypass classes)
+- static boundary policy checks (for example undeclared reach and boundary bypass classes, including block-port binding/reference discipline)
 - containment policy checks where configured
 - project test gate integration in deterministic check flow
 
@@ -50,7 +50,11 @@ Primary governance alerting happens in `bear pr-check`:
 - normalized IR deltas against `--base`
 - classification of boundary-expanding changes vs ordinary changes
 - deterministic non-zero signal when boundary expansion is detected
-- generated-port adapter containment check (`CODE=BOUNDARY_BYPASS`, `RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`) for implementations outside governed roots
+- generated-port adapter containment checks (`CODE=BOUNDARY_BYPASS`) including:
+  - `RULE=PORT_IMPL_OUTSIDE_GOVERNED_ROOT`
+  - `RULE=BLOCK_PORT_IMPL_INVALID`
+  - `RULE=BLOCK_PORT_REFERENCE_FORBIDDEN`
+  - `RULE=BLOCK_PORT_INBOUND_EXECUTE_FORBIDDEN`
 
 Rationale:
 - generated port implementations are boundary authority and must remain in governed roots; app-layer adapters implementing generated ports are a bypass.
@@ -76,3 +80,4 @@ See [output-format.md](output-format.md) and [exit-codes.md](exit-codes.md).
 - [commands-check.md](commands-check.md)
 - [commands-pr-check.md](commands-pr-check.md)
 - [troubleshooting.md](troubleshooting.md)
+

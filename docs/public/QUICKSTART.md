@@ -1,4 +1,4 @@
-﻿# Quickstart
+# Quickstart
 
 This quickstart runs BEAR on the demo repo.
 The intended workflow is agent-first: the agent updates code and IR as needed; humans review deterministic gate output.
@@ -90,6 +90,13 @@ Fallback if you do not want `--all` yet:
 ```powershell
 .\.bear\tools\bear-cli\bin\bear.bat check spec\<block>.bear.yaml --project .
 .\.bear\tools\bear-cli\bin\bear.bat pr-check spec\<block>.bear.yaml --project . --base HEAD
+```
+
+If the IR declares `kind=block` effects, single-file commands require `--index`:
+
+```powershell
+.\.bear\tools\bear-cli\bin\bear.bat check spec\<block>.bear.yaml --project . --index bear.blocks.yaml
+.\.bear\tools\bear-cli\bin\bear.bat pr-check spec\<block>.bear.yaml --project . --base HEAD --index bear.blocks.yaml
 ```
 
 ## Related

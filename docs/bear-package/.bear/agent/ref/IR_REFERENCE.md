@@ -51,7 +51,7 @@ Forbidden:
 Rules:
 - operation names unique and trimmed
 - field uniqueness is per operation only
-- `uses.allow` must be subset of `block.effects.allow`
+- `uses.allow` must be subset of `block.effects.allow` (field-aware by port kind)
 
 ## Contract Fields
 
@@ -72,20 +72,43 @@ Types:
 - `bool`
 - `enum`
 
-## Effects Boundary
+## Effects / Uses Boundary
+
+External port shape:
 
 ```yaml
-effects:
-  allow:
-    - port: stateStore
-      ops: [get, put]
+- port: stateStore
+  kind: external
+  ops: [get, put]
+```
+
+Block-port shape:
+
+```yaml
+- port: transactionLog
+  kind: block
+  targetBlock: transaction-log
+  targetOps: [AppendTransaction, GetTransactions]
 ```
 
 Rules:
-- block effects are authoritative boundary superset
-- unique ports
-- unique ops per port
-- empty `allow` valid only for per-operation echo-safe blocks
+- block effects are authoritative boundary superset.
+- `port` names must be unique across all entries (regardless of `kind`).
+- `kind=external`:
+  - `ops` required (non-empty, distinct)
+  - `targetBlock`/`targetOps` forbidden
+- `kind=block` in `effects.allow`:
+  - `targetBlock` required
+  - `targetOps` required (non-empty, distinct)
+  - `ops` forbidden
+- `kind=block` in `uses.allow`:
+  - `targetBlock` forbidden
+  - optional `targetOps` must be non-empty when present and subset of block-level `targetOps`
+
+Index-aware graph rules (`compile|fix|check|pr-check`):
+- `kind=block` target block and target ops are resolved against indexed IRs.
+- block-port cycle graph is invalid.
+- single-file mode with `kind=block` requires `--index` and tuple membership `(ir, projectRoot)` in index.
 
 ## Idempotency
 
@@ -169,6 +192,11 @@ Generated artifacts:
   - `<Block>_<Operation>Result`
   - `<Block>_<Operation>` wrapper
 
+Block-port generation:
+- for `kind=block` effects, source block gets generated block-port interfaces with single `call(BearValue)` dispatch.
+- dispatch requires input key `op` matching one of configured `targetOps`.
+- generated block clients route `call(...)` to target typed wrappers.
+
 Wrapper behavior:
 - idempotency and invariants are wrapper-owned
 - idempotency key includes operation identity segment
@@ -178,34 +206,51 @@ Wrapper behavior:
 ```yaml
 version: v1
 block:
-  name: Withdraw
+  name: Account
   kind: logic
   operations:
-    - name: ExecuteWithdraw
+    - name: Withdraw
       contract:
         inputs:
-          - name: txId
+          - name: accountId
+            type: string
+          - name: amountCents
+            type: int
+          - name: requestId
             type: string
         outputs:
-          - name: balance
-            type: decimal
+          - name: balanceCents
+            type: int
+          - name: txSeq
+            type: int
       uses:
         allow:
-          - port: ledger
-            ops: [getBalance, setBalance]
+          - port: accountStore
+            kind: external
+            ops: [get, update]
+          - port: transactionLog
+            kind: block
+            targetOps: [AppendTransaction]
           - port: idempotency
+            kind: external
             ops: [get, put]
       idempotency:
         mode: use
-        key: txId
+        keyFromInputs: [accountId, requestId]
       invariants:
         - kind: non_negative
-          field: balance
+          field: balanceCents
   effects:
     allow:
-      - port: ledger
-        ops: [getBalance, setBalance]
+      - port: accountStore
+        kind: external
+        ops: [get, update]
+      - port: transactionLog
+        kind: block
+        targetBlock: transaction-log
+        targetOps: [AppendTransaction]
       - port: idempotency
+        kind: external
         ops: [get, put]
   idempotency:
     store:
@@ -214,13 +259,15 @@ block:
       putOp: put
   invariants:
     - kind: non_negative
-      field: balance
+      field: balanceCents
 ```
 
 ## Commands
 
 For each changed IR:
 1. `bear validate <ir-file>`
-2. `bear compile <ir-file> --project <repoRoot>` or `bear compile --all --project <repoRoot>`
-3. `bear fix <ir-file> --project <repoRoot>` (or `fix --all`)
-4. `bear check <ir-file> --project <repoRoot> [--strict-hygiene]` (or `check --all`)
+2. `bear compile <ir-file> --project <repoRoot> [--index <path>]` or `bear compile --all --project <repoRoot>`
+3. `bear fix <ir-file> --project <repoRoot> [--index <path>]` (or `fix --all`)
+4. `bear check <ir-file> --project <repoRoot> [--strict-hygiene] [--index <path>]` (or `check --all`)
+5. `bear pr-check <ir-file> --project <repoRoot> --base <ref> [--index <path>]` (or `pr-check --all`)
+

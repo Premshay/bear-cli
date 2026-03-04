@@ -95,6 +95,7 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 ## Remediation pointers
 
 - [troubleshooting.md#boundary_expansion](troubleshooting.md#boundary_expansion)
+- [troubleshooting.md#block_port_index_required](troubleshooting.md#block_port_index_required)
 - [troubleshooting.md#port_impl_outside_governed_root](troubleshooting.md#port_impl_outside_governed_root)
 - [troubleshooting.md#block_port_impl_invalid](troubleshooting.md#block_port_impl_invalid)
 - [troubleshooting.md#block_port_reference_forbidden-or-block_port_inbound_execute_forbidden](troubleshooting.md#block_port_reference_forbidden-or-block_port_inbound_execute_forbidden)
@@ -109,9 +110,4 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
 - [troubleshooting.md](troubleshooting.md)
-
-
-
-
-
 

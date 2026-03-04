@@ -7,7 +7,7 @@ Compile validated IR into deterministic BEAR-owned generated artifacts for one b
 ## Invocation forms
 
 ```text
-bear compile <ir-file> --project <path>
+bear compile <ir-file> --project <path> [--index <path>]
 bear compile --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]
 ```
 
@@ -27,6 +27,8 @@ REMEDIATION=Create bear.blocks.yaml or run non---all command
 Single-block:
 - `<ir-file>`: required IR YAML path.
 - `--project <path>`: required project root.
+- `--index <path>`: required when the IR declares any `kind=block` effects.
+- when `kind=block` effects are present, single-file compile validates normalized `(ir, projectRoot)` tuple membership in the provided index before generation.
 
 All-mode:
 - `--all`: enables index-managed multi-block compile.
@@ -59,7 +61,7 @@ Failure:
   - `PATH=bear.blocks.yaml`
 
 Compile always preserves user-owned impl files and regenerates BEAR-owned artifacts deterministically.
-Generated v2 wiring manifests include containment roots:
+Generated wiring manifests include containment roots:
 - `blockRootSourceDir`
 - `governedSourceRoots` (always includes block root and reserved root `src/main/java/blocks/_shared`)
 
@@ -84,6 +86,7 @@ See [output-format.md](output-format.md).
 ## Remediation pointers
 
 - [troubleshooting.md#ir_validation](troubleshooting.md#ir_validation)
+- [troubleshooting.md#block_port_index_required](troubleshooting.md#block_port_index_required)
 - [troubleshooting.md#manifest_invalid](troubleshooting.md#manifest_invalid)
 - [troubleshooting.md#usage_invalid_args](troubleshooting.md#usage_invalid_args)
 - [troubleshooting.md#io_error](troubleshooting.md#io_error)
@@ -95,3 +98,4 @@ See [output-format.md](output-format.md).
 - [commands-fix.md](commands-fix.md)
 - [output-format.md](output-format.md)
 - [troubleshooting.md](troubleshooting.md)
+

@@ -1,4 +1,4 @@
-﻿# bear validate
+# bear validate
 
 ## Purpose
 
@@ -14,6 +14,8 @@ bear validate <ir-file>
 
 - `<ir-file>`: required path to a single IR YAML file.
 - Extra or missing args are usage errors.
+- validate checks IR schema/semantic consistency for the file itself.
+- cross-block graph resolution (for `kind=block` target lookup and cycle checks) is enforced in index-aware compile/check/pr-check paths.
 
 ## Output schema and ordering guarantees
 

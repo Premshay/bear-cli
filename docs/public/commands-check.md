@@ -28,7 +28,7 @@ REMEDIATION=Create bear.blocks.yaml or run non---all command
 
 - Single mode uses `<ir-file>` and `--project`.
 - `--index <path>` is required in single mode when IR declares `kind=block` effects.
-- for `kind=block`, single mode validates index tuple membership by normalized `(ir, projectRoot)` against `bear.blocks.yaml`.
+- for `kind=block`, single mode validates index tuple membership by normalized `(ir, projectRoot)` against the provided index path.
 - `--all` mode uses index-driven orchestration from `bear.blocks.yaml` by default.
 - `--blocks` overrides index path.
 - `--only` restricts block set.
@@ -203,6 +203,7 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 ## Remediation pointers
 
 - [troubleshooting.md#drift_detected-or-drift_missing_baseline](troubleshooting.md#drift_detected-or-drift_missing_baseline)
+- [troubleshooting.md#block_port_index_required](troubleshooting.md#block_port_index_required)
 - [troubleshooting.md#undeclared_reach](troubleshooting.md#undeclared_reach)
 - [troubleshooting.md#boundary_bypass](troubleshooting.md#boundary_bypass)
 - [troubleshooting.md#test_failure-test_timeout-or-invariant_violation](troubleshooting.md#test_failure-test_timeout-or-invariant_violation)
@@ -216,6 +217,4 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 - [exit-codes.md](exit-codes.md)
 - [output-format.md](output-format.md)
 - [troubleshooting.md](troubleshooting.md)
-
-
 

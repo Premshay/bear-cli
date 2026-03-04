@@ -1,4 +1,4 @@
-﻿# bear fix
+# bear fix
 
 ## Purpose
 
@@ -7,15 +7,31 @@ Repair deterministic BEAR-owned generated artifacts from IR without mutating use
 ## Invocation forms
 
 ```text
-bear fix <ir-file> --project <path>
+bear fix <ir-file> --project <path> [--index <path>]
 bear fix --all --project <repoRoot> [--blocks <path>] [--only <csv>] [--fail-fast] [--strict-orphans]
+```
+
+## Missing index envelope (`--all`)
+
+If `bear.blocks.yaml` is missing, all `--all` commands (`compile`, `check`, `fix`, `pr-check`) fail with the same validation envelope on `stderr` and exit `2`:
+
+```text
+index: VALIDATION_ERROR: INDEX_REQUIRED_MISSING: bear.blocks.yaml: project=.
+CODE=INDEX_REQUIRED_MISSING
+PATH=bear.blocks.yaml
+REMEDIATION=Create bear.blocks.yaml or run non---all command
 ```
 
 ## Inputs and flags
 
-- Single mode: `<ir-file>` and `--project`.
-- `--all` mode: index-driven orchestration.
-- Optional flags: `--blocks`, `--only`, `--fail-fast`, `--strict-orphans`.
+Single mode:
+- `<ir-file>` and `--project` are required.
+- `--index <path>` is required when the IR declares any `kind=block` effects.
+- for `kind=block`, single-file fix validates normalized `(ir, projectRoot)` tuple membership in the provided index before generation/repair.
+
+All-mode:
+- `--all` runs index-driven orchestration.
+- optional flags: `--blocks`, `--only`, `--fail-fast`, `--strict-orphans`.
 
 ## Output schema and ordering guarantees
 
@@ -44,6 +60,7 @@ For aggregated `--all` non-zero failures, footer code is `REPO_MULTI_BLOCK_FAILE
 ## Remediation pointers
 
 - [troubleshooting.md#ir_validation](troubleshooting.md#ir_validation)
+- [troubleshooting.md#block_port_index_required](troubleshooting.md#block_port_index_required)
 - [troubleshooting.md#usage_invalid_args](troubleshooting.md#usage_invalid_args)
 - [troubleshooting.md#io_error](troubleshooting.md#io_error)
 

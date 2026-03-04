@@ -1,4 +1,4 @@
-﻿# Terms
+# Terms
 
 This page defines the minimal vocabulary used in BEAR docs and outputs.
 
@@ -10,24 +10,27 @@ This page defines the minimal vocabulary used in BEAR docs and outputs.
 
 ## Boundary vocabulary
 
-- `effect` / `effects.allow`: the block's declared external capability boundary.
-  - Example: "this block may call the `ledger` port ops `getBalance` and `setBalance`".
-- `port`: a named external dependency surface.
-  - Think: a client facade BEAR wants you to route through (database, HTTP API, queue, idempotency store).
-- `op`: an allowed action on a port.
-  - Example: `ledger.getBalance`, `ledger.setBalance`.
+- `effect` / `effects.allow`: the block's declared capability boundary.
+- `port`: a named dependency surface inside `effects.allow` or `uses.allow`.
 - `uses.allow`: per-operation subset of the block boundary.
   - Rule: every `uses.allow` entry must be subset-or-equal to `effects.allow`.
 
+Port entry kinds:
+- `kind=external`: capability to an external dependency.
+  - Uses `ops` (for example `ledger.getBalance`, `ledger.setBalance`).
+- `kind=block`: dependency on another BEAR block.
+  - Uses `targetBlock` + `targetOps` (operation names on the target block).
+  - Cross-block calls are routed through generated block-port clients; direct target internals/wrapper bypass is policy-failing.
+
 ## Generated surface
 
-- `wrapper`: generated code that forms the governed integration surface and owns any wrapper-enforceable semantics (for example idempotency/invariant checks).
+- `wrapper`: generated code that forms the governed integration surface and owns wrapper-enforceable semantics (for example idempotency/invariant checks).
 - `ports (generated)`: generated interfaces that represent the allowed boundary; implementations belong under governed source roots.
 
 ## Governance signals
 
-- `boundary expansion`: a change that widens declared boundary authority (new ports/ops, new operations, idempotency/invariant changes, etc.). Detected by `bear pr-check`.
-- `boundary bypass`: code shape that reaches around the governed surface (for example implementing generated ports outside governed roots). Detected by `bear check` / `bear pr-check`.
+- `boundary expansion`: a change that widens declared boundary authority (new ports/ops or targetOps, new operations, idempotency/invariant changes, etc.). Detected by `bear pr-check`.
+- `boundary bypass`: code shape that reaches around the governed surface (for example implementing generated ports outside governed roots or direct cross-block wrapper bypass). Detected by `bear check` / `bear pr-check`.
 - `drift`: generated artifacts are stale/missing/edited compared to what BEAR would deterministically produce from IR.
 
 ## Example (conceptual)
@@ -39,18 +42,25 @@ block:
       uses:
         allow:
           - port: ledger
+            kind: external
             ops: [getBalance, setBalance]
+          - port: transactionLog
+            kind: block
+            targetOps: [AppendTransaction]
   effects:
     allow:
       - port: ledger
+        kind: external
         ops: [getBalance, setBalance]
-      - port: idempotency
-        ops: [get, put]
+      - port: transactionLog
+        kind: block
+        targetBlock: transaction-log
+        targetOps: [AppendTransaction]
 ```
 
 In this example:
-- the block is allowed to talk to `ledger` and `idempotency` overall (`effects.allow`)
-- the `ExecuteWithdraw` operation is only using the `ledger` portion (`uses.allow`)
+- the block has external reach to `ledger` and a cross-block dependency on `transaction-log`
+- `ExecuteWithdraw` uses only a subset of declared capabilities
 
 ## Where the full details live
 
