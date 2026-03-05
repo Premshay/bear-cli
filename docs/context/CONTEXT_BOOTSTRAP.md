@@ -15,6 +15,11 @@ Purpose:
 7. Completion evidence expects both local gates:
 - `bear check --all --project <repoRoot>`
 - `bear pr-check --all --project <repoRoot> --base <ref>`
+8. Verification default is fast-by-default:
+- batch related edits before verification (avoid repeated micro-runs).
+- use targeted/method-level tests during edits when possible.
+- use Gradle daemon for iterative local verification; reserve `--no-daemon` for explicit CI-parity or `full verify`.
+- run full `:app:test :kernel:test` only on explicit `full verify`.
 
 ## Routing Map
 
@@ -85,3 +90,4 @@ Before ending a session:
 2. No section is removed unless mapped to:
 - a canonical active doc, or
 - an archive destination.
+

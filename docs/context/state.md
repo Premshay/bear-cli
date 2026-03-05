@@ -20,6 +20,8 @@ Tests-only BEAR agent-loop enforcement hardening (strict outcome/report lint con
 
 ## Session Notes
 
+- Fast verification policy expanded in always-load bootstrap: batch edits, method-level targeted tests, Gradle daemon by default, and full suite only on explicit `full verify`.
+- Added always-load context anchor: fast-by-default verification policy is now pinned in `docs/context/CONTEXT_BOOTSTRAP.md` and locked by `ContextDocsConsistencyTest`.
 - Implemented strict packaged-doc anchors for post-failure nextAction-only behavior and frozen outcome vocabulary in `BOOTSTRAP.md` and `REPORTING.md`.
 - Added `CanonicalDoneGateMatcher` and rewrote `RunReportLint` to enforce structured-field rules (`Status`, `Run outcome`, canonical done-gates, WAITING baseline pinned-v1 checks, and scoped completion-claim guard).
 - Added deterministic event-model lint helper `AgentLoopEventLint` and regression coverage for exact ordered `nextAction.commands` execution after failing `--agent` gate runs.

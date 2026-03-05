@@ -98,6 +98,9 @@ class ContextDocsConsistencyTest {
 
         assertTrue(bootstrap.contains("bear check --all --project <repoRoot>"));
         assertTrue(bootstrap.contains("bear pr-check --all --project <repoRoot> --base <ref>"));
+        assertTrue(bootstrap.contains("Verification default is fast-by-default"));
+        assertTrue(bootstrap.contains("use targeted/method-level tests during edits when possible"));
+        assertTrue(bootstrap.contains("run full `:app:test :kernel:test` only on explicit `full verify`"));
         assertTrue(startHere.contains("## Session Close Protocol"));
         assertTrue(simulation.contains("BEAR run grade:"));
         assertTrue(safety.contains("Never run recursive delete"));
@@ -179,3 +182,4 @@ class ContextDocsConsistencyTest {
         return -1;
     }
 }
+
