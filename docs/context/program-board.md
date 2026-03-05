@@ -5,7 +5,7 @@ Context entrypoint:
 
 ## Last Updated
 
-2026-03-02
+2026-03-05
 
 ## Current Milestone
 
@@ -58,7 +58,8 @@ Preview standing note:
 ## Ready Queue (Ordered, Execution Work Items)
 
 1. P2 stabilization: structural-test evidence bake period + strict-mode rollout decision
-2. P3 prep: Maven allowed-deps containment parity
+2. P2 CI boundary governance + telemetry unification: canonical CI-owned gates with explicit enforce/observe policy modes
+3. P3 prep: Maven allowed-deps containment parity
 
 ## Recently Completed (P2)
 
@@ -208,6 +209,7 @@ Detailed locked spec text was moved to:
 - `P2`
   - `docs/context/backlog/p2-bear-fix-generated-only.md` (`Completed`)
   - `docs/context/backlog/p2-declared-allowed-deps-containment.md` (`In Progress`)
+  - `docs/context/backlog/p2-ci-owned-bear-gates.md` (`Queued`)
 - `P3`
   - `docs/context/backlog/p3-maven-allowed-deps-containment.md` (`Queued`)
 
@@ -216,4 +218,7 @@ Detailed locked spec text was moved to:
 - Risk: historical references still pointing to `docs/context/roadmap-v0.md` can reintroduce drift if not cleaned.
 - Direction lock: BEAR semantic scope follows enforceability + determinism (wrapper-owned where possible), not domain-specific rule coverage.
 - Decision lock: do not enforce endpoint-per-block decomposition; preserve structural governance focus over style/location policing.
+
+
+
 

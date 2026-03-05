@@ -16,6 +16,7 @@ Deterministic agent-loop reliability patch-set (CommandContext rerun fidelity, r
 
 1. Run remote CI workflows (`build-and-test`, `bear-gates`) for this reliability patch and confirm green.
 2. Decide whether to wire `RunReportLint` into a reusable report-validation command or keep it test-only for v1.
+3. Keep unified CI boundary governance + telemetry feature queued as documented P2 backlog scope (no implementation yet).
 
 ## Session Notes
 
@@ -65,5 +66,7 @@ Deterministic agent-loop reliability patch-set (CommandContext rerun fidelity, r
 - Agent reliability verification matrix re-run (post-fix):
   - `./gradlew :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.AgentLoopReliabilityRegressionTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.AllModeOptionParserTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.ContextDocsConsistencyTest`
   - `./gradlew test`
-
+- CI feature alignment pass: backlog spec now explicitly grounds v1 on current BEAR outputs (`pr-delta`/exit/footer + existing `--agent` diagnostics JSON), with native CI JSON/extended agent payload deferred to optional v1.1.
+- Scope decision update: CI feature now explicitly includes `pr-check --agent` telemetry extension in v1 (under `extensions.prGovernance`) in addition to wrapper-owned CI orchestration.
+- Contract tightening update: feature spec now locks source-of-truth hierarchy, namespaced `CI_*` derived classes, `deltaId` allow matching, wrapper-owned base SHA resolution, explicit observe swallow rules, and auditable raw-output-backed wrapper decisions.
 
