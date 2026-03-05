@@ -29,7 +29,7 @@ Deterministic machine loop when automation consumes BEAR output:
 - `bear check --all --project <repoRoot> --collect=all --agent`
 - `bear pr-check --all --project <repoRoot> --base <ref> --collect=all --agent`
 3. Automation MUST parse only stdout JSON in `--agent` mode; never parse human prose as control input.
-4. If `status=fail` and `nextAction.commands` exists, execute only those BEAR commands and rerun the same gate.
+4. If `status=fail` and `nextAction.commands` exists, execute only those BEAR commands in listed order (no ad-hoc retries).
 5. If `status=fail` and `nextAction` is `null`, route to `.bear/agent/TROUBLESHOOTING.md` using `(category, failureCode, ruleId|reasonKey)` and escalate with deterministic evidence.
 6. stderr may contain tool output; treat stderr as evidence only, not as control input.
 7. Field-level quickref: `.bear/agent/ref/AGENT_JSON_QUICKREF.md`.
@@ -62,8 +62,8 @@ Run report MUST include:
 15. `Surface evidence: <file1>,<file2>,...` OR
 16. `Surface deferred: <reason_token>`
 17. `Gate results:`
-18. `- bear check --all --project <repoRoot> [--collect=all] [--agent] => <exit>`
-19. `- bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent] => <exit>`
+18. `- bear check --all --project <repoRoot> [--collect=all] --agent => <exit>`
+19. `- bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] --agent => <exit>`
 20. `Gate run order: <ordered list of executed gates>`
 21. `Run outcome: COMPLETE|BLOCKED|WAITING_FOR_BASELINE_REVIEW`
 22. `Required next action: <...>` (required when `Run outcome` is `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW`)
@@ -79,7 +79,7 @@ Run report MUST include:
 32. `PR base used: <ref>`
 33. `PR base rationale: <merge-base against target branch OR user-provided base SHA>`
 34. `PR classification interpretation: <expected|unintended> - <brief rationale>`
-35. `Baseline review scope: <required for WAITING_FOR_BASELINE_REVIEW; must include bear.blocks.yaml and spec/*.bear.yaml>`
+35. `Baseline review scope: <required for WAITING_FOR_BASELINE_REVIEW; must include bear.blocks.yaml and spec/*.bear.yaml (pinned v1 contract)>`
 36. `Constraint conflicts encountered: none|<list>`
 37. `Escalation decision: none|<reason>`
 38. `Containment sanity check: pass|fail|n/a - <evidence>`
@@ -123,17 +123,18 @@ Surface contract notes:
 
 ## Outcome Rules
 
-1. Both gate exits are `0` -> `Run outcome` MUST be `COMPLETE`.
-2. `Run outcome` MUST be `WAITING_FOR_BASELINE_REVIEW` only when `GREENFIELD_BASELINE_WAITING_SEMANTICS` criteria are all true.
-3. Any other non-zero `pr-check` result -> `Run outcome` MUST be `BLOCKED`.
-4. If `Run outcome` is `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW`, `Required next action` is mandatory.
-5. Do not present `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW` runs as completion.
-6. Gate policy acknowledged must reflect: completion requires both repo-level gates green.
-7. If `Gate blocker` is `IO_LOCK`, `Stopped after blocker` MUST be `yes`.
-8. If `pr-check` prints `BOUNDARY_EXPANSION_DETECTED` but exit is not `5`, classify `Gate blocker` as `OTHER` and stop.
-9. For this anomaly, `First failure signature` must include both marker text and observed exit code.
-10. When `Run outcome: COMPLETE`, `Gate results` must include canonical repo-level done gates (`bear check --all --project ...` and `bear pr-check --all --project ... --base ...`).
-
+1. Allowed `Run outcome` values are exactly: `COMPLETE | BLOCKED | WAITING_FOR_BASELINE_REVIEW`.
+2. `Status:` and `Run outcome:` are both mandatory and MUST agree on outcome token.
+3. Both gate exits are `0` -> `Run outcome` MUST be `COMPLETE`.
+4. `Run outcome` MUST be `WAITING_FOR_BASELINE_REVIEW` only when `GREENFIELD_BASELINE_WAITING_SEMANTICS` criteria are all true.
+5. Any other non-zero `pr-check` result -> `Run outcome` MUST be `BLOCKED`.
+6. If `Run outcome` is `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW`, `Required next action` is mandatory.
+7. Do not present `BLOCKED` or `WAITING_FOR_BASELINE_REVIEW` runs as completion.
+8. Gate policy acknowledged must reflect: completion requires both repo-level gates green.
+9. If `Gate blocker` is `IO_LOCK`, `Stopped after blocker` MUST be `yes`.
+10. If `pr-check` prints `BOUNDARY_EXPANSION_DETECTED` but exit is not `5`, classify `Gate blocker` as `OTHER` and stop.
+11. For this anomaly, `First failure signature` must include both marker text and observed exit code.
+12. When `Run outcome: COMPLETE`, `Gate results` must include canonical repo-level done gates (`bear check --all --project ... --agent` and `bear pr-check --all --project ... --base ... --agent`) with `=> 0`.
 ## GREENFIELD_BASELINE_WAITING_SEMANTICS
 
 Use `Run outcome: WAITING_FOR_BASELINE_REVIEW` only when all are true:
@@ -142,7 +143,7 @@ Use `Run outcome: WAITING_FOR_BASELINE_REVIEW` only when all are true:
 3. expansion corresponds to newly introduced blocks/contracts/ports in this PR.
 
 Deterministic pairing:
-1. `Gate blocker: BOUNDARY_EXPANSION`
+1. `Gate blocker: BOUNDARY_EXPANSION` (pinned v1 contract)
 2. `Run outcome: WAITING_FOR_BASELINE_REVIEW`
 
 Non-applicability:
@@ -340,3 +341,4 @@ Final git status: M src/main/java/blocks/wallet/impl/WalletImpl.java
 GOVERNANCE_SIGNAL_DISPOSITION
 MULTI_BLOCK_PORT_IMPL_ALLOWED: none
 ```
+

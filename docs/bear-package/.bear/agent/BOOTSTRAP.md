@@ -50,10 +50,12 @@ Mandatory stop conditions:
 - if missing/unreadable, stop and resolve preflight before continuing.
 4. `POST_FAILURE_DISCIPLINE`:
 - after any gate failure in `--agent` mode, execute only `nextAction.commands`.
+- do not run ad-hoc gate reruns unless rerun is explicitly listed in `nextAction.commands`.
 - if `nextAction` is `null`, route deterministically via troubleshooting.
 - any command variant drift is a process violation and must stop.
 5. `COMPLETE_DISCIPLINE`:
 - report `Run outcome: COMPLETE` only after canonical done gates are green.
+- allowed run outcomes are fixed: `COMPLETE | BLOCKED | WAITING_FOR_BASELINE_REVIEW`.
 
 ## Command Surface
 
@@ -84,7 +86,6 @@ Forbidden:
 - `bear check --all --project <repoRoot> --collect=all --agent`
 4. If `status=fail` and `nextAction` exists:
 - execute only `nextAction.commands`
-- rerun the same gate command
 5. Run governance gate:
 - `bear pr-check --all --project <repoRoot> --base <ref> --collect=all --agent`
 6. If `nextAction` is `null` on failure:
@@ -123,10 +124,4 @@ Required evidence before completion:
 1. `bear check --all --project <repoRoot> [--collect=all] --agent => 0`
 2. `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] --agent => 0`
 3. completion report follows `.bear/agent/REPORTING.md` exactly
-
-
-
-
-
-
 

@@ -10,63 +10,21 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-Deterministic agent-loop reliability patch-set (CommandContext rerun fidelity, repeatable-rule identity hardening, reasonKey reachability, and reporting guardrails).
+Tests-only BEAR agent-loop enforcement hardening (strict outcome/report lint contract + deterministic post-failure `nextAction.commands` sequence discipline), verified green locally.
 
 ## Next Concrete Task
 
-1. Run remote CI workflows (`build-and-test`, `bear-gates`) for this reliability patch and confirm green.
-2. Decide whether to wire `RunReportLint` into a reusable report-validation command or keep it test-only for v1.
-3. Keep unified CI boundary governance + telemetry feature queued as documented P2 backlog scope (no implementation yet).
+1. Run GitHub Actions `build-and-test` and confirm Linux CI stays green for this patch-set.
+2. Review whether `--collect=all` should remain optional in canonical done-gate matching for v1.
+3. Continue queued CI-owned enforcement scope in `docs/context/backlog/p2-ci-owned-bear-gates.md` (no scope expansion in this patch).
 
 ## Session Notes
 
-- Agent package hard-anchor restoration completed in `BOOTSTRAP.md`: reintroduced explicit pre-edit stop conditions (`GREENFIELD_HARD_STOP`, `INDEX_REQUIRED_PREFLIGHT`, `POST_FAILURE_DISCIPLINE`, `COMPLETE_DISCIPLINE`) and added required pre-edit load of troubleshooting/reporting with scoped minimum sections.
-- Reliability guardrails patch completed: added parser-sourced `CommandContext`, context-equivalent rerun command tests, repeatable-rule `identityKey` enforcement, reasonKey reachability checks, deterministic report lint (`RunReportLint`), and transcript regression coverage.
-- Verification (latest):
-  - `./gradlew test`
-- Deterministic agent diagnostics v1 (`--agent`, `--collect=all`) completed and verified in prior runs.
-- Public docs structure was simplified: guide-first path in `docs/public/INDEX.md`, contracts gateway in `docs/public/CONTRACTS.md`, and redundant `docs/public/MODEL.md` removed.
-- Public docs readability pass completed:
-  - normalized markdown spacing around Mermaid blocks in `README.md`, `docs/public/PR_REVIEW.md`, and `docs/public/output-format.md`
-  - cleaned list formatting in `docs/public/FOUNDATIONS.md` and `docs/public/ENFORCEMENT.md`
-  - aligned README demo quickstart to `compile -> check -> pr-check`
-- Mermaid GitHub rendering hardening completed:
-  - removed parser-risk labels (parentheses/newline combinations)
-  - replaced literal `\n` in labels with `<br/>` where line breaks are needed
-  - normalized figure/legend spacing in `docs/public/PR_REVIEW.md` and `docs/public/output-format.md`
-- README clarity updates applied:
-  - added a plain-language `block` definition in "What BEAR does"
-  - added acronym expansion line before non-goals: `BEAR = Block Enforceable Architectural Representation`
-- Verification (latest):
+- Implemented strict packaged-doc anchors for post-failure nextAction-only behavior and frozen outcome vocabulary in `BOOTSTRAP.md` and `REPORTING.md`.
+- Added `CanonicalDoneGateMatcher` and rewrote `RunReportLint` to enforce structured-field rules (`Status`, `Run outcome`, canonical done-gates, WAITING baseline pinned-v1 checks, and scoped completion-claim guard).
+- Added deterministic event-model lint helper `AgentLoopEventLint` and regression coverage for exact ordered `nextAction.commands` execution after failing `--agent` gate runs.
+- Added mechanical dependency baseline test `AgentNextActionCommandReliabilityTest` and updated docs/report regression suites.
+- Verification:
+  - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.RunReportLintTest --tests com.bear.app.AgentLoopReliabilityRegressionTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.AgentNextActionCommandReliabilityTest --tests com.bear.app.CanonicalDoneGateMatcherTest`
   - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`
-- Caption hierarchy adjusted: figure/legend text in `README.md`, `docs/public/PR_REVIEW.md`, and `docs/public/output-format.md` now uses compact `<p><sub>...</sub></p>` with clean spacing before regular body text.
-- Added boundary visualization SVG (`assets/bear-boundary.svg`) to README top section with boundary-focused context text, and tuned the SVG palette for consistent semantics and dual light/dark rendering using `prefers-color-scheme` variables.
-- Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`
-
-- Boundary SVG polish: reduced `arrowOk` marker size in `assets/bear-boundary.svg` so allowed-flow arrowheads are visually lighter.
-
-- README cleanup: removed duplicate early boundary text/image block and kept a single boundary visualization placement under "What BEAR does" (after blocks are introduced).
-
-- README wording pass: folded boundary rule into the "What BEAR does" bullets (ports + violation semantics) and removed redundant standalone sentence.
-
-
-
-
-- Boundary SVG legend added (`assets/bear-boundary.svg`): explicit mapping for arrow colors (green = allowed path, red = violation path).
-
-- Boundary SVG clarity pass: reduced arrowhead/stroke weight and moved the "Allowed only through declared port" annotation to the green-flow zone to avoid confusion with the red violation arc.
-
-- Boundary SVG annotation placement: moved "Violation: boundary bypass" label adjacent to the red bypass arc to avoid ambiguity with the governed-boundary outline.
-
-- Boundary SVG label tweak: moved "Violation: boundary bypass" further right to avoid overlap with the adapter box while staying near the red bypass arc.
-
-- Bootstrap hardening follow-up: added explicit `AGENT_PACKAGE_PARITY_PRECONDITION` in packaged `BOOTSTRAP.md`, made done-gate examples require `--agent` in agent protocol docs, and locked both via `BearPackageDocsConsistencyTest` token assertions.
-
-- NextAction reliability hardening v1.1 implemented: parser-validated rerun rendering with one-step repair, deterministic `NEXT_ACTION_COMMAND_INVALID` warning/error signaling, hard-invalid troubleshooting-only fallback, canonical repo-relative `--blocks` emission, and launcher execution hint in packaged BOOTSTRAP; full `./gradlew test` passed.
-- Agent reliability verification matrix re-run (post-fix):
-  - `./gradlew :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.AgentLoopReliabilityRegressionTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.AllModeOptionParserTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.ContextDocsConsistencyTest`
-  - `./gradlew test`
-- CI feature alignment pass: backlog spec now explicitly grounds v1 on current BEAR outputs (`pr-delta`/exit/footer + existing `--agent` diagnostics JSON), with native CI JSON/extended agent payload deferred to optional v1.1.
-- Scope decision update: CI feature now explicitly includes `pr-check --agent` telemetry extension in v1 (under `extensions.prGovernance`) in addition to wrapper-owned CI orchestration.
-- Contract tightening update: feature spec now locks source-of-truth hierarchy, namespaced `CI_*` derived classes, `deltaId` allow matching, wrapper-owned base SHA resolution, explicit observe swallow rules, and auditable raw-output-backed wrapper decisions.
-
+  - `./gradlew.bat --no-daemon :app:test :kernel:test`

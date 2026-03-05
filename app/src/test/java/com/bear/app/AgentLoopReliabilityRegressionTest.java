@@ -76,24 +76,64 @@ class AgentLoopReliabilityRegressionTest {
         assertEquals(3, ids.size(), "Repeated findings must have unique deterministic problem IDs");
 
         String incompleteReport = """
+            Status: tests=PASS; check=7; pr-check=5 base=origin/main; outcome=COMPLETE
             IR delta: added spec/account-service.bear.yaml
             Gate results:
-            - bear check spec/account-service.bear.yaml --project . --collect=all --agent => 7
+            - bear check --all --project . --agent => 7
             Run outcome: COMPLETE
             """;
         RunReportLint.ReportLintResult badLint = RunReportLint.lint(incompleteReport);
         assertTrue(badLint.violations().stream().anyMatch(v -> v.contains("decomposition checkpoint")));
-        assertTrue(badLint.violations().stream().anyMatch(v -> v.contains("done-gate")));
+        assertTrue(badLint.violations().stream().anyMatch(v -> v.contains("check=0 and pr-check=0")));
 
         String completeReport = """
+            Status: tests=PASS; check=0; pr-check=0 base=origin/main; outcome=COMPLETE
             IR delta: added spec/account-service.bear.yaml
             Decomposition contract consulted: yes (before IR authoring)
             Gate results:
-            - bear check --all --project . => 0
-            - bear pr-check --all --project . --base origin/main => 0
+            - bear check --all --project . --collect=all --agent => 0
+            - bear pr-check --all --project . --base origin/main --collect=all --agent => 0
             Run outcome: COMPLETE
             """;
         RunReportLint.ReportLintResult okLint = RunReportLint.lint(completeReport);
         assertTrue(okLint.ok());
+    }
+
+    @Test
+    void eventLintPassesForExactNextActionCommandSequence() {
+        List<String> violations = AgentLoopEventLint.lint(List.of(
+            new AgentLoopEventLint.GateRun(
+                "bear pr-check --all --project . --base origin/main --collect=all --agent",
+                5,
+                true,
+                List.of(
+                    "bear pr-check --all --project . --base origin/main --blocks bear.blocks.yaml --collect=all --agent"
+                )
+            ),
+            new AgentLoopEventLint.Exec("bear pr-check --all --project . --base origin/main --blocks bear.blocks.yaml --collect=all --agent"),
+            new AgentLoopEventLint.GateRun("bear pr-check --all --project . --base origin/main --collect=all --agent", 5, true, List.of())
+        ));
+
+        assertTrue(violations.isEmpty(), String.join("; ", violations));
+    }
+
+    @Test
+    void eventLintFailsOnAdHocCommandAndOrderDrift() {
+        List<String> violations = AgentLoopEventLint.lint(List.of(
+            new AgentLoopEventLint.GateRun(
+                "bear pr-check --all --project . --base origin/main --collect=all --agent",
+                5,
+                true,
+                List.of(
+                    "bear compile --all --project .",
+                    "bear pr-check --all --project . --base origin/main --collect=all --agent"
+                )
+            ),
+            new AgentLoopEventLint.Exec("bear pr-check --all --project . --base origin/dev --collect=all --agent"),
+            new AgentLoopEventLint.Exec("bear compile --all --project .")
+        ));
+
+        assertTrue(violations.stream().anyMatch(v -> v.contains("Command drift")), String.join("; ", violations));
+        assertTrue(violations.stream().anyMatch(v -> v.contains("Missing nextAction command")), String.join("; ", violations));
     }
 }

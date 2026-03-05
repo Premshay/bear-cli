@@ -73,11 +73,14 @@ class BearPackageDocsConsistencyTest {
 
         assertMatchesHeading(reporting, "(?m)^##\\s+Agent\\s+Loop\\s+Contract\\s*$");
         assertContains(reporting, "Automation MUST parse only stdout JSON in `--agent` mode");
-        assertContains(reporting, "If `status=fail` and `nextAction.commands` exists, execute only those BEAR commands");
+        assertContains(reporting, "If `status=fail` and `nextAction.commands` exists, execute only those BEAR commands in listed order (no ad-hoc retries).");
         assertContains(reporting, "If `status=fail` and `nextAction` is `null`, route to `.bear/agent/TROUBLESHOOTING.md`");
         assertContains(reporting, "Field-level quickref: `.bear/agent/ref/AGENT_JSON_QUICKREF.md`.");
         assertContains(reporting, "`Decomposition contract consulted: yes (before IR authoring)` is required when `IR delta` indicates `spec/*.bear.yaml` authoring/modification.");
+        assertContains(reporting, "Allowed `Run outcome` values are exactly: `COMPLETE | BLOCKED | WAITING_FOR_BASELINE_REVIEW`.");
+        assertContains(reporting, "`Status:` and `Run outcome:` are both mandatory and MUST agree on outcome token.");
         assertContains(reporting, "When `Run outcome: COMPLETE`, `Gate results` must include canonical repo-level done gates");
+        assertContains(reporting, "(pinned v1 contract)");
 
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+Agent\\s+JSON-First\\s+Protocol\\s*$");
         assertMatchesHeading(troubleshooting, "(?m)^##\\s+Registry-Synced\\s+Template\\s+Keys\\s*$");
@@ -92,6 +95,8 @@ class BearPackageDocsConsistencyTest {
         assertContains(bootstrap, "INDEX_REQUIRED_PREFLIGHT");
         assertContains(bootstrap, "POST_FAILURE_DISCIPLINE");
         assertContains(bootstrap, "COMPLETE_DISCIPLINE");
+        assertContains(bootstrap, "allowed run outcomes are fixed: `COMPLETE | BLOCKED | WAITING_FOR_BASELINE_REVIEW`.");
+        assertContains(bootstrap, "do not run ad-hoc gate reruns unless rerun is explicitly listed in `nextAction.commands`.");
         assertContains(bootstrap, "AGENT_PACKAGE_PARITY_PRECONDITION");
         assertContains(bootstrap, "PROCESS_VIOLATION|AGENT_PACKAGE_PARITY_PRECONDITION|<missingPath>");
         assertContains(bootstrap, "`bear check --all --project <repoRoot> [--collect=all] --agent`");
@@ -176,9 +181,3 @@ class BearPackageDocsConsistencyTest {
         assertTrue(content.contains(token), "Expected exact token missing: " + token);
     }
 }
-
-
-
-
-
-
