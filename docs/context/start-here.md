@@ -15,8 +15,9 @@ On demand:
 1. `docs/context/governance.md`
 2. `docs/context/architecture.md`
 3. `docs/context/demo-agent-simulation.md`
-4. `docs/context/prompt-bootstrap.md`
-5. `docs/context/archive/archive-readme.md`
+4. `docs/context/bear-run-grading-rubric.md`
+5. `docs/context/prompt-bootstrap.md`
+6. `docs/context/archive/archive-readme.md`
 
 ## Source Ownership
 

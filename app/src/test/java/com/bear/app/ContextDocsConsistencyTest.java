@@ -72,6 +72,7 @@ class ContextDocsConsistencyTest {
         assertTrue(bootstrap.contains("docs/context/safety-rules.md"));
         assertTrue(bootstrap.contains("docs/context/user-guide.md"));
         assertTrue(bootstrap.contains("docs/context/demo-agent-simulation.md"));
+        assertTrue(bootstrap.contains("docs/context/bear-run-grading-rubric.md"));
         assertTrue(bootstrap.contains("docs/context/prompt-bootstrap.md"));
         assertTrue(bootstrap.contains("docs/context/project-log.md"));
     }

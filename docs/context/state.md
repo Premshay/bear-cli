@@ -20,6 +20,7 @@ Tests-only BEAR agent-loop enforcement hardening (strict outcome/report lint con
 
 ## Session Notes
 
+- Added reusable BEAR run-grading canonical doc at `docs/context/bear-run-grading-rubric.md` and routed it from bootstrap/start-here for consistent cross-run evaluation.
 - Fast verification policy expanded in always-load bootstrap: batch edits, method-level targeted tests, Gradle daemon by default, and full suite only on explicit `full verify`.
 - Added always-load context anchor: fast-by-default verification policy is now pinned in `docs/context/CONTEXT_BOOTSTRAP.md` and locked by `ContextDocsConsistencyTest`.
 - Implemented strict packaged-doc anchors for post-failure nextAction-only behavior and frozen outcome vocabulary in `BOOTSTRAP.md` and `REPORTING.md`.

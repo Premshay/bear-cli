@@ -45,9 +45,11 @@ Load by intent:
 - `docs/context/safety-rules.md`
 9. Demo simulation protocol and grading rubric:
 - `docs/context/demo-agent-simulation.md`
-10. Non-repo chat bootstrap prompt:
+10. Reusable BEAR run grading rubric (cross-run consistency):
+- `docs/context/bear-run-grading-rubric.md`
+11. Non-repo chat bootstrap prompt:
 - `docs/context/prompt-bootstrap.md`
-11. Historical rationale:
+12. Historical rationale:
 - `docs/context/project-log.md`
 - `docs/context/archive/archive-readme.md`
 
