@@ -10,17 +10,23 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-Tests-only BEAR agent-loop enforcement hardening (strict outcome/report lint contract + deterministic post-failure `nextAction.commands` sequence discipline), verified green locally.
+Minimal-core reporting hard cutover for agent consistency: compact REPORTING contract, stricter RunReportLint core-field checks, and deterministic post-failure discipline retained as tests-only enforcement.
 
 ## Next Concrete Task
 
-1. Run GitHub Actions `build-and-test` and confirm Linux CI stays green for this patch-set.
-2. Review whether `--collect=all` should remain optional in canonical done-gate matching for v1.
+1. Run targeted tests for `RunReportLint`, docs-consistency anchors, and agent-loop regression after minimal-core contract update.
+2. Run `:app:test` to confirm no collateral break from report-contract changes.
 3. Continue queued CI-owned enforcement scope in `docs/context/backlog/p2-ci-owned-bear-gates.md` (no scope expansion in this patch).
 
 ## Session Notes
 
-- Added reusable BEAR run-grading canonical doc at `docs/context/bear-run-grading-rubric.md` and routed it from bootstrap/start-here for consistent cross-run evaluation.
+- Tightened REPORTING language to MUST for Developer Summary and Review scope ordering.
+- Hard-cut REPORTING rewrite shipped: required fields reduced to minimal core; legacy fields are explicitly optional and non-authoritative.
+- Added noise-control guidance to REPORTING to reduce oversized final reports.
+- Updated demo simulation runbook required evidence to minimal-core fields and compact-output expectations.
+- RunReportLint now requires `Gate results:` header, at least one gate line, and `Gate blocker` for blocked/waiting outcomes.
+- Added/expanded RunReportLint tests for minimal-core failures (missing gate results/lines, blocked-without-blocker) and extras-allowed pass behavior.
+- Updated package docs consistency checks for minimal-core anchors and added REPORTING line-budget guard (`<= 220`).`n- Added reusable BEAR run-grading canonical doc at `docs/context/bear-run-grading-rubric.md` and routed it from bootstrap/start-here for consistent cross-run evaluation.
 - Fast verification policy expanded in always-load bootstrap: batch edits, method-level targeted tests, Gradle daemon by default, and full suite only on explicit `full verify`.
 - Added always-load context anchor: fast-by-default verification policy is now pinned in `docs/context/CONTEXT_BOOTSTRAP.md` and locked by `ContextDocsConsistencyTest`.
 - Implemented strict packaged-doc anchors for post-failure nextAction-only behavior and frozen outcome vocabulary in `BOOTSTRAP.md` and `REPORTING.md`.
@@ -31,3 +37,6 @@ Tests-only BEAR agent-loop enforcement hardening (strict outcome/report lint con
   - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.RunReportLintTest --tests com.bear.app.AgentLoopReliabilityRegressionTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.AgentNextActionCommandReliabilityTest --tests com.bear.app.CanonicalDoneGateMatcherTest`
   - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`
   - `./gradlew.bat --no-daemon :app:test :kernel:test`
+
+
+

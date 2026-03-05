@@ -76,7 +76,15 @@ class BearPackageDocsConsistencyTest {
         assertContains(reporting, "If `status=fail` and `nextAction.commands` exists, execute only those BEAR commands in listed order (no ad-hoc retries).");
         assertContains(reporting, "If `status=fail` and `nextAction` is `null`, route to `.bear/agent/TROUBLESHOOTING.md`");
         assertContains(reporting, "Field-level quickref: `.bear/agent/ref/AGENT_JSON_QUICKREF.md`.");
+        assertMatchesHeading(reporting, "(?m)^##\\s+Required\\s+Fields\\s+\\(Minimal\\s+Core\\)\\s*$");
+        assertContains(reporting, "`Status: tests=<PASS|FAIL>; check=<code>; pr-check=<code> base=<ref>; outcome=<token>`");
+        assertContains(reporting, "`Run outcome: COMPLETE|BLOCKED|WAITING_FOR_BASELINE_REVIEW`");
+        assertContains(reporting, "`Gate results:`");
+        assertContains(reporting, "`Required next action: <...>`");
+        assertContains(reporting, "`Gate blocker: <...>`");
+        assertContains(reporting, "`Baseline review scope: ...` including `bear.blocks.yaml` and `spec/*.bear.yaml` (pinned v1 contract)");
         assertContains(reporting, "`Decomposition contract consulted: yes (before IR authoring)` is required when `IR delta` indicates `spec/*.bear.yaml` authoring/modification.");
+        assertContains(reporting, "Additional fields are allowed but ignored by core lint.");
         assertContains(reporting, "Allowed `Run outcome` values are exactly: `COMPLETE | BLOCKED | WAITING_FOR_BASELINE_REVIEW`.");
         assertContains(reporting, "`Status:` and `Run outcome:` are both mandatory and MUST agree on outcome token.");
         assertContains(reporting, "When `Run outcome: COMPLETE`, `Gate results` must include canonical repo-level done gates");
@@ -130,12 +138,16 @@ class BearPackageDocsConsistencyTest {
     }
 
     @Test
-    void bootstrapStaysWithinLineBudget() throws Exception {
+    void packageDocsStayWithinLineBudgets() throws Exception {
         Path repoRoot = TestRepoPaths.repoRoot();
+
         String bootstrap = Files.readString(repoRoot.resolve("docs/bear-package/.bear/agent/BOOTSTRAP.md"));
-        String normalized = bootstrap.replace("\r\n", "\n");
-        int lineCount = normalized.split("\n", -1).length;
-        assertTrue(lineCount <= 200, "BOOTSTRAP.md must stay within 200 lines; found " + lineCount);
+        int bootstrapLines = bootstrap.replace("\r\n", "\n").split("\n", -1).length;
+        assertTrue(bootstrapLines <= 200, "BOOTSTRAP.md must stay within 200 lines; found " + bootstrapLines);
+
+        String reporting = Files.readString(repoRoot.resolve("docs/bear-package/.bear/agent/REPORTING.md"));
+        int reportingLines = reporting.replace("\r\n", "\n").split("\n", -1).length;
+        assertTrue(reportingLines <= 220, "REPORTING.md must stay within 220 lines; found " + reportingLines);
     }
 
     @SuppressWarnings("unchecked")
@@ -181,3 +193,5 @@ class BearPackageDocsConsistencyTest {
         assertTrue(content.contains(token), "Expected exact token missing: " + token);
     }
 }
+
+

@@ -26,7 +26,7 @@ Bootstrap guardrails:
 7. In `--agent` mode, stdout JSON is the control interface; stderr is diagnostics/evidence.
 8. After a gate failure in `--agent` mode, follow `nextAction.commands` only.
 9. If `nextAction` is `null`, route to `.bear/agent/TROUBLESHOOTING.md` using `(category, failureCode, ruleId|reasonKey)`.
-10. Completion requires both gates and reporting contract compliance:
+10. Completion requires both gates and minimal core reporting contract compliance:
 - `bear check --all --project <repoRoot> [--collect=all] --agent`
 - `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] --agent`
 
@@ -36,7 +36,7 @@ Before implementation edits, load `.bear/agent/TROUBLESHOOTING.md` and `.bear/ag
 
 Minimum required sections (to avoid context overload):
 1. `.bear/agent/TROUBLESHOOTING.md` -> `Agent JSON-First Protocol`, `PROCESS_VIOLATION`, `GREENFIELD_PR_CHECK_POLICY`.
-2. `.bear/agent/REPORTING.md` -> `Agent Loop Contract`, `Required Fields`, `Outcome Rules`.
+2. `.bear/agent/REPORTING.md` -> `Agent Loop Contract`, `Required Fields (Minimal Core)`, `Outcome Rules`.
 
 Mandatory stop conditions:
 1. `GREENFIELD_HARD_STOP`:
@@ -124,4 +124,5 @@ Required evidence before completion:
 1. `bear check --all --project <repoRoot> [--collect=all] --agent => 0`
 2. `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] --agent => 0`
 3. completion report follows `.bear/agent/REPORTING.md` exactly
+
 

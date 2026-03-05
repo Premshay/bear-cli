@@ -104,15 +104,16 @@ Capture the full run transcript, including:
 3. IR creation/validation/compile actions
 4. implementation edits
 5. test/gate commands with exit outcomes
-6. final summary block with both gate lines and exit codes
-7. completion governance-signal disposition block
-8. required Developer Summary template fields from `.bear/agent/REPORTING.md`
-9. required `Surface evidence` field from `.bear/agent/REPORTING.md`
-10. valid mode/groups coupling (`grouped` => structured `Groups`; `single|multi` => `Groups: n/a`)
-11. required `Decomposition rubric` line in canonical format
-12. `Decomposition reason` trigger token is whitelisted in `.bear/agent/BOOTSTRAP.md`
-13. `Review scope` obeys cap/order rule (max 8; baseline waiting starts with `bear.blocks.yaml`, `spec/*.bear.yaml`)
-14. `Surface evidence` cites non-generated runtime entrypoint/routing files
+6. minimal-core final report fields from `.bear/agent/REPORTING.md`:
+- `Status`
+- `Run outcome`
+- `Gate results` (gate lines + exits)
+- `Required next action` for `BLOCKED|WAITING_FOR_BASELINE_REVIEW`
+- `Gate blocker` for `BLOCKED|WAITING_FOR_BASELINE_REVIEW`
+- `Baseline review scope` for `WAITING_FOR_BASELINE_REVIEW`
+- `IR delta` and `Decomposition contract consulted`
+7. report remains compact (no long transcript dumps in final summary)
+8. optional evidence fields, if present, are coherent and non-contradictory
 
 Stop-on-anomaly protocol (mandatory):
 1. If run hits `INTERNAL_ERROR`/exit `70`, stop immediately.
@@ -123,21 +124,24 @@ Stop-on-anomaly protocol (mandatory):
 Minimum completion evidence format:
 
 ```text
+Status: tests=<PASS|FAIL>; check=<code>; pr-check=<code> base=<baseRef>; outcome=<token>
+IR delta: <files + boundary notes>
+Decomposition contract consulted: <yes|n/a>
 Gate results:
-- bear check --all --project . => <exit>
-- bear pr-check --all --project . --base <baseRef> => <exit>
-GOVERNANCE_SIGNAL_DISPOSITION
-MULTI_BLOCK_PORT_IMPL_ALLOWED: none
+- bear check --all --project . --collect=all --agent => <exit>
+- bear pr-check --all --project . --base <baseRef> --collect=all --agent => <exit>
+Run outcome: <COMPLETE|BLOCKED|WAITING_FOR_BASELINE_REVIEW>
 ```
 
-If governance signals exist in `pr-check --all` output, completion evidence must instead include:
+Optional (only when governance-signal lines exist):
 
 ```text
 GOVERNANCE_SIGNAL_DISPOSITION
 MULTI_BLOCK_PORT_IMPL_ALLOWED: <count>
-JUSTIFICATION: <why multi-block adapter was intentional>
-TRADEOFF: <isolation impact and mitigation>
+JUSTIFICATION: <required when count > 0>
+TRADEOFF: <required when count > 0>
 ```
+
 
 `<count>` definition (frozen):
 - number of `MULTI_BLOCK_PORT_IMPL_ALLOWED` governance signal lines emitted by `bear pr-check --all --project . --base <baseRef>` for that run.
@@ -163,8 +167,8 @@ Fail (behavioral):
 3. Agent forces decomposition style not required by BEAR policy.
 4. Agent bypasses deterministic BEAR flow (manual patching to avoid compile/check flow).
 5. Missing or ambiguous gate evidence.
-6. Missing `GOVERNANCE_SIGNAL_DISPOSITION` block, mismatched `MULTI_BLOCK_PORT_IMPL_ALLOWED` count, or missing required `JUSTIFICATION`/`TRADEOFF` fields when count is non-zero.
-7. Missing/invalid `Surface evidence` reporting form (including invalid deferred reason token).
+6. If governance-signal lines exist, `GOVERNANCE_SIGNAL_DISPOSITION` must be present with matching `MULTI_BLOCK_PORT_IMPL_ALLOWED` count and required `JUSTIFICATION`/`TRADEOFF` when count is non-zero.
+7. Missing or contradictory minimal-core report fields.
 
 ## Post-run BEAR analysis (mandatory)
 
@@ -275,5 +279,9 @@ After agent finishes, evaluator may re-run:
 ```
 
 to confirm reproducibility of reported outcomes.
+
+
+
+
 
 

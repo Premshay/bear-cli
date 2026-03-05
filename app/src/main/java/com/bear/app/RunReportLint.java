@@ -55,7 +55,16 @@ final class RunReportLint {
             }
         }
 
+        String gateResultsHeader = firstLineStartingWith(lines, "Gate results:");
+        if (gateResultsHeader == null) {
+            violations.add("Missing required field: Gate results.");
+        }
+
         List<String> gateResultLines = extractGateResultLines(lines);
+        if (gateResultLines.isEmpty()) {
+            violations.add("Gate results must include at least one '- bear ... => <exit>' line.");
+        }
+
         if ("COMPLETE".equals(runOutcome)) {
             if (parsedStatus == null) {
                 violations.add("Run outcome COMPLETE requires valid Status line.");
@@ -82,6 +91,10 @@ final class RunReportLint {
             String requiredNextAction = fieldValue(lines, "Required next action:");
             if (requiredNextAction == null || requiredNextAction.isBlank()) {
                 violations.add("Run outcome BLOCKED/WAITING_FOR_BASELINE_REVIEW requires Required next action.");
+            }
+            String blocker = fieldValue(lines, "Gate blocker:");
+            if (blocker == null || blocker.isBlank()) {
+                violations.add("Run outcome BLOCKED/WAITING_FOR_BASELINE_REVIEW requires Gate blocker.");
             }
         }
 
@@ -242,3 +255,4 @@ final class RunReportLint {
         }
     }
 }
+
