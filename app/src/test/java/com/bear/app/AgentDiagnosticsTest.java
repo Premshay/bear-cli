@@ -246,7 +246,7 @@ class AgentDiagnosticsTest {
     @Test
     void rerunRepairEmitsWarningProblemAndUsesRepoRelativeBlocksPath() {
         Path repoRoot = Path.of(".").toAbsolutePath().normalize();
-        String absoluteBlocks = repoRoot.resolve("bear.blocks.yaml").toString().replace('/', '\\');
+        String absoluteBlocks = repoRoot.resolve("bear.blocks.yaml").toString();
 
         AgentCommandContext context = new AgentCommandContext(
             "check",
@@ -445,6 +445,7 @@ class AgentDiagnosticsTest {
         );
     }
 }
+
 
 
 
