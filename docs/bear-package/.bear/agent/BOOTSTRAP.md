@@ -30,10 +30,33 @@ Bootstrap guardrails:
 - `bear check --all --project <repoRoot> [--collect=all] [--agent]`
 - `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]`
 
+## Implementation Preconditions
+
+Before implementation edits, load `.bear/agent/TROUBLESHOOTING.md` and `.bear/agent/REPORTING.md`.
+
+Minimum required sections (to avoid context overload):
+1. `.bear/agent/TROUBLESHOOTING.md` -> `Agent JSON-First Protocol`, `PROCESS_VIOLATION`, `GREENFIELD_PR_CHECK_POLICY`.
+2. `.bear/agent/REPORTING.md` -> `Agent Loop Contract`, `Required Fields`, `Outcome Rules`.
+
+Mandatory stop conditions:
+1. `GREENFIELD_HARD_STOP`:
+- if `spec/*.bear.yaml` is empty, do not edit implementation.
+- first create IR, then run `bear validate <ir-file>` and `bear compile <ir-file> --project <repoRoot>` (or `compile --all` after index preflight).
+2. `INDEX_REQUIRED_PREFLIGHT`:
+- before any `--all` gate, `bear.blocks.yaml` must exist and be readable.
+- if missing/unreadable, stop and resolve preflight before continuing.
+3. `POST_FAILURE_DISCIPLINE`:
+- after any gate failure in `--agent` mode, execute only `nextAction.commands`.
+- if `nextAction` is `null`, route deterministically via troubleshooting.
+- any command variant drift is a process violation and must stop.
+4. `COMPLETE_DISCIPLINE`:
+- report `Run outcome: COMPLETE` only after canonical done gates are green.
+
 ## Command Surface
 
 Before any failure:
 1. You may run the standard gate sequence: `validate`, `compile|fix`, `check`, `pr-check`.
+2. For automation/machine loops, run `check` and `pr-check` in `--agent` mode.
 
 After failure in `--agent` mode:
 1. If JSON `nextAction.commands` is present, execute only those commands.
@@ -90,7 +113,7 @@ Read on demand:
 ## Hard-Stop Routing
 
 1. On `INTERNAL_ERROR` (`70`), repeated timeout (`124`), or `IO_LOCK`, follow `.bear/agent/TROUBLESHOOTING.md` and stop when anomaly criteria require stop.
-2. For process preconditions (missing agent package files, greenfield implementation before IR compile, missing index preflight), classify `PROCESS_VIOLATION|<label>|<evidence>` and follow `.bear/agent/TROUBLESHOOTING.md` labels.
+2. For process preconditions (missing agent package files, greenfield implementation before IR compile, missing index preflight, post-failure command drift), classify `PROCESS_VIOLATION|<label>|<evidence>` and follow `.bear/agent/TROUBLESHOOTING.md` labels.
 3. For expected greenfield baseline `BOUNDARY_EXPANSION_DETECTED`, follow `.bear/agent/TROUBLESHOOTING.md` greenfield policy and report `WAITING_FOR_BASELINE_REVIEW` per `.bear/agent/REPORTING.md`.
 4. If spec conflicts with explicit policy/contract rules, stop and escalate unless the spec explicitly authorizes rule changes.
 

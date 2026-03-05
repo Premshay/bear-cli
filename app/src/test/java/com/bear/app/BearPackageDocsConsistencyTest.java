@@ -69,6 +69,7 @@ class BearPackageDocsConsistencyTest {
         assertMatchesHeading(bootstrap, "(?m)^##\\s+Machine\\s+Gate\\s+Loop\\s*$");
         assertMatchesHeading(bootstrap, "(?m)^##\\s+Routing\\s+Map\\s*$");
         assertMatchesHeading(bootstrap, "(?m)^##\\s+Hard-Stop\\s+Routing\\s*$");
+        assertMatchesHeading(bootstrap, "(?m)^##\\s+Implementation\\s+Preconditions\\s*$");
 
         assertMatchesHeading(reporting, "(?m)^##\\s+Agent\\s+Loop\\s+Contract\\s*$");
         assertContains(reporting, "Automation MUST parse only stdout JSON in `--agent` mode");
@@ -86,10 +87,11 @@ class BearPackageDocsConsistencyTest {
 
         assertContains(contracts, "In automation, `--agent` JSON on stdout is the authoritative control interface.");
 
-        assertFalse(bootstrap.contains("## AGENT_PACKAGE_PARITY_PRECONDITION"));
-        assertFalse(bootstrap.contains("## GREENFIELD_HARD_STOP"));
-        assertFalse(bootstrap.contains("## INDEX_REQUIRED_PREFLIGHT"));
-        assertFalse(bootstrap.contains("## GREENFIELD_PR_CHECK_POLICY"));
+        assertContains(bootstrap, "Before implementation edits, load `.bear/agent/TROUBLESHOOTING.md` and `.bear/agent/REPORTING.md`.");
+        assertContains(bootstrap, "GREENFIELD_HARD_STOP");
+        assertContains(bootstrap, "INDEX_REQUIRED_PREFLIGHT");
+        assertContains(bootstrap, "POST_FAILURE_DISCIPLINE");
+        assertContains(bootstrap, "COMPLETE_DISCIPLINE");
     }
 
     @Test
@@ -165,5 +167,6 @@ class BearPackageDocsConsistencyTest {
         assertTrue(content.contains(token), "Expected exact token missing: " + token);
     }
 }
+
 
 

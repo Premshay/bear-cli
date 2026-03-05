@@ -6,7 +6,7 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-04
+2026-03-05
 
 ## Current Focus
 
@@ -19,6 +19,7 @@ Deterministic agent-loop reliability patch-set (CommandContext rerun fidelity, r
 
 ## Session Notes
 
+- Agent package hard-anchor restoration completed in `BOOTSTRAP.md`: reintroduced explicit pre-edit stop conditions (`GREENFIELD_HARD_STOP`, `INDEX_REQUIRED_PREFLIGHT`, `POST_FAILURE_DISCIPLINE`, `COMPLETE_DISCIPLINE`) and added required pre-edit load of troubleshooting/reporting with scoped minimum sections.
 - Reliability guardrails patch completed: added parser-sourced `CommandContext`, context-equivalent rerun command tests, repeatable-rule `identityKey` enforcement, reasonKey reachability checks, deterministic report lint (`RunReportLint`), and transcript regression coverage.
 - Verification (latest):
   - `./gradlew test`
