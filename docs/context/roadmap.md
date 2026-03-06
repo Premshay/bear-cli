@@ -58,10 +58,9 @@ Preview definition of done:
 ## Post-Preview Priorities
 
 Priority 2:
-1. CI boundary governance + telemetry unification.
+1. CI boundary governance + PR diff ergonomics + telemetry unification.
 2. Minimal taste-invariants rule pack.
 3. Boundary regression suite.
-4. Better PR diff ergonomics.
 
 Priority 3:
 1. Maven allowed-deps containment parity (optional future expansion).
