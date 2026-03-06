@@ -6,6 +6,24 @@ Spec-backed future initiatives should live in `docs/context/backlog/` and be lin
 
 ---
 
+## Highest-Value Parked Initiatives
+
+These items are not committed roadmap work yet, but they are currently considered the most strategically valuable parked ideas.
+
+1. `Target-Adaptable CLI + Initial Node/TypeScript Target`
+- expands BEAR beyond the JVM and increases product applicability directly
+- spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
+
+2. `Spec -> BEAR IR Lowering`
+- could materially improve BEAR adoption by shortening the path from feature intent to governed IR
+- currently an idea family only; not yet backed by a dedicated backlog spec
+
+3. `Compile Package Customization`
+- improves fit into real codebases, but is less strategically important than target expansion or easier authoring
+- spec: `docs/context/backlog/future-compile-package-customization.md`
+
+---
+
 ## Deferred Initiatives With Spec Files
 
 ### Target-Adaptable CLI + Initial Node/TypeScript Target

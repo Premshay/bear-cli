@@ -75,7 +75,27 @@ Execution priority (capability/value first):
 Priority notes:
 1. Ordering is based on product value and BEAR capability demonstration, not only hardening or compatibility work.
 2. Stability, regression, and compatibility slices remain important, but they do not lead the queue unless they unblock the capability-first items.
-3. Milestone targets still live in each backlog spec; the order above is the execution priority.
+3. Milestone targets still live in each backlog spec; the order above is the execution priority for committed roadmap work.
+
+## Full-List Strategic Value View
+
+This view includes both committed roadmap work and the highest-value parked initiatives.
+It is not the same as the active execution queue.
+
+1. `P2` CI boundary governance + PR diff ergonomics + telemetry unification.
+2. `P3` Capability templates.
+3. `P3` Broader boundary-escape coverage.
+4. `Future` Target-adaptable CLI + initial Node/TypeScript target. Spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
+5. `P3` Multi-block and multi-module composition hardening.
+6. `Future` Spec -> BEAR IR lowering. Idea family in `docs/context/future.md`.
+7. `P2` Minimal taste-invariants rule pack.
+8. `P3` Maven allowed-deps containment parity.
+9. `P3` Optional deterministic policy hooks.
+
+Strategic notes:
+1. `Target-adaptable CLI + initial Node/TypeScript target` is strategically more valuable than several lower-ranked committed slices because it expands where BEAR can apply.
+2. `Spec -> BEAR IR lowering` is also high-value for adoption, but it remains less execution-ready and carries more product-shape risk.
+3. These future items stay parked until intentionally promoted into the committed roadmap.
 
 Shipped in active post-Preview work already:
 1. `bear fix` for generated artifacts only.

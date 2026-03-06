@@ -31,5 +31,6 @@ Planning docs are now ordered so committed roadmap items map to backlog specs, s
 - Integrated the boundary regression worktree slice back into `main` by merging the four test-file changes only (`AllModeOptionParserTest`, `AllModeRendererTest`, `BearCliTest`, `PrDeltaClassifierTest`) and intentionally leaving the detached worktree's stale `state.md` out of the merge.
 - Completed and integrated the boundary regression suite, then updated roadmap, program board, and backlog status.
 - Reprioritized the roadmap and execution queue around BEAR capability and product value: CI governance first, then capability templates, broader boundary-escape coverage, and multi-block composition hardening ahead of taste-invariants and Maven parity.
+- Added a full-list strategic value view to the roadmap so parked high-value initiatives are visible too; the strongest parked bets are `Target-Adaptable CLI + Initial Node/TypeScript Target` and `Spec -> BEAR IR Lowering`.
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest`
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.PrDeltaClassifierTest --tests com.bear.app.AllModeOptionParserTest --tests com.bear.app.AllModeRendererTest --tests com.bear.app.BearCliTest`
