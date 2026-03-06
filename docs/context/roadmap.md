@@ -64,13 +64,12 @@ Preview definition of done:
 ## Active Post-Preview Feature Roadmap
 
 Execution priority (capability/value first):
-1. `P2` CI boundary governance + PR diff ergonomics + telemetry unification. Spec: `docs/context/backlog/p2-ci-owned-bear-gates.md`
-2. `P3` Capability templates. Spec: `docs/context/backlog/p3-capability-templates.md`
-3. `P3` Broader boundary-escape coverage. Spec: `docs/context/backlog/p3-broader-boundary-escape-coverage.md`
-4. `P3` Multi-block and multi-module composition hardening. Spec: `docs/context/backlog/p3-multi-block-multi-module-composition-hardening.md`
-5. `P2` Minimal taste-invariants rule pack. Spec: `docs/context/backlog/p2-minimal-taste-invariants-rule-pack.md`
-6. `P3` Maven allowed-deps containment parity (optional future expansion). Spec: `docs/context/backlog/p3-maven-allowed-deps-containment.md`
-7. `P3` Optional deterministic policy hooks. Spec: `docs/context/backlog/p3-optional-deterministic-policy-hooks.md`
+1. `P3` Capability templates. Spec: `docs/context/backlog/p3-capability-templates.md`
+2. `P3` Broader boundary-escape coverage. Spec: `docs/context/backlog/p3-broader-boundary-escape-coverage.md`
+3. `P3` Multi-block and multi-module composition hardening. Spec: `docs/context/backlog/p3-multi-block-multi-module-composition-hardening.md`
+4. `P2` Minimal taste-invariants rule pack. Spec: `docs/context/backlog/p2-minimal-taste-invariants-rule-pack.md`
+5. `P3` Maven allowed-deps containment parity (optional future expansion). Spec: `docs/context/backlog/p3-maven-allowed-deps-containment.md`
+6. `P3` Optional deterministic policy hooks. Spec: `docs/context/backlog/p3-optional-deterministic-policy-hooks.md`
 
 Priority notes:
 1. Ordering is based on product value and BEAR capability demonstration, not only hardening or compatibility work.
@@ -82,15 +81,14 @@ Priority notes:
 This view includes both committed roadmap work and the highest-value parked initiatives.
 It is not the same as the active execution queue.
 
-1. `P2` CI boundary governance + PR diff ergonomics + telemetry unification.
-2. `P3` Capability templates.
-3. `P3` Broader boundary-escape coverage.
-4. `Future` Target-adaptable CLI + initial Node/TypeScript target. Spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
-5. `P3` Multi-block and multi-module composition hardening.
-6. `Future` Spec -> BEAR IR lowering. Idea family in `docs/context/future.md`.
-7. `P2` Minimal taste-invariants rule pack.
-8. `P3` Maven allowed-deps containment parity.
-9. `P3` Optional deterministic policy hooks.
+1. `P3` Capability templates.
+2. `P3` Broader boundary-escape coverage.
+3. `Future` Target-adaptable CLI + initial Node/TypeScript target. Spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
+4. `P3` Multi-block and multi-module composition hardening.
+5. `Future` Spec -> BEAR IR lowering. Idea family in `docs/context/future.md`.
+6. `P2` Minimal taste-invariants rule pack.
+7. `P3` Maven allowed-deps containment parity.
+8. `P3` Optional deterministic policy hooks.
 
 Strategic notes:
 1. `Target-adaptable CLI + initial Node/TypeScript target` is strategically more valuable than several lower-ranked committed slices because it expands where BEAR can apply.
@@ -102,6 +100,7 @@ Shipped in active post-Preview work already:
 2. Generated structural tests (default evidence-only; opt-in strict mode remains available via JVM property).
 3. Declared allowed-deps containment for Gradle or JVM projects.
 4. Boundary regression suite.
+5. CI boundary governance + PR diff ergonomics + telemetry unification.
 
 Parked and non-committed items:
 1. Future initiatives and idea families belong in `docs/context/future.md`, not in the active roadmap queue.

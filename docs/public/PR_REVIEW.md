@@ -27,7 +27,7 @@ flowchart LR
 
 <p><sub>Figure: what BEAR governs vs what sits outside, and the two common failure shapes (undeclared reach, bypass into governed code).<br/>Legend: indigo = governed roots, slate = generated boundary glue, green = adapters, red = a violation.</sub></p>
 
-In a PR or CI job, the canonical pair is:
+In a PR or CI job, the canonical raw gate pair is:
 
 ```text
 bear check --all --project <repoRoot>
@@ -37,6 +37,13 @@ bear pr-check --all --project <repoRoot> --base <ref>
 `check` answers: "is the repo consistent with the declared boundary and generated artifacts, and do tests pass?"
 
 `pr-check` answers: "did the declared boundary expand compared to base?"
+
+When a downstream repo uses the packaged wrapper (`.bear/ci/bear-gates.*`), CI adds a compact review layer:
+- `MODE=<enforce|observe> DECISION=<pass|fail|allowed-expansion> BASE=<sha>`
+- `CHECK exit=<code> code=<CODE|-> classes=<...>`
+- `PR-CHECK exit=<code> code=<CODE|-> classes=<...>` or `PR-CHECK NOT_RUN: <reason>`
+- on enforce-mode boundary expansion with usable telemetry, `ALLOW_ENTRY_CANDIDATE:` plus the exact JSON entry to copy into `.bear/ci/baseline-allow.json`
+- the same facts are also written to `build/bear/ci/bear-ci-summary.md` for GitHub check and PR review surfaces
 
 ## How to interpret `pr-check`
 
@@ -59,6 +66,7 @@ REMEDIATION=Review boundary-expanding deltas and route through explicit boundary
 Action:
 - treat it as an explicit governance event
 - accept (with intent) or revert
+- if your CI wrapper printed `ALLOW_ENTRY_CANDIDATE:`, copy that exact entry into `.bear/ci/baseline-allow.json` only after review approval
 
 ### `exit 7`: boundary bypass detected
 This is not "a policy disagreement"; it is a structural bypass signal.
@@ -77,6 +85,5 @@ Action:
 - Exact output shapes and ordering guarantees: [output-format.md](output-format.md)
 - Exit code registry: [exit-codes.md](exit-codes.md)
 - Full `pr-check` contract: [commands-pr-check.md](commands-pr-check.md)
+- Downstream wrapper/report contract: [CI_INTEGRATION.md](CI_INTEGRATION.md)
 - Governance policy (normative, maintainer doc): [docs/context/governance.md](../context/governance.md)
-
-

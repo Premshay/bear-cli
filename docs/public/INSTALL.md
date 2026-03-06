@@ -1,4 +1,4 @@
-﻿# Install
+# Install
 
 Install BEAR by copying one package bundle: [`docs/bear-package/.bear/`](../bear-package/.bear/) into your project as `.bear/`.
 
@@ -17,6 +17,12 @@ BEAR is intended to run "behind the scenes" in agentic workflows:
   ref/BEAR_PRIMER.md
   ref/IR_REFERENCE.md
   ref/BLOCK_INDEX_QUICKREF.md
+
+<repoRoot>/.bear/ci/
+  bear-gates.sh
+  bear-gates.ps1
+  baseline-allow.json
+  README.md
 
 <repoRoot>/.bear/tools/bear-cli/
   bin/bear(.bat)
@@ -59,7 +65,23 @@ macOS/Linux (bash/zsh):
 ./.bear/tools/bear-cli/bin/bear --help
 ```
 
-4. Run the first deterministic gate.
+4. Verify the packaged CI wrapper and confirm it writes `build/bear/ci/bear-ci-report.json` plus `build/bear/ci/bear-ci-summary.md`.
+
+Windows (PowerShell):
+
+```powershell
+.\.bear\ci\bear-gates.ps1 --mode observe --base-sha HEAD
+```
+
+macOS/Linux (bash/zsh):
+
+```sh
+./.bear/ci/bear-gates.sh --mode observe --base-sha HEAD
+```
+
+On bash-based runners, `.bear/ci/bear-gates.sh` requires `pwsh`. If `pwsh` is unavailable, run `.bear/ci/bear-gates.ps1` directly or install PowerShell 7.
+
+5. Run the first deterministic gate.
 
 Use `--all` only when your repo has `bear.blocks.yaml`:
 
@@ -78,8 +100,7 @@ If no block index exists yet, run single-block check:
 - [OVERVIEW.md](OVERVIEW.md)
 - [QUICKSTART.md](QUICKSTART.md)
 - [PR_REVIEW.md](PR_REVIEW.md)
+- [CI_INTEGRATION.md](CI_INTEGRATION.md)
 - [commands-check.md](commands-check.md)
 - [commands-unblock.md](commands-unblock.md)
 - [troubleshooting.md](troubleshooting.md)
-
-
