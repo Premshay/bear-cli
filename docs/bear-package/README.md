@@ -9,7 +9,7 @@ Canonical source rule:
 - root-level files in `docs/bear-package/` are packaging helpers (`README.md`, `AGENTS.md`, `AGENTS_SHIM.md`), not duplicate bundle content.
 
 Self-contained reference rule:
-- package files must reference only paths that exist inside the distributed package (`.bear/agent/**`) plus project-local BEAR artifacts/IR files.
+- package files must reference only paths that exist inside the distributed package (`.bear/agent/**`, `.bear/ci/**`) plus project-local BEAR artifacts/IR files.
 - do not point agents to non-shipped repo docs.
 
 Compatibility note (hard cutover):
@@ -30,6 +30,7 @@ Minimum agent context carried by the package:
 - conceptual framing (`.bear/agent/ref/BEAR_PRIMER.md`)
 - agent JSON field quickref (`.bear/agent/ref/AGENT_JSON_QUICKREF.md`)
 - PowerShell command quickref (`.bear/agent/ref/WINDOWS_QUICKREF.md`)
+- vendored CI integration assets (`.bear/ci/**`)
 - required project-local inspection targets (`spec/*.bear.yaml`, `bear.blocks.yaml`, `build/generated/bear/**` when present)
 - vendored CLI runtime (`.bear/tools/bear-cli/**`)
 
@@ -79,6 +80,11 @@ Canonical layout in adopter repos:
 <repoRoot>/.bear/policy/
   reflection-allowlist.txt
   hygiene-allowlist.txt
+<repoRoot>/.bear/ci/
+  bear-gates.sh
+  bear-gates.ps1
+  baseline-allow.json
+  README.md
 <repoRoot>/.bear/tools/bear-cli/
   bin/bear(.bat)
   lib/*.jar
@@ -104,6 +110,10 @@ Required package files:
 - `.bear/agent/ref/WINDOWS_QUICKREF.md`
 - `.bear/policy/reflection-allowlist.txt`
 - `.bear/policy/hygiene-allowlist.txt`
+- `.bear/ci/bear-gates.sh`
+- `.bear/ci/bear-gates.ps1`
+- `.bear/ci/baseline-allow.json`
+- `.bear/ci/README.md`
 - `.bear/tools/bear-cli/bin/bear` / `.bear/tools/bear-cli/bin/bear.bat`
 - `.bear/tools/bear-cli/lib/*.jar`
 - `AGENTS_SHIM.md`
@@ -121,6 +131,7 @@ When a project has multiple governed BEAR blocks:
 - `bear check --all --project <repoRoot> [--collect=all] [--agent]`
 - `bear pr-check --all --project <repoRoot> --base <ref> [--collect=all] [--agent]`
 5. Completion report must include governance-signal disposition fields from `.bear/agent/REPORTING.md`.
+6. Downstream CI should call `.bear/ci/bear-gates.ps1` or `.bear/ci/bear-gates.sh` rather than duplicating allow-file or decision logic in workflow YAML.
 
 ## Integration Rule: Existing `AGENTS.md`
 

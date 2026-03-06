@@ -10,16 +10,18 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-CI boundary governance first slice is now implemented for `pr-check --agent`: deterministic `extensions.prGovernance` telemetry for single and `--all`, snapshot-backed `pr-check` governance output, and public contract docs/tests. The remaining CI-owned follow-up is the canonical wrapper/report/allow-file flow from `docs/context/backlog/p2-ci-owned-bear-gates.md`; after that, roadmap priority still returns to capability templates and broader boundary-escape coverage.
+The CI-owned governance follow-up is now implemented end-to-end: packaged downstream wrappers under `.bear/ci`, deterministic base resolution, enforce/observe decision matrix, exact-match allow-file handling, reproducible `bear.ci.governance.v1` reports, and public/package integration docs. With the CI boundary-governance slice shipped, roadmap priority returns to capability templates and broader boundary-escape coverage.
 
 ## Next Concrete Task
 
-1. Decide whether to take the remaining CI-owned wrapper/report/allow-file follow-up from `docs/context/backlog/p2-ci-owned-bear-gates.md` next, or switch to capability templates first.
-2. If CI governance continues next, keep it narrow to wrapper/report/allow-file flow and preserve the shipped `extensions.prGovernance` contract.
-3. Otherwise proceed with capability templates and broader boundary-escape coverage.
+1. Start `docs/context/backlog/p3-capability-templates.md` as the next execution slice.
+2. Preserve the shipped `extensions.prGovernance` and `bear.ci.governance.v1` contracts while follow-on CI usage lands in demo or adopter repos.
+3. After capability templates, continue with broader boundary-escape coverage and multi-block hardening.
 
 ## Session Notes
 
+- Completed `docs/context/backlog/p2-ci-owned-bear-gates.md`: shipped packaged `.bear/ci` wrappers (`bear-gates.ps1`, thin `bear-gates.sh`), exact-match `baseline-allow.json`, deterministic `bear.ci.governance.v1` report generation, minimal console summaries, `CI_INTEGRATION.md`, and wrapper integration tests that cover skip rules, allow-file matching, fail-closed telemetry gaps, and bash forwarding.
+- Verification: `./gradlew.bat :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.BearCiIntegrationScriptsTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.ContextDocsConsistencyTest`
 - Implemented the `pr-check --agent` governance telemetry slice on `codex/ci-pr-governance-telemetry`: added local `PrGovernanceTelemetry` snapshot modeling, deterministic `extensions.prGovernance` for single/all mode, and snapshot-backed `pr-check` delta/governance rendering without broadening beyond `pr-check`.
 - Added agent JSON contract coverage for presence/absence rules, exact single-mode payload shape, all-mode aggregate semantics, repo-vs-block delta separation, and canonical ordering.
 - Updated `docs/public/commands-pr-check.md` and `docs/public/output-format.md` to document `extensions.prGovernance`, scope rules, aggregate semantics, and ordering guarantees.
@@ -38,4 +40,7 @@ CI boundary governance first slice is now implemented for `pr-check --agent`: de
 - Added a full-list strategic value view to the roadmap so parked high-value initiatives are visible too; the strongest parked bets are `Target-Adaptable CLI + Initial Node/TypeScript Target` and `Spec -> BEAR IR Lowering`.
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest`
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.PrDeltaClassifierTest --tests com.bear.app.AllModeOptionParserTest --tests com.bear.app.AllModeRendererTest --tests com.bear.app.BearCliTest`
+
+
+
 

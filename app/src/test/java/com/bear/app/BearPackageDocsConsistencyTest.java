@@ -43,6 +43,26 @@ class BearPackageDocsConsistencyTest {
     }
 
     @Test
+    void packageCiFileSetIsExact() throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path ciRoot = repoRoot.resolve("docs/bear-package/.bear/ci");
+
+        Set<String> actual = Files.walk(ciRoot)
+            .filter(Files::isRegularFile)
+            .map(path -> ciRoot.relativize(path).toString().replace('\\', '/'))
+            .collect(Collectors.toSet());
+
+        Set<String> expected = Set.of(
+            "bear-gates.ps1",
+            "bear-gates.sh",
+            "baseline-allow.json",
+            "README.md"
+        );
+
+        assertEquals(expected, actual, "CI package file set must match the canonical downstream layout");
+    }
+
+    @Test
     void legacyAgentFilesAreRemoved() {
         Path repoRoot = TestRepoPaths.repoRoot();
         String[] legacyPaths = {
@@ -64,6 +84,11 @@ class BearPackageDocsConsistencyTest {
         String troubleshooting = Files.readString(repoRoot.resolve("docs/bear-package/.bear/agent/TROUBLESHOOTING.md"));
         String reporting = Files.readString(repoRoot.resolve("docs/bear-package/.bear/agent/REPORTING.md"));
         String contracts = Files.readString(repoRoot.resolve("docs/bear-package/.bear/agent/CONTRACTS.md"));
+        String ciReadme = Files.readString(repoRoot.resolve("docs/bear-package/.bear/ci/README.md"));
+        String install = Files.readString(repoRoot.resolve("docs/public/INSTALL.md"));
+        String index = Files.readString(repoRoot.resolve("docs/public/INDEX.md"));
+        String ciIntegration = Files.readString(repoRoot.resolve("docs/public/CI_INTEGRATION.md"));
+        String packageReadme = Files.readString(repoRoot.resolve("docs/bear-package/README.md"));
 
         assertMatchesHeading(bootstrap, "(?m)^##\\s+Command\\s+Surface\\s*$");
         assertMatchesHeading(bootstrap, "(?m)^##\\s+Machine\\s+Gate\\s+Loop\\s*$");
@@ -117,6 +142,20 @@ class BearPackageDocsConsistencyTest {
         assertContains(bootstrap, "Execute `nextAction.commands` exactly as written.");
         assertContains(bootstrap, "If a command starts with `bear` and `bear` is not on PATH");
         assertFalse(bootstrap.contains("[--collect=all] [--agent]"), "Bootstrap done-gate examples must require --agent in agent protocol docs");
+
+        assertContains(ciReadme, "build/bear/ci/bear-ci-report.json");
+        assertContains(ciReadme, "baseline-allow.json");
+        assertContains(ciReadme, "bear-gates.ps1");
+        assertContains(ciReadme, "bear-gates.sh");
+        assertContains(ciReadme, "pwsh");
+
+        assertContains(index, "[CI_INTEGRATION.md](CI_INTEGRATION.md)");
+        assertContains(install, ".bear/ci/");
+        assertContains(install, ".\\.bear\\ci\\bear-gates.ps1 --mode observe --base-sha HEAD");
+        assertContains(ciIntegration, "schemaVersion=bear.ci.governance.v1");
+        assertContains(ciIntegration, "PR-CHECK NOT_RUN: BASE_UNRESOLVED");
+        assertContains(ciIntegration, "./.bear/ci/bear-gates.sh --mode enforce");
+        assertContains(packageReadme, ".bear/ci/bear-gates.ps1");
     }
 
     @Test
@@ -196,5 +235,3 @@ class BearPackageDocsConsistencyTest {
         assertTrue(content.contains(token), "Expected exact token missing: " + token);
     }
 }
-
-

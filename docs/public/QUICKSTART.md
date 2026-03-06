@@ -1,4 +1,4 @@
-﻿# Quickstart
+# Quickstart
 
 This quickstart runs BEAR on the demo repo with the minimal command path.
 
@@ -53,6 +53,14 @@ Expected outcome: all selected blocks pass and summary `EXIT_CODE: 0`.
 Expected outcome: `pr-check: OK: NO_BOUNDARY_EXPANSION` and exit `0`.
 For real PR/CI, set `--base` to the target merge base (for example `origin/main`).
 
+7. Run the packaged CI wrapper.
+
+```powershell
+.\.bear\ci\bear-gates.ps1 --mode observe --base-sha HEAD
+```
+
+Expected outcome: a three-line summary on stdout and `build/bear/ci/bear-ci-report.json` for downstream CI audit.
+
 ## If `bear.blocks.yaml` is missing
 
 All `--all` commands require `bear.blocks.yaml`.
@@ -83,3 +91,4 @@ If something fails, go to [troubleshooting.md](troubleshooting.md).
 - [PR_REVIEW.md](PR_REVIEW.md)
 - [ENFORCEMENT.md](ENFORCEMENT.md)
 - [CONTRACTS.md](CONTRACTS.md)
+- [CI_INTEGRATION.md](CI_INTEGRATION.md)

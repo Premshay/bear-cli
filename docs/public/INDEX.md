@@ -1,4 +1,4 @@
-﻿# Public Docs
+# Public Docs
 
 These docs are split into two lanes: a default guide path for humans and a reference path for automation/parsers.
 
@@ -14,6 +14,7 @@ These docs are split into two lanes: a default guide path for humans and a refer
 - [TERMS.md](TERMS.md) - minimum vocabulary needed to read BEAR output.
 - [ENFORCEMENT.md](ENFORCEMENT.md) - guarantees and non-goals (`ENFORCED` vs `PARTIAL`).
 - [INSTALL.md](INSTALL.md) - install the BEAR bundle into another repo.
+- [CI_INTEGRATION.md](CI_INTEGRATION.md) - downstream CI wrapper usage, allow-file matching, and report contract.
 - [troubleshooting.md](troubleshooting.md) - fix failures by `CODE=...`.
 - [VISION.md](VISION.md) - directional ideas (non-committed).
 
