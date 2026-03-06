@@ -39,6 +39,29 @@ Invariant source of truth:
 4. Boundary visibility over silent expansion
    - boundary-expanding changes must produce deterministic, reviewable signals.
 
+## Implementation Principles
+
+1. Deterministic governance system
+   - BEAR is a deterministic structural governance system for agent-driven backend development.
+2. Authority surfaces over code style
+   - BEAR governs external power and declared boundaries: ports, dependency power, governed roots, policy verification, and explicit escape hatches.
+3. Boundary constraints over interior control
+   - implementation freedom inside a declared block is intentional; silent boundary expansion is not.
+4. Determinism as product contract
+   - ordering, schemas, exit behavior, generated artifacts, and governance outputs must be reproducible across runs and environments.
+5. Explicit contracts over inference
+   - BEAR prefers explicit IR, ownership, target seams, and diagnostics over hidden heuristics or guesswork.
+6. Canonical facts before derived views
+   - IR, exits, deltas, governance signals, and failure envelopes are authoritative; summaries, agent guidance, and CI classifications must remain derived.
+7. Governance signals over convenience
+   - if smoother agent flow conflicts with accurate boundary visibility, preserve the signal.
+8. Narrow, enforceable scope
+   - BEAR must not become a behavior DSL, a quality scorer, a style engine, or a general architecture advisory system.
+9. Tight extensibility seams
+   - new targets, templates, and future overlays should extend through explicit seams without weakening the deterministic core.
+10. Bounded failure behavior
+   - when BEAR cannot proceed, it should fail in deterministic, intelligible ways rather than improvise speculative advice.
+
 ## Agentic Process Contract (Preview)
 
 Role split:

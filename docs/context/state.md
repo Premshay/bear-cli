@@ -20,6 +20,7 @@ Planning docs are now ordered so committed roadmap items map to backlog specs, s
 
 ## Session Notes
 
+- Added implementation principles to docs/context/architecture.md so BEAR doctrine is explicit in repo docs: deterministic governance, authority-surface focus, canonical-facts-first, narrow enforceable scope, and bounded failure behavior.
 - REPORTING rewrite shipped: minimal core fields are required; legacy fields are optional and non-authoritative, and noise-control guidance is now explicit.
 - RunReportLint and related tests were tightened around gate results, blocker evidence, canonical done-gates, and deterministic reporting structure.
 - Added BEAR run-grading rubric and pinned fast-by-default verification guidance in the always-load context docs.
