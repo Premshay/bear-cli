@@ -2230,6 +2230,54 @@ class BearCliTest {
             "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses."
         );
     }
+    @Test
+    void checkCollectAllBoundaryBypassFindingsAreDeterministicallyOrdered(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = TestRepoPaths.repoRoot();
+        Path fixture = repoRoot.resolve("spec/fixtures/withdraw.bear.yaml");
+        assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
+        writeWorkingWithdrawImpl(tempDir);
+        writeProjectWrapper(
+            tempDir,
+            "@echo off\r\necho TEST_OK\r\nexit /b 0\r\n",
+            "#!/usr/bin/env sh\necho TEST_OK\nexit 0\n"
+        );
+
+        Path aBypass = tempDir.resolve("src/main/java/com/example/ABypass.java");
+        Files.createDirectories(aBypass.getParent());
+        Files.writeString(aBypass, ""
+            + "package com.example;\n"
+            + "import blocks.withdraw.impl.WithdrawImpl;\n"
+            + "public final class ABypass {\n"
+            + "  WithdrawImpl impl = new WithdrawImpl();\n"
+            + "}\n",
+            StandardCharsets.UTF_8
+        );
+        Path zBypass = tempDir.resolve("src/main/java/com/example/ZBypass.java");
+        Files.writeString(zBypass, ""
+            + "package com.example;\n"
+            + "import blocks.withdraw.impl.WithdrawImpl;\n"
+            + "public final class ZBypass {\n"
+            + "  WithdrawImpl impl = new WithdrawImpl();\n"
+            + "}\n",
+            StandardCharsets.UTF_8
+        );
+
+        CliRunResult check = runCli(new String[] { "check", fixture.toString(), "--project", tempDir.toString(), "--collect=all" });
+        assertEquals(7, check.exitCode);
+        String stderr = normalizeLf(check.stderr);
+        List<String> lines = stderr.lines()
+            .filter(line -> line.startsWith("check: BOUNDARY_BYPASS:"))
+            .toList();
+        assertEquals(2, lines.size());
+        assertTrue(lines.get(0).contains("src/main/java/com/example/ABypass.java"));
+        assertTrue(lines.get(1).contains("src/main/java/com/example/ZBypass.java"));
+        assertFailureEnvelope(
+            check.stderr,
+            "BOUNDARY_BYPASS",
+            "src/main/java/com/example/ABypass.java",
+            "Wire via generated entrypoints and declared effect ports; remove impl seam bypasses."
+        );
+    }
 
     @Test
     void checkBoundaryBypassReflectionClassloadingFails(@TempDir Path tempDir) throws Exception {
@@ -4878,6 +4926,46 @@ class BearCliTest {
         assertTrue(stderr.contains("pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: .:_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2"));
         assertTrue(stderr.indexOf("REPO DELTA:") < stderr.indexOf("SUMMARY:"));
         assertEquals(1, countOccurrences(stderr, ":_shared:com.fasterxml.jackson.core:jackson-databind@2.17.2"));
+    }
+    @Test
+    void prCheckAllRepoDeltaLinesAreLexicallySorted(@TempDir Path tempDir) throws Exception {
+        Path repo = initGitRepo(tempDir.resolve("repo"));
+        Path ir = repo.resolve("spec/withdraw.bear.yaml");
+        writeFixtureIr(ir);
+        writeBlockIndex(repo, ""
+            + "version: v1\n"
+            + "blocks:\n"
+            + "  - name: withdraw\n"
+            + "    ir: spec/withdraw.bear.yaml\n"
+            + "    projectRoot: .\n");
+        gitCommitAll(repo, "base repo");
+
+        writeSharedPolicy(
+            repo,
+            """
+                version: v1
+                scope: shared
+                impl:
+                  allowedDeps:
+                    - maven: com.zeta:dep
+                      version: 2.0.0
+                    - maven: com.alpha:dep
+                      version: 1.0.0
+                """
+        );
+        gitCommitAll(repo, "add shared policy deps");
+
+        CliRunResult run = runCli(new String[] {
+            "pr-check", "--all", "--project", repo.toString(), "--base", "HEAD~1"
+        });
+        assertEquals(5, run.exitCode);
+        String stderr = normalizeLf(run.stderr);
+        CliTestAsserts.assertContainsInOrder(stderr, List.of(
+            "REPO DELTA:",
+            "pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: .:_shared:com.alpha:dep@1.0.0",
+            "pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: .:_shared:com.zeta:dep@2.0.0",
+            "SUMMARY:"
+        ));
     }
 
     @Test

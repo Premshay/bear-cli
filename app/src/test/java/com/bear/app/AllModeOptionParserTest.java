@@ -76,6 +76,50 @@ class AllModeOptionParserTest {
     }
 
     @Test
+    void parseAllPrCheckOptionsMissingBaseReturnsUsageError(@TempDir Path repoRoot) {
+        String stderr = parseAllPrCheckOptionsStderr("pr-check", "--all", "--project", repoRoot.toString());
+        assertTrue(stderr.contains("usage: INVALID_ARGS: expected: bear pr-check --all --project <repoRoot> --base <ref>"));
+        assertTrue(stderr.contains("CODE=USAGE_INVALID_ARGS"));
+    }
+
+    @Test
+    void parseAllPrCheckOptionsBlankBaseReturnsUsageError(@TempDir Path repoRoot) {
+        String stderr = parseAllPrCheckOptionsStderr("pr-check", "--all", "--project", repoRoot.toString(), "--base", "   ");
+        assertTrue(stderr.contains("usage: INVALID_ARGS: expected: bear pr-check --all --project <repoRoot> --base <ref>"));
+        assertTrue(stderr.contains("CODE=USAGE_INVALID_ARGS"));
+    }
+
+    @Test
+    void parseAllPrCheckOptionsRequiresValueAfterBase(@TempDir Path repoRoot) {
+        String stderr = parseAllPrCheckOptionsStderr("pr-check", "--all", "--project", repoRoot.toString(), "--base");
+        assertTrue(stderr.contains("usage: INVALID_ARGS: expected value after --base"));
+    }
+
+    @Test
+    void parseAllPrCheckOptionsRequiresValueAfterOnly(@TempDir Path repoRoot) {
+        String stderr = parseAllPrCheckOptionsStderr("pr-check", "--all", "--project", repoRoot.toString(), "--base", "HEAD", "--only");
+        assertTrue(stderr.contains("usage: INVALID_ARGS: expected value after --only"));
+    }
+
+    @Test
+    void parseAllPrCheckOptionsRequiresValueAfterBlocks(@TempDir Path repoRoot) {
+        String stderr = parseAllPrCheckOptionsStderr("pr-check", "--all", "--project", repoRoot.toString(), "--base", "HEAD", "--blocks");
+        assertTrue(stderr.contains("usage: INVALID_ARGS: expected value after --blocks"));
+    }
+
+    @Test
+    void parseAllPrCheckOptionsRejectsUnsupportedCollectValue(@TempDir Path repoRoot) {
+        String stderr = parseAllPrCheckOptionsStderr("pr-check", "--all", "--project", repoRoot.toString(), "--base", "HEAD", "--collect=first");
+        assertTrue(stderr.contains("usage: INVALID_ARGS: unsupported value for --collect"));
+    }
+
+    @Test
+    void parseAllPrCheckOptionsRejectsUnexpectedArgument(@TempDir Path repoRoot) {
+        String stderr = parseAllPrCheckOptionsStderr("pr-check", "--all", "--project", repoRoot.toString(), "--base", "HEAD", "--fail-fast");
+        assertTrue(stderr.contains("usage: INVALID_ARGS: unexpected argument: --fail-fast"));
+    }
+
+    @Test
     void parseAllCheckOptionsParsesStrictHygiene(@TempDir Path repoRoot) {
         ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
         PrintStream err = new PrintStream(errBytes);
@@ -107,5 +151,13 @@ class AllModeOptionParserTest {
         assertEquals(Set.of("alpha", "beta"), options.onlyNames());
         assertTrue(options.failFast());
         assertEquals("", errBytes.toString());
+    }
+
+    private static String parseAllPrCheckOptionsStderr(String... args) {
+        ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+        PrintStream err = new PrintStream(errBytes);
+        AllPrCheckOptions options = AllModeOptionParser.parseAllPrCheckOptions(args, err);
+        assertNull(options);
+        return CliText.normalizeLf(errBytes.toString());
     }
 }

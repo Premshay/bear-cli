@@ -75,6 +75,74 @@ class AllModeRendererTest {
     }
 
     @Test
+    void renderPrAllOutputPreservesBlockOrderAndPlacesGovernanceThenRepoDeltaThenSummary() {
+        List<BlockExecutionResult> results = List.of(
+            new BlockExecutionResult(
+                "beta",
+                "spec/beta.bear.yaml",
+                "services/beta",
+                BlockStatus.PASS,
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "NO_CHANGES",
+                List.of(),
+                List.of("pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: src/main/java/blocks/_shared/MegaB.java: blocks._shared.MegaB -> com.bear.generated.beta")
+            ),
+            new BlockExecutionResult(
+                "alpha",
+                "spec/alpha.bear.yaml",
+                "services/alpha",
+                BlockStatus.PASS,
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "NO_CHANGES",
+                List.of(),
+                List.of("pr-check: GOVERNANCE: MULTI_BLOCK_PORT_IMPL_ALLOWED: src/main/java/blocks/_shared/MegaA.java: blocks._shared.MegaA -> com.bear.generated.alpha")
+            )
+        );
+        RepoAggregationResult summary = new RepoAggregationResult(
+            0,
+            2,
+            2,
+            2,
+            0,
+            0,
+            false,
+            0,
+            0,
+            0,
+            List.of(
+                "pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: com.alpha:dep@1.0.0",
+                "pr-delta: BOUNDARY_EXPANDING: ALLOWED_DEPS: ADDED: com.zeta:dep@1.0.0"
+            )
+        );
+
+        String output = String.join("\n", AllModeRenderer.renderPrAllOutput(results, summary));
+
+        CliTestAsserts.assertContainsInOrder(output, List.of(
+            "BLOCK: beta",
+            "BLOCK: alpha",
+            "GOVERNANCE SIGNALS:",
+            "MegaA",
+            "MegaB",
+            "REPO DELTA:",
+            "com.alpha:dep@1.0.0",
+            "com.zeta:dep@1.0.0",
+            "SUMMARY:"
+        ));
+    }
+
+    @Test
     void renderPrAllOutputPlacesGovernanceSignalsBeforeSummaryOnSuccess() {
         List<BlockExecutionResult> results = List.of(
             new BlockExecutionResult(

@@ -28,4 +28,6 @@ Planning docs are now ordered so committed roadmap items map to backlog specs, s
 - Normalized roadmap planning ownership: active roadmap items now map to dedicated backlog specs, shipped work is listed separately, and spec-backed future initiatives are linked from `future.md`.
 - Added backlog specs for minimal taste-invariants, boundary regression suite, capability templates, broader boundary-escape coverage, multi-block composition hardening, optional deterministic policy hooks, and compile package customization.
 - Stabilized local Gradle execution by moving wrapper cache to repo-local `.bear-gradle-user-home` and build outputs to ignored repo-local `.bear-build/<runId>`; added `.bear-gradle-user-home/` to `.gitignore`.
+- Integrated the boundary regression worktree slice back into `main` by merging the four test-file changes only (`AllModeOptionParserTest`, `AllModeRendererTest`, `BearCliTest`, `PrDeltaClassifierTest`) and intentionally leaving the detached worktree's stale `state.md` out of the merge.
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest`
+- Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.PrDeltaClassifierTest --tests com.bear.app.AllModeOptionParserTest --tests com.bear.app.AllModeRendererTest --tests com.bear.app.BearCliTest`
