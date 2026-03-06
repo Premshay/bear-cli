@@ -6,20 +6,22 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-05
+2026-03-06
 
 ## Current Focus
 
-Agent-loop consistency hardening for early `--all` preflight failures: JSON-first `--agent` envelopes with deterministic `nextAction` routing, without exit-code/schema breakage.
+Diagnose Codex Windows app access and permission behavior on this machine, with focus on the sandboxed shell launch failure (`CreateProcessWithLogonW` 1385) and the working operator path outside the sandbox.
 
 ## Next Concrete Task
 
-1. Validate agent-mode preflight failure behavior across additional failure classes (beyond missing index) and keep routing deterministic.
-2. Evaluate whether non-repairable preflight blockers should emit empty `nextAction.commands` vs rerun command.
-3. Continue queued CI-owned enforcement scope in `docs/context/backlog/p2-ci-owned-bear-gates.md` (no scope expansion in this patch).
+1. Confirm the smallest reproducible sandbox failure in the Codex Windows app and document the failing path precisely.
+2. Verify which capabilities still work with approval/escalation (`read`, `git`, repo edits, broader repo-parent reads) and use that as the temporary execution mode.
+3. Record final diagnosis and working local fix for future sessions.
 
 ## Session Notes
 
+- New session: sandboxed `functions.shell_command` calls fail before process start with `windows sandbox: CreateProcessWithLogonW failed: 1385`; equivalent approved/escalated commands succeed, so the current blocker appears to be Codex Windows sandbox process launch rather than repo ACLs.
+- Final diagnosis: Security `4625` events showed local account `CodexSandboxOffline` failing `LogonType 2` with `STATUS_LOGON_TYPE_NOT_GRANTED` (`0xC000015B`); after granting that account `Allow log on locally` and restarting Codex, sandboxed `whoami` and workspace reads succeeded without approval.
 - Hardened `check --all --agent` and `pr-check --all --agent` missing-index preflight to emit JSON payload plus deterministic `nextAction` (`INDEX_REQUIRED_MISSING`) instead of legacy stderr-only output.
 - Added agent-mode regression tests for missing-index preflight JSON routing and rerun-command context equivalence.
 - Tightened REPORTING language to MUST for Developer Summary and Review scope ordering.
@@ -40,3 +42,5 @@ Agent-loop consistency hardening for early `--all` preflight failures: JSON-firs
   - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.RunReportLintTest --tests com.bear.app.AgentLoopReliabilityRegressionTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.AgentNextActionCommandReliabilityTest --tests com.bear.app.CanonicalDoneGateMatcherTest`
   - `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest --tests com.bear.app.BearPackageDocsConsistencyTest`
   - `./gradlew.bat --no-daemon :app:test :kernel:test`
+
+

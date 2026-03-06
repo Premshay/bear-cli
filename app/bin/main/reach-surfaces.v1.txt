@@ -1,0 +1,8 @@
+REACH_SURFACES|v1
+# TYPE|<fqcn>|<label>
+# METHOD|<ownerFqcn>|<methodName>|<label>
+TYPE|java.net.http.HttpClient|java.net.http.HttpClient
+METHOD|java.net.URL|openConnection|java.net.URL#openConnection
+TYPE|okhttp3.OkHttpClient|okhttp3.OkHttpClient
+TYPE|org.springframework.web.client.RestTemplate|org.springframework.web.client.RestTemplate
+TYPE|java.net.HttpURLConnection|java.net.HttpURLConnection
