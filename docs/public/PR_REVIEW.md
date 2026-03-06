@@ -38,10 +38,12 @@ bear pr-check --all --project <repoRoot> --base <ref>
 
 `pr-check` answers: "did the declared boundary expand compared to base?"
 
-When a downstream repo uses the packaged wrapper (`.bear/ci/bear-gates.*`), CI adds a compact summary layer:
+When a downstream repo uses the packaged wrapper (`.bear/ci/bear-gates.*`), CI adds a compact review layer:
 - `MODE=<enforce|observe> DECISION=<pass|fail|allowed-expansion> BASE=<sha>`
 - `CHECK exit=<code> code=<CODE|-> classes=<...>`
 - `PR-CHECK exit=<code> code=<CODE|-> classes=<...>` or `PR-CHECK NOT_RUN: <reason>`
+- on enforce-mode boundary expansion with usable telemetry, `ALLOW_ENTRY_CANDIDATE:` plus the exact JSON entry to copy into `.bear/ci/baseline-allow.json`
+- the same facts are also written to `build/bear/ci/bear-ci-summary.md` for GitHub check and PR review surfaces
 
 ## How to interpret `pr-check`
 
@@ -64,6 +66,7 @@ REMEDIATION=Review boundary-expanding deltas and route through explicit boundary
 Action:
 - treat it as an explicit governance event
 - accept (with intent) or revert
+- if your CI wrapper printed `ALLOW_ENTRY_CANDIDATE:`, copy that exact entry into `.bear/ci/baseline-allow.json` only after review approval
 
 ### `exit 7`: boundary bypass detected
 This is not "a policy disagreement"; it is a structural bypass signal.

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BearCiIntegrationScriptsTest {
@@ -72,10 +73,17 @@ class BearCiIntegrationScriptsTest {
 
         assertEquals(0, run.exitCode());
         assertTrue(run.stdout().contains("MODE=enforce DECISION=allowed-expansion BASE=base-sha-allow"), run.stdout());
+        assertTrue(run.stdout().contains("ALLOW_ENTRY_CANDIDATE:"), run.stdout());
+        assertTrue(run.stdout().contains("{\"baseSha\":\"base-sha-allow\",\"deltaIds\":[\"BOUNDARY_EXPANDING|ALLOWED_DEPS|ADDED|.:_shared:com.example:demo@1.0.0\"]}"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"decision\":\"allowed-expansion\""), report);
         assertTrue(report.contains("\"allowEvaluation\":{\"status\":\"matched\""), report);
         assertTrue(report.contains("\"classes\":[\"CI_BOUNDARY_EXPANSION\",\"CI_DEPENDENCY_POWER_EXPANSION\"]"), report);
+        assertTrue(report.contains("\"allowEntryCandidate\":{\"baseSha\":\"base-sha-allow\",\"deltaIds\":[\"BOUNDARY_EXPANDING|ALLOWED_DEPS|ADDED|.:_shared:com.example:demo@1.0.0\"]}"), report);
+        String summary = readSummary(repoRoot);
+        assertTrue(summary.contains("## Boundary Deltas"), summary);
+        assertTrue(summary.contains("## Allow Entry Candidate"), summary);
+        assertTrue(summary.contains("\"baseSha\": \"base-sha-allow\""), summary);
     }
 
     @Test
@@ -97,10 +105,15 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce", "--base-sha", "base-sha-missing");
 
         assertEquals(1, run.exitCode());
+        assertTrue(run.stdout().contains("ALLOW_ENTRY_CANDIDATE: UNAVAILABLE"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"decision\":\"fail\""), report);
         assertTrue(report.contains("\"allowEvaluation\":{\"status\":\"unavailable\",\"reason\":\"PR_GOVERNANCE_UNAVAILABLE\""), report);
         assertTrue(report.contains("\"classes\":[\"CI_BOUNDARY_EXPANSION\"]"), report);
+        assertTrue(report.contains("\"allowEntryCandidate\":null"), report);
+        String summary = readSummary(repoRoot);
+        assertTrue(summary.contains("## Allow Entry Candidate"), summary);
+        assertTrue(summary.contains("Unavailable: PR governance telemetry was unusable"), summary);
     }
 
     @Test
@@ -125,10 +138,13 @@ class BearCiIntegrationScriptsTest {
 
         assertEquals(0, runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-stable").exitCode());
         String first = readReport(repoRoot);
+        String firstSummary = readSummary(repoRoot);
         assertEquals(0, runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-stable").exitCode());
         String second = readReport(repoRoot);
+        String secondSummary = readSummary(repoRoot);
 
         assertEquals(first, second);
+        assertEquals(firstSummary, secondSummary);
     }
 
     @Test
@@ -140,6 +156,75 @@ class BearCiIntegrationScriptsTest {
 
         assertEquals(0, run.exitCode(), run.stderr());
         assertTrue(run.stderr().isBlank(), run.stderr());
+    }
+    @Test
+    void powerShellWrapperBuildsAllowEntryCandidateFromAllModeBlockBoundaryDeltas(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = createFixtureRepo(tempDir.resolve("repo"));
+        writeCheckFixture(repoRoot, CliCodes.EXIT_OK, checkJson(CliCodes.EXIT_OK), "");
+        PrGovernanceTelemetry.Snapshot snapshot = PrGovernanceTelemetry.all(
+            CliCodes.EXIT_BOUNDARY_EXPANSION,
+            List.of(),
+            List.of(),
+            List.of(
+                PrGovernanceTelemetry.block(
+                    "accounts",
+                    "spec/accounts.bear.yaml",
+                    CliCodes.EXIT_BOUNDARY_EXPANSION,
+                    List.of(
+                        new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.CONTRACT, PrChange.ADDED, "accounts#create"),
+                        new PrDelta(PrClass.BOUNDARY_EXPANDING, PrCategory.PORTS, PrChange.CHANGED, "accounts#port")
+                    ),
+                    List.of()
+                )
+            )
+        );
+        writePrFixture(repoRoot, CliCodes.EXIT_BOUNDARY_EXPANSION, prJson(CliCodes.EXIT_BOUNDARY_EXPANSION, snapshot), footer(CliCodes.BOUNDARY_EXPANSION, "bear.blocks.yaml", "Review boundary-expanding deltas and route through explicit boundary review."));
+        Files.writeString(
+            repoRoot.resolve(".bear/ci/baseline-allow.json"),
+            "{\"schemaVersion\":\"bear.ci.allow.v1\",\"entries\":[{\"baseSha\":\"base-sha-blocks\",\"deltaIds\":[\"BOUNDARY_EXPANDING|CONTRACT|ADDED|accounts#create\",\"BOUNDARY_EXPANDING|PORTS|CHANGED|accounts#port\"]}]}",
+            StandardCharsets.UTF_8
+        );
+
+        ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce", "--base-sha", "base-sha-blocks");
+
+        assertEquals(0, run.exitCode(), run.stdout());
+        String report = readReport(repoRoot);
+        assertTrue(report.contains("\"allowEntryCandidate\":{\"baseSha\":\"base-sha-blocks\",\"deltaIds\":[\"BOUNDARY_EXPANDING|CONTRACT|ADDED|accounts#create\",\"BOUNDARY_EXPANDING|PORTS|CHANGED|accounts#port\"]}"), report);
+        String summary = readSummary(repoRoot);
+        assertTrue(summary.contains("## Boundary Deltas"), summary);
+        assertTrue(summary.contains("`BOUNDARY_EXPANDING | CONTRACT | ADDED | accounts#create`"), summary);
+        assertTrue(summary.contains("`BOUNDARY_EXPANDING | PORTS | CHANGED | accounts#port`"), summary);
+    }
+
+    @Test
+    void powerShellWrapperWritesMarkdownSummaryAndAppendsGithubStepSummary(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = createFixtureRepo(tempDir.resolve("repo"));
+        writeCheckFixture(repoRoot, CliCodes.EXIT_OK, checkJson(CliCodes.EXIT_OK), "");
+        writePrFixture(repoRoot, CliCodes.EXIT_OK, prJson(CliCodes.EXIT_OK, PrGovernanceTelemetry.all(CliCodes.EXIT_OK, List.of(), List.of(), List.of())), "");
+        Path stepSummary = tempDir.resolve("step-summary.md");
+        Files.writeString(stepSummary, "", StandardCharsets.UTF_8);
+
+        ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of("GITHUB_STEP_SUMMARY", stepSummary.toString()), "--mode", "observe", "--base-sha", "base-sha-summary");
+
+        assertEquals(0, run.exitCode(), run.stderr());
+        String summary = readSummary(repoRoot);
+        assertTrue(summary.contains("# BEAR CI Governance"), summary);
+        assertTrue(summary.contains("- Mode: observe"), summary);
+        assertTrue(summary.contains("- Decision: pass"), summary);
+        assertTrue(summary.contains("- Base SHA: base-sha-summary"), summary);
+        assertFalse(summary.contains("## Allow Entry Candidate"), summary);
+        assertEquals(summary, Files.readString(stepSummary, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void bashWrapperFailsWithPwshRemediationWhenUnavailable(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = createFixtureRepo(tempDir.resolve("repo"));
+
+        ScriptRunResult run = runBashWrapper(repoRoot, Map.of("PATH_PREFIX", toWslPath(repoRoot.resolve("missing-bin")), "PATH", ""), "--mode", "observe", "--base-sha", "base-sha-bash");
+
+        assertEquals(1, run.exitCode());
+        assertTrue(run.stderr().contains("missing 'pwsh'"), run.stderr());
+        assertTrue(run.stderr().contains("run bear-gates.ps1 directly"), run.stderr());
     }
 
     private static Path createFixtureRepo(Path repoRoot) throws Exception {
@@ -236,6 +321,10 @@ class BearCiIntegrationScriptsTest {
         return Files.readString(repoRoot.resolve("build/bear/ci/bear-ci-report.json"), StandardCharsets.UTF_8).trim();
     }
 
+    private static String readSummary(Path repoRoot) throws Exception {
+        return Files.readString(repoRoot.resolve("build/bear/ci/bear-ci-summary.md"), StandardCharsets.UTF_8);
+    }
+
     private static void copyPackageFile(String source, Path destination) throws Exception {
         Files.createDirectories(destination.getParent());
         Files.copy(TestRepoPaths.repoRoot().resolve(source), destination);
@@ -318,6 +407,9 @@ class BearCiIntegrationScriptsTest {
     private record ScriptRunResult(int exitCode, String stdout, String stderr) {
     }
 }
+
+
+
 
 
 

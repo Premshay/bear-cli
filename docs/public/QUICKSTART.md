@@ -59,7 +59,7 @@ For real PR/CI, set `--base` to the target merge base (for example `origin/main`
 .\.bear\ci\bear-gates.ps1 --mode observe --base-sha HEAD
 ```
 
-Expected outcome: a three-line summary on stdout and `build/bear/ci/bear-ci-report.json` for downstream CI audit.
+Expected outcome: summary lines on stdout, `build/bear/ci/bear-ci-report.json`, and `build/bear/ci/bear-ci-summary.md` for downstream CI audit and GitHub step-summary routing.
 
 ## If `bear.blocks.yaml` is missing
 

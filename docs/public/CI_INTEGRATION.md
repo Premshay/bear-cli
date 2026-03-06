@@ -8,9 +8,10 @@ Canonical packaged assets:
 - `.bear/ci/baseline-allow.json`
 - `.bear/ci/README.md`
 
-Canonical report artifact:
-- `build/bear/ci/bear-ci-report.json`
-- `schemaVersion=bear.ci.governance.v1`
+Canonical wrapper outputs:
+- report artifact: `build/bear/ci/bear-ci-report.json`
+- markdown summary: `build/bear/ci/bear-ci-summary.md`
+- when `GITHUB_STEP_SUMMARY` is set, the wrapper appends the exact markdown summary content to that path
 
 ## What The Wrapper Runs
 
@@ -32,7 +33,7 @@ In v1, `check` exit `6` is reported under `CI_GOVERNANCE_DRIFT` because the CI c
 
 `enforce`:
 - wrapper fails on any non-zero `check` or `pr-check`
-- exception: `pr-check exit 5` may pass as `allowed-expansion` when `.bear/ci/baseline-allow.json` exactly matches resolved base SHA and observed boundary-expanding `deltaId` set
+- exception: `pr-check exit 5` may pass as `allowed-expansion` when `.bear/ci/baseline-allow.json` exactly matches resolved base SHA and the observed boundary-expanding `deltaId` set
 
 `observe`:
 - wrapper still records both gate results
@@ -54,7 +55,7 @@ Priority:
 
 If no base SHA can be resolved, `pr-check` is not run and the wrapper fails closed.
 
-## Allow File
+## Allow File And Allow Entry Candidate
 
 Path:
 - `.bear/ci/baseline-allow.json`
@@ -78,10 +79,30 @@ Minimal shape:
 Rules:
 - only boundary expansion (`pr-check exit 5`) consults the allow file
 - match is exact on both `baseSha` and the full boundary-expanding `deltaId` set
+- in `pr-check --all`, that set includes repo-level and block-level boundary-expanding deltas
 - missing, stale, extra, or mismatched entries fail in `enforce`
 - if `extensions.prGovernance` is missing or unparsable on a boundary-expansion path, allow evaluation is unavailable and the wrapper fails closed
 
+When `mode=enforce`, `pr-check` exits `5`, and PR telemetry is usable, the wrapper also emits the exact allow entry needed for approval. This removes the need to reconstruct `deltaIds` manually.
+
+Console output on that path:
+
+```text
+ALLOW_ENTRY_CANDIDATE:
+{"baseSha":"<sha>","deltaIds":["..."]}
+```
+
+If telemetry is unusable on the same path:
+
+```text
+ALLOW_ENTRY_CANDIDATE: UNAVAILABLE
+```
+
 ## Report Contract
+
+Canonical report artifact:
+- `build/bear/ci/bear-ci-report.json`
+- `schemaVersion=bear.ci.governance.v1`
 
 Top-level fields:
 - `schemaVersion`, `mode`, `resolvedBaseSha`, `commands[]`, `bearRaw`, `check`, `prCheck`, `allowEvaluation`, `decision`
@@ -92,13 +113,24 @@ Top-level fields:
 
 `prCheck` ran shape:
 - `status="ran"`
-- `exitCode`, `code`, `path`, `remediation`, `classes[]`, `deltas[]`, `governanceSignals[]`
+- `exitCode`, `code`, `path`, `remediation`, `classes[]`, `allowEntryCandidate`, `deltas[]`, `governanceSignals[]`
 
 `prCheck` not-run shape:
 - `status="not-run"`
 - `reason`
 - `exitCode=null`, `code=null`, `path=null`, `remediation=null`
-- `classes=[]`, `deltas=[]`, `governanceSignals=[]`
+- `classes=[]`, `allowEntryCandidate=null`, `deltas=[]`, `governanceSignals=[]`
+
+`prCheck.allowEntryCandidate` is either `null` or:
+
+```json
+{
+  "baseSha": "<resolvedBaseSha>",
+  "deltaIds": ["<sorted-boundary-delta-id>"]
+}
+```
+
+In `pr-check --all`, `allowEntryCandidate.deltaIds[]` is derived from the full boundary-expanding delta set across repo-level and block-level results, deduped and deterministically ordered.
 
 Allowed `reason` values:
 - `CHECK_PRECONDITION_FAILURE`
@@ -112,7 +144,7 @@ Allowed `reason` values:
 
 The report also stores `bearRaw.checkAgentJson`, `bearRaw.prCheckAgentJson`, and deterministic stdout/stderr SHA-256 hashes so derived fields are auditable.
 
-## Minimal Console Summary
+## Console Summary
 
 Wrapper stdout stays compact:
 
@@ -128,6 +160,27 @@ When `pr-check` is skipped:
 PR-CHECK NOT_RUN: BASE_UNRESOLVED
 ```
 
+The allow-entry candidate block is additive and appears only on the boundary-expansion path described above.
+
+## GitHub Markdown Summary
+
+The wrapper always writes a deterministic markdown summary to:
+- `build/bear/ci/bear-ci-summary.md`
+
+If `GITHUB_STEP_SUMMARY` is set, the wrapper appends the exact file contents to that GitHub summary path.
+
+The markdown summary is derived only from the same wrapper facts already used for console output, report generation, allow evaluation, and final decision.
+
+Summary sections:
+- heading with `mode`, `decision`, `base SHA`, and report path
+- `Check`
+- `PR Check` or `NOT_RUN`
+- `Boundary Deltas` when any boundary-expanding deltas exist
+- `Allow Entry Candidate` when the exact candidate can be generated
+- the fixed unavailable note when boundary expansion occurred but telemetry was unusable
+
+In `pr-check --all`, the boundary summary uses the full boundary-expanding delta set across repo-level and block-level results.
+
 ## GitHub Actions Examples
 
 Ubuntu runner (`enforce`):
@@ -136,8 +189,6 @@ Ubuntu runner (`enforce`):
 - name: BEAR CI governance
   run: ./.bear/ci/bear-gates.sh --mode enforce
 ```
-
-The bash wrapper is intended for bash environments with `pwsh` available. In local Windows shells without reliable PowerShell interop from bash, run `.bear/ci/bear-gates.ps1` directly.
 
 Ubuntu runner (`observe`):
 
@@ -154,7 +205,10 @@ Windows runner (`enforce`):
   run: .\.bear\ci\bear-gates.ps1 --mode enforce
 ```
 
-The wrapper assumes GitHub Actions event context by default. Other CI systems should pass `--base-sha <sha>` explicitly.
+Runtime note:
+- `bear-gates.sh` is a thin bash launcher that requires `pwsh`
+- if `pwsh` is unavailable, the script fails deterministically and tells the operator to install PowerShell 7 or run `bear-gates.ps1` directly
+- other CI systems should pass `--base-sha <sha>` explicitly
 
 ## Related
 
@@ -163,4 +217,3 @@ The wrapper assumes GitHub Actions event context by default. Other CI systems sh
 - [PR_REVIEW.md](PR_REVIEW.md)
 - [commands-pr-check.md](commands-pr-check.md)
 - [output-format.md](output-format.md)
-

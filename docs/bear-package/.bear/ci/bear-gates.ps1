@@ -170,11 +170,22 @@ function Get-PrClasses($exitCode, $footerValid, $telemetry) {
     return @($classes | Select-Object -Unique)
 }
 
+function New-DeltaView($delta) {
+    return [pscustomobject][ordered]@{
+        class = [string](Get-PropertyValue $delta 'class')
+        category = [string](Get-PropertyValue $delta 'category')
+        change = [string](Get-PropertyValue $delta 'change')
+        key = [string](Get-PropertyValue $delta 'key')
+        deltaId = [string](Get-PropertyValue $delta 'deltaId')
+    }
+}
+
 function Get-PrTelemetry($agentJson) {
     $empty = [ordered]@{
         available = $false
         deltas = @()
         governanceSignals = @()
+        combinedBoundaryDeltas = @()
         boundaryDeltaIds = @()
         hasDependencyPowerExpansion = $false
     }
@@ -185,27 +196,51 @@ function Get-PrTelemetry($agentJson) {
     }
     $deltas = New-OrderedArray (Get-PropertyValue $prGovernance 'deltas')
     $signals = New-OrderedArray (Get-PropertyValue $prGovernance 'governanceSignals')
-    $boundaryDeltaIds = @()
+    $blocks = New-OrderedArray (Get-PropertyValue $prGovernance 'blocks')
     $hasDependencyPowerExpansion = $false
+    $combinedBoundaryDeltas = @()
     foreach ($delta in $deltas) {
-        $deltaClass = [string](Get-PropertyValue $delta 'class')
-        $deltaCategory = [string](Get-PropertyValue $delta 'category')
-        $deltaId = [string](Get-PropertyValue $delta 'deltaId')
-        if ($deltaClass -eq 'BOUNDARY_EXPANDING') {
-            if ([string]::IsNullOrWhiteSpace($deltaId)) {
+        $deltaView = New-DeltaView $delta
+        if ($deltaView.class -eq 'BOUNDARY_EXPANDING') {
+            if ([string]::IsNullOrWhiteSpace($deltaView.deltaId)) {
                 return $empty
             }
-            $boundaryDeltaIds += $deltaId
-            if ($deltaCategory -eq 'ALLOWED_DEPS') {
+            $combinedBoundaryDeltas += $deltaView
+            if ($deltaView.category -eq 'ALLOWED_DEPS') {
                 $hasDependencyPowerExpansion = $true
             }
+        }
+    }
+    foreach ($block in $blocks) {
+        $blockDeltas = New-OrderedArray (Get-PropertyValue $block 'deltas')
+        foreach ($delta in $blockDeltas) {
+            $deltaView = New-DeltaView $delta
+            if ($deltaView.class -eq 'BOUNDARY_EXPANDING') {
+                if ([string]::IsNullOrWhiteSpace($deltaView.deltaId)) {
+                    return $empty
+                }
+                $combinedBoundaryDeltas += $deltaView
+                if ($deltaView.category -eq 'ALLOWED_DEPS') {
+                    $hasDependencyPowerExpansion = $true
+                }
+            }
+        }
+    }
+    $sortedBoundaryDeltas = @($combinedBoundaryDeltas | Sort-Object class, category, change, key)
+    $dedupedBoundaryDeltas = @()
+    $seenDeltaIds = @{}
+    foreach ($delta in $sortedBoundaryDeltas) {
+        if (-not $seenDeltaIds.ContainsKey($delta.deltaId)) {
+            $seenDeltaIds[$delta.deltaId] = $true
+            $dedupedBoundaryDeltas += $delta
         }
     }
     return [ordered]@{
         available = $true
         deltas = @($deltas)
         governanceSignals = @($signals)
-        boundaryDeltaIds = @($boundaryDeltaIds | Sort-Object)
+        combinedBoundaryDeltas = @($dedupedBoundaryDeltas)
+        boundaryDeltaIds = @($dedupedBoundaryDeltas | ForEach-Object { $_.deltaId })
         hasDependencyPowerExpansion = $hasDependencyPowerExpansion
     }
 }
@@ -294,6 +329,125 @@ function Evaluate-Allow($modeValue, $prResult, $telemetry, $resolvedBaseSha, $al
     }
 }
 
+function Get-AllowEntryCandidate($modeValue, $prResult, $telemetry, $resolvedBaseSha) {
+    if ($modeValue -ne 'enforce' -or $null -eq $prResult -or $prResult.exitCode -ne 5) {
+        return [ordered]@{
+            status = 'not-needed'
+            value = $null
+        }
+    }
+    if (-not $telemetry.available -or $telemetry.boundaryDeltaIds.Count -eq 0) {
+        return [ordered]@{
+            status = 'unavailable'
+            value = $null
+        }
+    }
+    return [ordered]@{
+        status = 'available'
+        value = [ordered]@{
+            baseSha = $resolvedBaseSha
+            deltaIds = @($telemetry.boundaryDeltaIds)
+        }
+    }
+}
+
+function Escape-JsonString($value) {
+    if ($null -eq $value) {
+        return ''
+    }
+    return ([string]$value).Replace('\', '\\').Replace('"', '\"').Replace("`r", '\r').Replace("`n", '\n').Replace("`t", '\t')
+}
+
+function Format-AllowEntryCandidateJson($candidate, $pretty) {
+    if ($null -eq $candidate) {
+        return 'null'
+    }
+    $baseSha = Escape-JsonString $candidate.baseSha
+    $deltaIds = @($candidate.deltaIds)
+    if (-not $pretty) {
+        $encodedDeltaIds = @($deltaIds | ForEach-Object { '"' + (Escape-JsonString $_) + '"' })
+        return '{"baseSha":"' + $baseSha + '","deltaIds":[' + ($encodedDeltaIds -join ',') + ']}'
+    }
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('{')
+    $lines.Add('  "baseSha": "' + $baseSha + '",')
+    $lines.Add('  "deltaIds": [')
+    for ($index = 0; $index -lt $deltaIds.Count; $index++) {
+        $suffix = if ($index -lt $deltaIds.Count - 1) { ',' } else { '' }
+        $lines.Add('    "' + (Escape-JsonString $deltaIds[$index]) + '"' + $suffix)
+    }
+    $lines.Add('  ]')
+    $lines.Add('}')
+    return [string]::Join("`n", $lines)
+}
+
+function Get-CodeDisplay($code) {
+    if ($null -eq $code) {
+        return '-'
+    }
+    return $code
+}
+
+function Get-ClassesDisplay($classes) {
+    if ($null -eq $classes -or $classes.Count -eq 0) {
+        return '-'
+    }
+    return ($classes -join ',')
+}
+
+function New-MarkdownSummary($modeValue, $decision, $baseResolution, $checkReport, $prReport, $combinedBoundaryDeltas, $allowEntryCandidate) {
+    $baseDisplay = if ($baseResolution.resolved) { $baseResolution.value } else { 'unresolved' }
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('# BEAR CI Governance')
+    $lines.Add('')
+    $lines.Add('- Mode: ' + $modeValue)
+    $lines.Add('- Decision: ' + $decision)
+    $lines.Add('- Base SHA: ' + $baseDisplay)
+    $lines.Add('- Report: build/bear/ci/bear-ci-report.json')
+    $lines.Add('')
+    $lines.Add('## Check')
+    $lines.Add('- Exit: ' + $checkReport.exitCode)
+    $lines.Add('- Code: ' + (Get-CodeDisplay $checkReport.code))
+    $lines.Add('- Classes: ' + (Get-ClassesDisplay $checkReport.classes))
+    $lines.Add('')
+    $lines.Add('## PR Check')
+    if ($prReport.status -eq 'ran') {
+        $lines.Add('- Exit: ' + $prReport.exitCode)
+        $lines.Add('- Code: ' + (Get-CodeDisplay $prReport.code))
+        $lines.Add('- Classes: ' + (Get-ClassesDisplay $prReport.classes))
+    } else {
+        $lines.Add('- Status: NOT_RUN')
+        $lines.Add('- Reason: ' + $prReport.reason)
+    }
+    if ($combinedBoundaryDeltas.Count -gt 0) {
+        $lines.Add('')
+        $lines.Add('## Boundary Deltas')
+        foreach ($delta in $combinedBoundaryDeltas) {
+            $lines.Add('- `' + $delta.class + ' | ' + $delta.category + ' | ' + $delta.change + ' | ' + $delta.key + '`')
+        }
+    }
+    if ($allowEntryCandidate.status -eq 'available') {
+        $lines.Add('')
+        $lines.Add('## Allow Entry Candidate')
+        $lines.Add('```json')
+        foreach ($line in Normalize-Lines (Format-AllowEntryCandidateJson $allowEntryCandidate.value $true)) {
+            $lines.Add($line)
+        }
+        $lines.Add('```')
+    } elseif ($allowEntryCandidate.status -eq 'unavailable') {
+        $lines.Add('')
+        $lines.Add('## Allow Entry Candidate')
+        $lines.Add('Unavailable: PR governance telemetry was unusable, so no exact allow entry could be generated.')
+    }
+    return [string]::Join("`n", $lines) + "`n"
+}
+
+function Write-MarkdownSummary($summaryPath, $summaryContent) {
+    Set-Content -Path $summaryPath -Value $summaryContent
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryContent
+    }
+}
 function Resolve-BaseSha($overrideValue, $repoRootPath) {
     if (-not [string]::IsNullOrWhiteSpace($overrideValue)) {
         return [ordered]@{
@@ -402,6 +556,7 @@ $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $scriptDir '..\..'))
 $bearCommand = Join-Path $repoRoot ($(if ($env:OS -eq 'Windows_NT') { '.bear/tools/bear-cli/bin/bear.bat' } else { '.bear/tools/bear-cli/bin/bear' }))
 $allowFilePath = Join-Path $repoRoot '.bear/ci/baseline-allow.json'
 $reportPath = Join-Path $repoRoot 'build/bear/ci/bear-ci-report.json'
+$summaryPath = Join-Path $repoRoot 'build/bear/ci/bear-ci-summary.md'
 $null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $reportPath)
 $script:tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ('bear-ci-' + [Guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Force -Path $script:tempDir
@@ -420,6 +575,7 @@ try {
         available = $false
         deltas = @()
         governanceSignals = @()
+        combinedBoundaryDeltas = @()
         boundaryDeltaIds = @()
         hasDependencyPowerExpansion = $false
     }
@@ -444,6 +600,7 @@ try {
     }
 
     $allowEvaluation = Evaluate-Allow $mode $prResult $prTelemetry $baseResolution.value $allowFilePath
+    $allowEntryCandidate = Get-AllowEntryCandidate $mode $prResult $prTelemetry $baseResolution.value
 
     $decision = 'pass'
     if ($checkResult.exitCode -in @(2, 5, 64, 70, 74)) {
@@ -483,6 +640,7 @@ try {
             path = $prResult.footer.path
             remediation = $prResult.footer.remediation
             classes = @($prClasses)
+            allowEntryCandidate = $allowEntryCandidate.value
             deltas = @($prTelemetry.deltas)
             governanceSignals = @($prTelemetry.governanceSignals)
         }
@@ -495,6 +653,7 @@ try {
             path = $null
             remediation = $null
             classes = @()
+            allowEntryCandidate = $null
             deltas = @()
             governanceSignals = @()
         }
@@ -524,16 +683,24 @@ try {
     }
     $reportJson = $report | ConvertTo-Json -Depth 12 -Compress
     Set-Content -Path $reportPath -Value $reportJson
+    $summaryMarkdown = New-MarkdownSummary $mode $decision $baseResolution $checkReport $prReport $prTelemetry.combinedBoundaryDeltas $allowEntryCandidate
+    Write-MarkdownSummary $summaryPath $summaryMarkdown
 
     $baseDisplay = if ($baseResolution.resolved) { $baseResolution.value } else { '<unresolved>' }
-    $checkCodeDisplay = if ($null -eq $checkResult.footer.code) { '-' } else { $checkResult.footer.code }
-    $checkClassesDisplay = if ($checkClasses.Count -eq 0) { '-' } else { ($checkClasses -join ',') }
+    $checkCodeDisplay = Get-CodeDisplay $checkResult.footer.code
+    $checkClassesDisplay = Get-ClassesDisplay $checkClasses
     Write-Output ('MODE=' + $mode + ' DECISION=' + $decision + ' BASE=' + $baseDisplay)
     Write-Output ('CHECK exit=' + $checkResult.exitCode + ' code=' + $checkCodeDisplay + ' classes=' + $checkClassesDisplay)
     if ($prStatus -eq 'ran') {
-        $prCodeDisplay = if ($null -eq $prResult.footer.code) { '-' } else { $prResult.footer.code }
-        $prClassesDisplay = if ($prClasses.Count -eq 0) { '-' } else { ($prClasses -join ',') }
+        $prCodeDisplay = Get-CodeDisplay $prResult.footer.code
+        $prClassesDisplay = Get-ClassesDisplay $prClasses
         Write-Output ('PR-CHECK exit=' + $prResult.exitCode + ' code=' + $prCodeDisplay + ' classes=' + $prClassesDisplay)
+        if ($allowEntryCandidate.status -eq 'available') {
+            Write-Output 'ALLOW_ENTRY_CANDIDATE:'
+            Write-Output (Format-AllowEntryCandidateJson $allowEntryCandidate.value $false)
+        } elseif ($allowEntryCandidate.status -eq 'unavailable') {
+            Write-Output 'ALLOW_ENTRY_CANDIDATE: UNAVAILABLE'
+        }
     } else {
         Write-Output ('PR-CHECK NOT_RUN: ' + $prReason)
     }
@@ -550,5 +717,9 @@ try {
         Remove-Item -Recurse -Force $script:tempDir
     }
 }
+
+
+
+
 
 

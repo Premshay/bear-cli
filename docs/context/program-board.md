@@ -89,9 +89,9 @@ Queue notes:
      - wrapper process exit `0` for `pass`/`allowed-expansion`, `1` for `fail`
      - exact-match base-SHA plus `deltaId` allow-file approval only for `pr-check exit 5`
      - fail-closed when boundary-expansion telemetry is missing or unparsable
-   - added reproducible `build/bear/ci/bear-ci-report.json` output (`schemaVersion=bear.ci.governance.v1`) plus compact wrapper summary lines
-   - added downstream/public docs for CI integration and package contents, while keeping `bear-cli`'s own workflow unchanged
-   - added wrapper integration tests for base resolution, allow-file decisions, not-run serialization, byte-stable reports, and bash forwarding without turning the bash wrapper into a second decision engine
+   - added reproducible `build/bear/ci/bear-ci-report.json` output (`schemaVersion=bear.ci.governance.v1`), exact `prCheck.allowEntryCandidate`, and deterministic `build/bear/ci/bear-ci-summary.md` output for GitHub review surfaces
+   - added downstream/public docs for CI integration and package contents, including the `pwsh` launcher requirement for `bear-gates.sh`, while keeping `bear-cli`'s own workflow unchanged
+   - added wrapper integration tests for base resolution, allow-file decisions, not-run serialization, byte-stable reports and summaries, combined all-mode boundary aggregation, and bash forwarding without turning the bash wrapper into a second decision engine
 2. `Boundary regression suite`
    - expanded `PrDeltaClassifierTest` coverage for surface, idempotency, operation-usage, contract, invariant, and allowed-deps delta classification paths
    - added `AllModeOptionParserTest` regressions for `pr-check --all` missing or blank `--base`, missing option values, unsupported `--collect`, and unexpected args

@@ -10,7 +10,7 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-The CI-owned governance follow-up is now implemented end-to-end: packaged downstream wrappers under `.bear/ci`, deterministic base resolution, enforce/observe decision matrix, exact-match allow-file handling, reproducible `bear.ci.governance.v1` reports, and public/package integration docs. With the CI boundary-governance slice shipped, roadmap priority returns to capability templates and broader boundary-escape coverage.
+The CI-owned governance feature is now fully implemented end-to-end, including packaged downstream wrappers under `.bear/ci`, deterministic base resolution, enforce/observe decisioning, exact-match allow-file handling, reproducible `bear.ci.governance.v1` reports, exact allow-entry candidate output, and deterministic GitHub-readable markdown summaries. With the CI boundary-governance slice complete, roadmap priority returns to capability templates and broader boundary-escape coverage.
 
 ## Next Concrete Task
 
@@ -20,6 +20,10 @@ The CI-owned governance follow-up is now implemented end-to-end: packaged downst
 
 ## Session Notes
 
+- Extended the shipped downstream CI wrapper with reviewer UX outputs: exact `ALLOW_ENTRY_CANDIDATE` generation for enforce-mode boundary expansion, `prCheck.allowEntryCandidate` in `bear-ci-report.json`, deterministic `build/bear/ci/bear-ci-summary.md`, and automatic append to `GITHUB_STEP_SUMMARY` when present.
+- The wrapper's allow-entry candidate and markdown boundary section now use the full boundary-expanding delta set in `pr-check --all` across repo-level plus block-level deltas, while keeping that combined set wrapper-internal only.
+- Tightened the packaged bash launcher so it stays a thin `pwsh`-dependent forwarder with deterministic remediation when `pwsh` is unavailable; no second shell decision engine was introduced.
+- Verification: `./gradlew.bat :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.BearCiIntegrationScriptsTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.ContextDocsConsistencyTest`
 - Completed `docs/context/backlog/p2-ci-owned-bear-gates.md`: shipped packaged `.bear/ci` wrappers (`bear-gates.ps1`, thin `bear-gates.sh`), exact-match `baseline-allow.json`, deterministic `bear.ci.governance.v1` report generation, minimal console summaries, `CI_INTEGRATION.md`, and wrapper integration tests that cover skip rules, allow-file matching, fail-closed telemetry gaps, and bash forwarding.
 - Verification: `./gradlew.bat :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.BearCiIntegrationScriptsTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.ContextDocsConsistencyTest`
 - Implemented the `pr-check --agent` governance telemetry slice on `codex/ci-pr-governance-telemetry`: added local `PrGovernanceTelemetry` snapshot modeling, deterministic `extensions.prGovernance` for single/all mode, and snapshot-backed `pr-check` delta/governance rendering without broadening beyond `pr-check`.
@@ -40,7 +44,3 @@ The CI-owned governance follow-up is now implemented end-to-end: packaged downst
 - Added a full-list strategic value view to the roadmap so parked high-value initiatives are visible too; the strongest parked bets are `Target-Adaptable CLI + Initial Node/TypeScript Target` and `Spec -> BEAR IR Lowering`.
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest`
 - Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.PrDeltaClassifierTest --tests com.bear.app.AllModeOptionParserTest --tests com.bear.app.AllModeRendererTest --tests com.bear.app.BearCliTest`
-
-
-
-

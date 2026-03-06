@@ -199,6 +199,31 @@ Known exact infra mappings in v1:
 - `INFRA|IO_GIT|MERGE_BASE_FAILED` -> capture base-resolution diagnostics, rerun, escalate if persistent.
 - `INFRA|IO_GIT|NOT_A_GIT_REPO` -> run from a git work tree, rerun.
 - `INFRA|IO_ERROR|READ_HEAD_FAILED` -> capture head IR read diagnostics, rerun, escalate if persistent.
+## Downstream CI Wrapper Outputs
+
+The packaged downstream CI wrapper under `.bear/ci/` adds wrapper-owned artifacts without changing BEAR core CLI output contracts.
+
+Wrapper report:
+- path: `build/bear/ci/bear-ci-report.json`
+- schema: `bear.ci.governance.v1`
+- `prCheck.allowEntryCandidate` is either `null` or `{ "baseSha": "...", "deltaIds": [ ... ] }`
+- in `pr-check --all`, `allowEntryCandidate.deltaIds[]` is derived from the full boundary-expanding delta set across repo-level and block-level results, deduped and deterministically ordered
+
+Wrapper markdown summary:
+- path: `build/bear/ci/bear-ci-summary.md`
+- when `GITHUB_STEP_SUMMARY` is set, the wrapper appends the exact markdown content there
+- summary sections are derived only from the same wrapper facts used for report generation and decisioning
+
+Wrapper console additions:
+- baseline summary lines remain:
+  - `MODE=<mode> DECISION=<decision> BASE=<sha|<unresolved>>`
+  - `CHECK exit=<n> code=<CODE|-> classes=<csv|->`
+  - `PR-CHECK exit=<n> code=<CODE|-> classes=<csv|->`
+  - or `PR-CHECK NOT_RUN: <reason>`
+- on `enforce + pr-check exit 5` with usable telemetry, the wrapper also prints:
+  - `ALLOW_ENTRY_CANDIDATE:`
+  - a one-line JSON entry object with `baseSha` and sorted `deltaIds[]`
+- if telemetry is unusable on that same path, the wrapper prints `ALLOW_ENTRY_CANDIDATE: UNAVAILABLE`
 ## Related
 
 - [exit-codes.md](exit-codes.md)

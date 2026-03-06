@@ -65,7 +65,7 @@ macOS/Linux (bash/zsh):
 ./.bear/tools/bear-cli/bin/bear --help
 ```
 
-4. Verify the packaged CI wrapper.
+4. Verify the packaged CI wrapper and confirm it writes `build/bear/ci/bear-ci-report.json` plus `build/bear/ci/bear-ci-summary.md`.
 
 Windows (PowerShell):
 
@@ -78,6 +78,8 @@ macOS/Linux (bash/zsh):
 ```sh
 ./.bear/ci/bear-gates.sh --mode observe --base-sha HEAD
 ```
+
+On bash-based runners, `.bear/ci/bear-gates.sh` requires `pwsh`. If `pwsh` is unavailable, run `.bear/ci/bear-gates.ps1` directly or install PowerShell 7.
 
 5. Run the first deterministic gate.
 

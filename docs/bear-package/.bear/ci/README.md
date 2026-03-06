@@ -4,12 +4,15 @@ This directory is the packaged downstream CI surface for BEAR governance.
 
 Files:
 - `bear-gates.ps1`: canonical wrapper implementation
-- `bear-gates.sh`: thin bash forwarder to the PowerShell implementation
+- `bear-gates.sh`: thin bash launcher for the PowerShell implementation
 - `baseline-allow.json`: exact-match allow file for approved boundary expansion
 
 Canonical outputs:
 - console summary lines for `MODE`, `CHECK`, and `PR-CHECK`
+- optional `ALLOW_ENTRY_CANDIDATE` block on enforce-mode boundary expansion
 - report artifact at `build/bear/ci/bear-ci-report.json`
+- markdown summary at `build/bear/ci/bear-ci-summary.md`
+- when `GITHUB_STEP_SUMMARY` is set, the wrapper appends the exact markdown summary content there
 
 Canonical usage:
 
@@ -33,9 +36,10 @@ Options:
 Rules:
 - wrappers run `check --all` first, then `pr-check --all` when allowed by the pinned decision matrix
 - `baseline-allow.json` is consulted only for `pr-check` boundary expansion in `enforce`
-- report/decision output must be reproducible from BEAR raw outputs plus wrapper mode and allow-file state
+- the allow-entry candidate and markdown boundary section use the full boundary-expanding delta set from `pr-check --all` repo-level plus block-level results
+- report and decision output must be reproducible from BEAR raw outputs plus wrapper mode and allow-file state
 
 Runtime note:
-- on bash-based GitHub runners, the wrapper expects `pwsh`
-- the `powershell.exe` fallback is best-effort for Windows-interoperable bash environments`n- if local bash cannot launch PowerShell reliably, run `bear-gates.ps1` directly
-
+- on bash-based GitHub runners, `bear-gates.sh` requires `pwsh`
+- if `pwsh` is unavailable, `bear-gates.sh` fails deterministically and tells the operator to install PowerShell 7 or run `bear-gates.ps1` directly
+- if local bash cannot launch PowerShell reliably, run `bear-gates.ps1` directly
