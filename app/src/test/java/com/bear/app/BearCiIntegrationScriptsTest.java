@@ -34,7 +34,7 @@ class BearCiIntegrationScriptsTest {
         assertTrue(report.contains("\"resolvedBaseSha\":\"base-sha-123\""), report);
         assertTrue(report.contains("\"decision\":\"pass\""), report);
         assertTrue(report.contains("\"prCheck\":{\"status\":\"ran\""), report);
-        assertTrue(report.contains("\"commands\":[\".bear/tools/bear-cli/bin/bear.bat check --all --project . --blocks bear.blocks.yaml --collect=all --agent\",\".bear/tools/bear-cli/bin/bear.bat pr-check --all --project . --base base-sha-123 --blocks bear.blocks.yaml --collect=all --agent\"]"), report);
+        assertTrue(report.contains("\"commands\":[\"" + expectedBearCommandPrefix() + " check --all --project . --blocks bear.blocks.yaml --collect=all --agent\",\"" + expectedBearCommandPrefix() + " pr-check --all --project . --base base-sha-123 --blocks bear.blocks.yaml --collect=all --agent\"]"), report);
     }
 
     @Test
@@ -331,7 +331,6 @@ class BearCiIntegrationScriptsTest {
         Files.createDirectories(destination.getParent());
         Files.copy(TestRepoPaths.repoRoot().resolve(source), destination);
     }
-
     private static ScriptRunResult runPowerShellWrapper(Path repoRoot, Map<String, String> env, String... args) throws Exception {
         assumePowerShellAvailable();
         ArrayList<String> command = new ArrayList<>();
@@ -343,6 +342,7 @@ class BearCiIntegrationScriptsTest {
         command.add("Bypass");
         command.add("-File");
         command.add(repoRoot.resolve(".bear/ci/bear-gates.ps1").toString());
+        command.add("--");
         command.addAll(Arrays.asList(args));
         return runProcess(command, repoRoot, env);
     }
@@ -366,6 +366,12 @@ class BearCiIntegrationScriptsTest {
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.directory(workDir.toFile());
         pb.redirectErrorStream(false);
+        ArrayList<String> inheritedKeys = new ArrayList<>(pb.environment().keySet());
+        for (String key : inheritedKeys) {
+            if (key.startsWith("GITHUB_")) {
+                pb.environment().remove(key);
+            }
+        }
         pb.environment().putAll(env);
         Process process = pb.start();
         byte[] stdoutBytes = process.getInputStream().readAllBytes();
@@ -394,6 +400,10 @@ class BearCiIntegrationScriptsTest {
         return isWindows() ? "powershell" : "pwsh";
     }
 
+    private static String expectedBearCommandPrefix() {
+        return isWindows() ? ".bear/tools/bear-cli/bin/bear.bat" : ".bear/tools/bear-cli/bin/bear";
+    }
+
     private static void assumePowerShellAvailable() {
         try {
             Process process = new ProcessBuilder(powerShellCommand(), "-Version")
@@ -406,7 +416,6 @@ class BearCiIntegrationScriptsTest {
             Assumptions.assumeTrue(false, "PowerShell runtime unavailable in this environment");
         }
     }
-
     private static String fakeBearBat() {
         return "@echo off\r\n"
             + "setlocal\r\n"

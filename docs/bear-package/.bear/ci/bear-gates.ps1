@@ -3,31 +3,35 @@ $ErrorActionPreference = 'Stop'
 $mode = 'enforce'
 $baseShaOverride = $null
 $blocksPath = 'bear.blocks.yaml'
-for ($i = 0; $i -lt $args.Count; $i++) {
-    switch ($args[$i]) {
+$scriptArgs = @($args)
+if ($scriptArgs.Count -gt 0 -and $scriptArgs[0] -eq '--') {
+    $scriptArgs = if ($scriptArgs.Count -gt 1) { @($scriptArgs[1..($scriptArgs.Count - 1)]) } else { @() }
+}
+for ($i = 0; $i -lt $scriptArgs.Count; $i++) {
+    switch ($scriptArgs[$i]) {
         '--mode' {
-            if ($i + 1 -ge $args.Count) {
+            if ($i + 1 -ge $scriptArgs.Count) {
                 throw 'missing value for --mode'
             }
-            $mode = $args[$i + 1]
+            $mode = $scriptArgs[$i + 1]
             $i++
         }
         '--base-sha' {
-            if ($i + 1 -ge $args.Count) {
+            if ($i + 1 -ge $scriptArgs.Count) {
                 throw 'missing value for --base-sha'
             }
-            $baseShaOverride = $args[$i + 1]
+            $baseShaOverride = $scriptArgs[$i + 1]
             $i++
         }
         '--blocks' {
-            if ($i + 1 -ge $args.Count) {
+            if ($i + 1 -ge $scriptArgs.Count) {
                 throw 'missing value for --blocks'
             }
-            $blocksPath = $args[$i + 1]
+            $blocksPath = $scriptArgs[$i + 1]
             $i++
         }
         default {
-            throw ('unsupported argument: ' + $args[$i])
+            throw ('unsupported argument: ' + $scriptArgs[$i])
         }
     }
 }

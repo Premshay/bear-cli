@@ -8,7 +8,7 @@ esac
 ps_script="$script_dir/bear-gates.ps1"
 
 if command -v pwsh >/dev/null 2>&1; then
-  exec pwsh -NoProfile -ExecutionPolicy Bypass -File "$ps_script" "$@"
+  exec pwsh -NoProfile -ExecutionPolicy Bypass -File "$ps_script" -- "$@"
 fi
 
 echo "bear-gates: missing 'pwsh'; install PowerShell 7 or run bear-gates.ps1 directly." >&2
