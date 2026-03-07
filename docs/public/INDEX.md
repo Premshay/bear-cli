@@ -8,6 +8,8 @@ These docs are split into two lanes: a default guide path for humans and a refer
 2. [QUICKSTART.md](QUICKSTART.md) - first successful local run.
 3. [PR_REVIEW.md](PR_REVIEW.md) - how to interpret `check`/`pr-check` outcomes in PR/CI.
 
+If you are adopting BEAR in a real CI workflow, continue with [CI_INTEGRATION.md](CI_INTEGRATION.md) after QUICKSTART.
+
 ## Guide (Optional)
 
 - [FOUNDATIONS.md](FOUNDATIONS.md) - how BEAR works end-to-end (workflow, ownership, architecture).

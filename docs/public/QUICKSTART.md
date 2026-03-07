@@ -58,8 +58,9 @@ For real PR/CI, set `--base` to the target merge base (for example `origin/main`
 ```powershell
 .\.bear\ci\bear-gates.ps1 --mode observe --base-sha HEAD
 ```
-
 Expected outcome: summary lines on stdout, `build/bear/ci/bear-ci-report.json`, and `build/bear/ci/bear-ci-summary.md` for downstream CI audit and GitHub step-summary routing.
+
+For the packaged downstream CI pattern, allow-file approval flow, and copyable GitHub Actions usage, continue with [CI_INTEGRATION.md](CI_INTEGRATION.md).
 
 ## If `bear.blocks.yaml` is missing
 

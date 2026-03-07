@@ -1,4 +1,4 @@
-﻿# Overview (Proof of Concept)
+# Overview (Proof of Concept)
 
 BEAR is a proof-of-concept reference implementation testing a practical idea:
 
@@ -35,5 +35,5 @@ The agent updates IR as needed; developers review resulting governance signals.
 
 - [QUICKSTART.md](QUICKSTART.md)
 - [PR_REVIEW.md](PR_REVIEW.md)
+- [CI_INTEGRATION.md](CI_INTEGRATION.md) for the packaged downstream CI pattern and GitHub Actions usage
 - [FOUNDATIONS.md](FOUNDATIONS.md) for full mechanics
-- [ENFORCEMENT.md](ENFORCEMENT.md) for guarantees and non-goals

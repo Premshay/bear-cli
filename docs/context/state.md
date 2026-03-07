@@ -25,3 +25,4 @@ Local `main` includes the completed downstream CI integration kit plus the repo-
 - Earlier in this window, finished the repo-owned fixture migration from `spec/` to `bear-ir/` in app tests and stabilized the packaged bash launcher line endings for cross-platform execution.
 - Verification: `./gradlew.bat :app:test --tests com.bear.app.BearCiIntegrationScriptsTest`, `./gradlew.bat :app:test :kernel:test`, and `./gradlew.bat :app:test --tests com.bear.app.ContextDocsConsistencyTest`.
 - Local `main` already contains the shipped CI boundary-governance integration, repo-owned layout split, and containment hardening; those contracts should stay stable while capability-template work starts.
+- Public docs now point more directly to `CI_INTEGRATION.md` from `INDEX.md`, `OVERVIEW.md`, and `QUICKSTART.md` so the downstream wrapper pattern is easier to discover.
