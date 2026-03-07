@@ -20,6 +20,7 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Session Notes
 
+- Parked a new future feature for optional scalar inputs in BEAR IR so the idea is preserved as a spec-backed item without entering the active queue; see docs/context/backlog/future-optional-scalar-inputs.md.
 - Root-caused the remaining Ubuntu GitHub Actions failures in `BearCiIntegrationScriptsTest`: the Linux fake `bear` fixture script read `.exit` files under `set -e`, and the test wrote those files without a trailing newline, so `read` returned non-zero at EOF and every fixture process exited `1` even when the file content said `0`, `3`, or `5`.
 - Fixed the CI issue by writing fixture `.exit` files with a trailing newline in `BearCiIntegrationScriptsTest`, then removed the temporary GitHub-only diagnostic dumps and failed-test stream logging used to expose the mismatch.
 - Reordered the roadmap for higher product value: target-adaptable CLI preparation is now the top active item, broader boundary-escape coverage stays next, and the weaker `capability templates` item now sits behind the stronger architectural and governance slices.

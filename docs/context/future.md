@@ -22,6 +22,10 @@ These items are not committed roadmap work yet, but they are currently considere
 - improves fit into real codebases, but is less strategically important than target expansion or easier authoring
 - spec: `docs/context/backlog/future-compile-package-customization.md`
 
+4. `Optional Scalar Inputs In BEAR IR`
+- allows BEAR IR and generated contracts to represent truly optional scalar input presence without sentinel-value workarounds
+- spec: `docs/context/backlog/future-optional-scalar-inputs.md`
+
 ---
 
 ## Deferred Initiatives With Spec Files
@@ -264,3 +268,4 @@ If something feels exciting but does not directly contribute to:
 "Naive withdraw fails. Correct withdraw passes."
 
 It belongs here.
+
