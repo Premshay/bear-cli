@@ -2,7 +2,7 @@
 
 ## Status
 
-Future initiative only; not part of the active P2/P3 queue.
+Future initiative only; preparation phases have been promoted into active roadmap work via `docs/context/backlog/p3-target-adaptable-cli-preparation.md`, but Node-target execution remains parked.
 
 ## Normative Constraints
 

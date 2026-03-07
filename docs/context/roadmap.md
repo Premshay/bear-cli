@@ -64,12 +64,13 @@ Preview definition of done:
 ## Active Post-Preview Feature Roadmap
 
 Execution priority (capability/value first):
-1. `P3` Capability templates. Spec: `docs/context/backlog/p3-capability-templates.md`
+1. `P3` Target-adaptable CLI preparation. Spec: `docs/context/backlog/p3-target-adaptable-cli-preparation.md`
 2. `P3` Broader boundary-escape coverage. Spec: `docs/context/backlog/p3-broader-boundary-escape-coverage.md`
 3. `P3` Multi-block and multi-module composition hardening. Spec: `docs/context/backlog/p3-multi-block-multi-module-composition-hardening.md`
-4. `P2` Minimal taste-invariants rule pack. Spec: `docs/context/backlog/p2-minimal-taste-invariants-rule-pack.md`
-5. `P3` Maven allowed-deps containment parity (optional future expansion). Spec: `docs/context/backlog/p3-maven-allowed-deps-containment.md`
-6. `P3` Optional deterministic policy hooks. Spec: `docs/context/backlog/p3-optional-deterministic-policy-hooks.md`
+4. `P3` Capability templates. Spec: `docs/context/backlog/p3-capability-templates.md`
+5. `P2` Minimal taste-invariants rule pack. Spec: `docs/context/backlog/p2-minimal-taste-invariants-rule-pack.md`
+6. `P3` Maven allowed-deps containment parity (optional future expansion). Spec: `docs/context/backlog/p3-maven-allowed-deps-containment.md`
+7. `P3` Optional deterministic policy hooks. Spec: `docs/context/backlog/p3-optional-deterministic-policy-hooks.md`
 
 Priority notes:
 1. Ordering is based on product value and BEAR capability demonstration, not only hardening or compatibility work.
@@ -81,19 +82,20 @@ Priority notes:
 This view includes both committed roadmap work and the highest-value parked initiatives.
 It is not the same as the active execution queue.
 
-1. `P3` Capability templates.
+1. `P3` Target-adaptable CLI preparation.
 2. `P3` Broader boundary-escape coverage.
 3. `Future` Target-adaptable CLI + initial Node/TypeScript target. Spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
 4. `P3` Multi-block and multi-module composition hardening.
 5. `Future` Spec -> BEAR IR lowering. Idea family in `docs/context/future.md`.
-6. `P2` Minimal taste-invariants rule pack.
-7. `P3` Maven allowed-deps containment parity.
-8. `P3` Optional deterministic policy hooks.
+6. `P3` Capability templates.
+7. `P2` Minimal taste-invariants rule pack.
+8. `P3` Maven allowed-deps containment parity.
+9. `P3` Optional deterministic policy hooks.
 
 Strategic notes:
-1. `Target-adaptable CLI + initial Node/TypeScript target` is strategically more valuable than several lower-ranked committed slices because it expands where BEAR can apply.
-2. `Spec -> BEAR IR lowering` is also high-value for adoption, but it remains less execution-ready and carries more product-shape risk.
-3. These future items stay parked until intentionally promoted into the committed roadmap.
+1. The active prep slice exists because multi-target seam extraction is now considered a higher-value near-term move than several remaining hardening or authoring ideas.
+2. The full `Target-adaptable CLI + initial Node/TypeScript target` initiative still remains partially parked until the prep slice lands.
+3. `Spec -> BEAR IR lowering` is also high-value for adoption, but it remains less execution-ready and carries more product-shape risk.
 
 Shipped in active post-Preview work already:
 1. `bear fix` for generated artifacts only.

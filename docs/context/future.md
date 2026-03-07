@@ -28,7 +28,7 @@ These items are not committed roadmap work yet, but they are currently considere
 
 ### Target-Adaptable CLI + Initial Node/TypeScript Target
 
-Future initiative only; not part of the active P2/P3 queue.
+Future initiative only; the preparation phase is now part of the active P3 queue, but Node-target execution remains parked.
 
 Full spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
 
@@ -48,7 +48,7 @@ Guardrails:
 
 ### Compile Package Customization
 
-Future initiative only; not part of the active P2/P3 queue.
+Future initiative only; not part of the active roadmap queue.
 
 Full spec: `docs/context/backlog/future-compile-package-customization.md`
 
