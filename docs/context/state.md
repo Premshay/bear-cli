@@ -10,19 +10,18 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-Local `main` includes the completed downstream CI integration kit plus the repo-layout and containment-classification hardening. A second post-push CI follow-up is now verified locally and waiting to be committed or pushed. The next BEAR execution slice after that is `P3` capability templates.
+`main` now includes the completed downstream CI integration kit, the repo-layout and containment-classification hardening, and a follow-up GitHub CI fix for the Linux wrapper-test fixture path. The next BEAR execution slice after CI stabilizes remains `P3` capability templates.
 
 ## Next Concrete Task
 
-1. Land the local cross-platform CI follow-up for wrapper argument forwarding and hermetic GitHub env handling on `main`.
-2. Start `docs/context/backlog/p3-capability-templates.md` as the next execution slice.
+1. Confirm the latest `main` push is green on GitHub Actions after the Linux fixture-exit fix.
+2. Start `docs/context/backlog/p3-capability-templates.md` as the next execution slice once CI is stable.
 3. Keep the shipped CI contracts stable in adopter or demo usage: `extensions.prGovernance`, `bear.ci.governance.v1`, `.bear/ci/baseline-allow.json`, and `build/bear/ci/bear-ci-summary.md`.
 
 ## Session Notes
 
-- Fixed the first post-push Linux CI breakage locally: `BearCiIntegrationScriptsTest` now resolves the correct PowerShell executable per OS and skips cleanly when a PowerShell runtime is unavailable.
-- Added a follow-up local CI fix for GitHub Linux runners: the packaged bash launcher now inserts an explicit `--` sentinel before script args, `bear-gates.ps1` strips that sentinel deterministically, `BearCiIntegrationScriptsTest` now removes inherited `GITHUB_*` env so wrapper tests do not accidentally read the real workflow event context, and `bear-gates.ps1` now disables PowerShell 7 native-command error promotion so intentional BEAR non-zero exits are classified by the wrapper instead of aborting the script.
-- Earlier in this window, finished the repo-owned fixture migration from `spec/` to `bear-ir/` in app tests and stabilized the packaged bash launcher line endings for cross-platform execution.
-- Verification: `./gradlew.bat :app:test --tests com.bear.app.BearCiIntegrationScriptsTest`, `./gradlew.bat :app:test :kernel:test`, and `./gradlew.bat :app:test --tests com.bear.app.ContextDocsConsistencyTest`.
-- Local `main` already contains the shipped CI boundary-governance integration, repo-owned layout split, and containment hardening; those contracts should stay stable while capability-template work starts.
+- Root-caused the remaining Ubuntu GitHub Actions failures in `BearCiIntegrationScriptsTest`: the Linux fake `bear` fixture script read `.exit` files under `set -e`, and the test wrote those files without a trailing newline, so `read` returned non-zero at EOF and every fixture process exited `1` even when the file content said `0`, `3`, or `5`.
+- Fixed the CI issue by writing fixture `.exit` files with a trailing newline in `BearCiIntegrationScriptsTest`, then removed the temporary GitHub-only diagnostic dumps and failed-test stream logging used to expose the mismatch.
 - Public docs now point more directly to `CI_INTEGRATION.md` from `INDEX.md`, `OVERVIEW.md`, and `QUICKSTART.md` so the downstream wrapper pattern is easier to discover.
+- Verification: `./gradlew.bat :app:test --tests com.bear.app.BearCiIntegrationScriptsTest`, `./gradlew.bat :app:test :kernel:test`.
+- Local `main` already contains the shipped CI boundary-governance integration, repo-owned layout split, and containment hardening; those contracts should stay stable while capability-template work starts.
