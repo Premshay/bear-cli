@@ -10,20 +10,17 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-Local `main` now includes the completed downstream CI integration kit plus the repo-layout and containment-classification hardening. The next BEAR execution slice is `P3` capability templates.
+Local `main` includes the completed downstream CI integration kit plus the repo-layout and containment-classification hardening. A small post-push CI fix is now verified locally and waiting to be committed or pushed. The next BEAR execution slice after that is `P3` capability templates.
 
 ## Next Concrete Task
 
-1. Start `docs/context/backlog/p3-capability-templates.md` as the next execution slice.
-2. Keep the shipped CI contracts stable in adopter or demo usage: `extensions.prGovernance`, `bear.ci.governance.v1`, `.bear/ci/baseline-allow.json`, and `build/bear/ci/bear-ci-summary.md`.
-3. Continue with broader boundary-escape coverage after capability templates.
+1. Land the local post-push CI fix for Linux wrapper tests on `main`.
+2. Start `docs/context/backlog/p3-capability-templates.md` as the next execution slice.
+3. Keep the shipped CI contracts stable in adopter or demo usage: `extensions.prGovernance`, `bear.ci.governance.v1`, `.bear/ci/baseline-allow.json`, and `build/bear/ci/bear-ci-summary.md`.
 
 ## Session Notes
 
-- Fixed post-push CI breakage: made the CI wrapper tests use the correct PowerShell executable on non-Windows, finished the remaining app-test fixture migration from spec/ to ear-ir/, and pinned .sh files to LF via .gitattributes so the bash launcher executes deterministically in cross-platform tests.
-- Verification: ./gradlew.bat --no-daemon :app:test :kernel:test.
-- Merged the completed CI boundary-governance feature into local `main`: packaged `.bear/ci` wrappers, deterministic base resolution, enforce or observe decisioning, exact-match allow-file handling, reproducible CI report output, allow-entry candidate generation, markdown summary generation, and public CI integration docs plus a GitHub Actions sample.
-- Merged the repo-owned layout split and containment hardening into local `main`: canonical IR now lives under `bear-ir/`, repo-authored policy under `bear-policy/`, and containment fallthroughs in agent-mode `check` now classify deterministically as `CONTAINMENT_NOT_VERIFIED` with `CONTAINMENT_METADATA_MISMATCH` when appropriate.
-- Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.BearCiIntegrationScriptsTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.ContextDocsConsistencyTest`.
-- Verification: `./gradlew.bat --no-daemon :app:test --tests com.bear.app.RepoIrLayoutPolicyTest --tests com.bear.app.RunReportLintTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.BearCliTest`.
-- Verification: `./gradlew.bat --no-daemon :kernel:test --tests com.bear.kernel.SharedAllowedDepsPolicyParserTest --tests com.bear.kernel.BearIrValidatorTest --tests com.bear.kernel.JvmTargetTest`.
+- Fixed the remaining post-push Linux CI breakage locally: `BearCiIntegrationScriptsTest` now resolves the correct PowerShell executable per OS and skips cleanly when a PowerShell runtime is unavailable.
+- Earlier in this window, finished the repo-owned fixture migration from `spec/` to `bear-ir/` in app tests and stabilized the packaged bash launcher line endings for cross-platform execution.
+- Verification: `./gradlew.bat :app:test --tests com.bear.app.BearCiIntegrationScriptsTest`, `./gradlew.bat :app:test :kernel:test`, and `./gradlew.bat :app:test --tests com.bear.app.ContextDocsConsistencyTest`.
+- Local `main` already contains the shipped CI boundary-governance integration, repo-owned layout split, and containment hardening; those contracts should stay stable while capability-template work starts.

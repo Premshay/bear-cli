@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -332,8 +333,12 @@ class BearCiIntegrationScriptsTest {
     }
 
     private static ScriptRunResult runPowerShellWrapper(Path repoRoot, Map<String, String> env, String... args) throws Exception {
+        assumePowerShellAvailable();
         ArrayList<String> command = new ArrayList<>();
-        command.add("powershell");
+        command.add(powerShellCommand());
+        if (!isWindows()) {
+            command.add("-NoProfile");
+        }
         command.add("-ExecutionPolicy");
         command.add("Bypass");
         command.add("-File");
@@ -379,6 +384,27 @@ class BearCiIntegrationScriptsTest {
 
     private static String shellQuote(String value) {
         return "'" + value.replace("'", "'\"'\"'") + "'";
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    private static String powerShellCommand() {
+        return isWindows() ? "powershell" : "pwsh";
+    }
+
+    private static void assumePowerShellAvailable() {
+        try {
+            Process process = new ProcessBuilder(powerShellCommand(), "-Version")
+                .redirectErrorStream(true)
+                .start();
+            process.getInputStream().readAllBytes();
+            int exitCode = process.waitFor();
+            Assumptions.assumeTrue(exitCode == 0, "PowerShell runtime unavailable in this environment");
+        } catch (Exception ex) {
+            Assumptions.assumeTrue(false, "PowerShell runtime unavailable in this environment");
+        }
     }
 
     private static String fakeBearBat() {
