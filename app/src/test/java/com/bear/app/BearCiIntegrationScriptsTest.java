@@ -28,6 +28,7 @@ class BearCiIntegrationScriptsTest {
         Files.writeString(eventPath, "{\"pull_request\":{\"base\":{\"sha\":\"base-sha-123\"}}}", StandardCharsets.UTF_8);
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of("GITHUB_EVENT_PATH", eventPath.toString()), "--mode", "enforce");
 
+        dumpRun("powerShellWrapperUsesPullRequestBaseShaAndWritesPassReport", repoRoot, run);
         assertEquals(0, run.exitCode());
         assertTrue(run.stdout().contains("MODE=enforce DECISION=pass BASE=base-sha-123"), run.stdout());
         String report = readReport(repoRoot);
@@ -45,6 +46,7 @@ class BearCiIntegrationScriptsTest {
 
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-200");
 
+        dumpRun("powerShellWrapperObserveRunsPrCheckAfterCheckGovernanceExit", repoRoot, run);
         assertEquals(0, run.exitCode());
         assertTrue(run.stdout().contains("CHECK exit=3 code=DRIFT_DETECTED classes=CI_GOVERNANCE_DRIFT"), run.stdout());
         String report = readReport(repoRoot);
@@ -73,6 +75,7 @@ class BearCiIntegrationScriptsTest {
 
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce", "--base-sha", "base-sha-allow");
 
+        dumpRun("powerShellWrapperEnforceAllowsExactBoundaryExpansionMatch", repoRoot, run);
         assertEquals(0, run.exitCode());
         assertTrue(run.stdout().contains("MODE=enforce DECISION=allowed-expansion BASE=base-sha-allow"), run.stdout());
         assertTrue(run.stdout().contains("ALLOW_ENTRY_CANDIDATE:"), run.stdout());
@@ -106,6 +109,7 @@ class BearCiIntegrationScriptsTest {
 
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce", "--base-sha", "base-sha-missing");
 
+        dumpRun("powerShellWrapperFailsClosedWhenBoundaryTelemetryMissing", repoRoot, run);
         assertEquals(1, run.exitCode());
         assertTrue(run.stdout().contains("ALLOW_ENTRY_CANDIDATE: UNAVAILABLE"), run.stdout());
         String report = readReport(repoRoot);
@@ -189,6 +193,7 @@ class BearCiIntegrationScriptsTest {
 
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce", "--base-sha", "base-sha-blocks");
 
+        dumpRun("powerShellWrapperBuildsAllowEntryCandidateFromAllModeBlockBoundaryDeltas", repoRoot, run);
         assertEquals(0, run.exitCode(), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"allowEntryCandidate\":{\"baseSha\":\"base-sha-blocks\",\"deltaIds\":[\"BOUNDARY_EXPANDING|CONTRACT|ADDED|accounts#create\",\"BOUNDARY_EXPANDING|PORTS|CHANGED|accounts#port\"]}"), report);
@@ -325,6 +330,25 @@ class BearCiIntegrationScriptsTest {
 
     private static String readSummary(Path repoRoot) throws Exception {
         return Files.readString(repoRoot.resolve("build/bear/ci/bear-ci-summary.md"), StandardCharsets.UTF_8);
+    }
+
+    private static void dumpRun(String label, Path repoRoot, ScriptRunResult run) throws Exception {
+        System.err.println("=== " + label + " ===");
+        System.err.println("exit=" + run.exitCode());
+        System.err.println("--- stdout ---");
+        System.err.println(run.stdout());
+        System.err.println("--- stderr ---");
+        System.err.println(run.stderr());
+        Path reportPath = repoRoot.resolve("build/bear/ci/bear-ci-report.json");
+        if (Files.exists(reportPath)) {
+            System.err.println("--- report ---");
+            System.err.println(Files.readString(reportPath, StandardCharsets.UTF_8));
+        }
+        Path summaryPath = repoRoot.resolve("build/bear/ci/bear-ci-summary.md");
+        if (Files.exists(summaryPath)) {
+            System.err.println("--- summary ---");
+            System.err.println(Files.readString(summaryPath, StandardCharsets.UTF_8));
+        }
     }
 
     private static void copyPackageFile(String source, Path destination) throws Exception {
