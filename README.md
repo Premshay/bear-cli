@@ -70,9 +70,16 @@ BEAR = Block Enforceable Architectural Representation.
 
 Prerequisites:
 
-- demo repo is present at `../bear-account-demo`
+- clone the companion demo repo so it sits next to this repo as `../bear-account-demo`
 - vendored CLI exists at `.bear/tools/bear-cli`
 - canonical `--all` success path requires `bear.blocks.yaml`
+
+Example sibling layout:
+
+```text
+<parent>/bear-cli
+<parent>/bear-account-demo
+```
 
 1. Open the demo repo.
 
@@ -148,3 +155,4 @@ The demo currently showcases three PR outcomes:
 
 - JVM/Java target in Preview.
 - Primary containment enforcement path is Java plus Gradle wrapper when `impl.allowedDeps` is declared.
+
