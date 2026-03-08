@@ -316,7 +316,7 @@ class BearCiIntegrationScriptsTest {
 
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-problem-file");
 
-        assertEquals(1, run.exitCode(), run.stdout());
+        assertEquals(0, run.exitCode(), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"prCheck\":{\"status\":\"ran\",\"reason\":null,\"exitCode\":7,\"code\":\"BLOCK_PORT_IMPL_INVALID\",\"path\":\"spec/accounts.bear.yaml\""), report);
     }
@@ -329,7 +329,7 @@ class BearCiIntegrationScriptsTest {
 
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-agent-path");
 
-        assertEquals(1, run.exitCode(), run.stdout());
+        assertEquals(0, run.exitCode(), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"prCheck\":{\"status\":\"ran\",\"reason\":null,\"exitCode\":7,\"code\":\"BLOCK_PORT_IMPL_INVALID\",\"path\":\"agent.json\""), report);
     }
