@@ -156,3 +156,4 @@ The demo currently showcases three PR outcomes:
 - JVM/Java target in Preview.
 - Primary containment enforcement path is Java plus Gradle wrapper when `impl.allowedDeps` is declared.
 
+This project uses [Minimap](https://github.com/rore/minimap) for repo-local roadmap and feature planning.
