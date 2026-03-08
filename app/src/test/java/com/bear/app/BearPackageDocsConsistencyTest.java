@@ -88,6 +88,7 @@ class BearPackageDocsConsistencyTest {
         String install = Files.readString(repoRoot.resolve("docs/public/INSTALL.md"));
         String index = Files.readString(repoRoot.resolve("docs/public/INDEX.md"));
         String ciIntegration = Files.readString(repoRoot.resolve("docs/public/CI_INTEGRATION.md"));
+        String prReview = Files.readString(repoRoot.resolve("docs/public/PR_REVIEW.md"));
         String packageReadme = Files.readString(repoRoot.resolve("docs/bear-package/README.md"));
 
         assertMatchesHeading(bootstrap, "(?m)^##\\s+Command\\s+Surface\\s*$");
@@ -166,6 +167,8 @@ class BearPackageDocsConsistencyTest {
         assertContains(ciIntegration, "examples/github-actions-bear-ci.yml");
         assertContains(ciIntegration, "./.bear/ci/bear-gates.sh --mode observe");
         assertContains(ciIntegration, "BEAR Decision: PASS");
+        assertContains(prReview, "review-required");
+        assertContains(prReview, "BEAR Decision: PASS|REVIEW REQUIRED|FAIL|ALLOWED EXPANSION");
         assertTrue(Files.exists(repoRoot.resolve("docs/public/examples/github-actions-bear-ci.yml")), "GitHub Actions sample must exist");
         String githubSample = Files.readString(repoRoot.resolve("docs/public/examples/github-actions-bear-ci.yml"));
         assertContains(githubSample, "actions/checkout@v4");

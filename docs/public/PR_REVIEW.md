@@ -39,10 +39,12 @@ bear pr-check --all --project <repoRoot> --base <ref>
 `pr-check` answers: "did the declared boundary expand compared to base?"
 
 When a downstream repo uses the packaged wrapper (`.bear/ci/bear-gates.*`), CI adds a compact review layer:
-- `MODE=<enforce|observe> DECISION=<pass|fail|allowed-expansion> BASE=<sha>`
+- `BEAR Decision: PASS|REVIEW REQUIRED|FAIL|ALLOWED EXPANSION`
+- `MODE=<enforce|observe> DECISION=<pass|review-required|fail|allowed-expansion> BASE=<sha>`
 - `CHECK exit=<code> code=<CODE|-> classes=<...>`
 - `PR-CHECK exit=<code> code=<CODE|-> classes=<...>` or `PR-CHECK NOT_RUN: <reason>`
 - on enforce-mode boundary expansion with usable telemetry, `ALLOW_ENTRY_CANDIDATE:` plus the exact JSON entry to copy into `.bear/ci/baseline-allow.json`
+- in `observe`, boundary expansion is surfaced as `DECISION=review-required` so review-needed governance does not look like a clean pass
 - the same facts are also written to `build/bear/ci/bear-ci-summary.md` for GitHub check and PR review surfaces
 
 ## How to interpret `pr-check`
@@ -87,3 +89,4 @@ Action:
 - Full `pr-check` contract: [commands-pr-check.md](commands-pr-check.md)
 - Downstream wrapper/report contract: [CI_INTEGRATION.md](CI_INTEGRATION.md)
 - Governance policy (normative, maintainer doc): [docs/context/governance.md](../context/governance.md)
+
