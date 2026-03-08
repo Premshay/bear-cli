@@ -155,6 +155,7 @@ class BearPackageDocsConsistencyTest {
         assertContains(ciReadme, "bear-gates.sh");
         assertContains(ciReadme, "pwsh");
         assertContains(ciReadme, "review-required");
+        assertContains(ciReadme, "BEAR Decision: PASS|REVIEW REQUIRED|FAIL|ALLOWED EXPANSION");
 
         assertContains(index, "[CI_INTEGRATION.md](CI_INTEGRATION.md)");
         assertContains(install, ".bear/ci/");
@@ -164,6 +165,7 @@ class BearPackageDocsConsistencyTest {
         assertContains(ciIntegration, "PR-CHECK NOT_RUN: BASE_UNRESOLVED");
         assertContains(ciIntegration, "examples/github-actions-bear-ci.yml");
         assertContains(ciIntegration, "./.bear/ci/bear-gates.sh --mode observe");
+        assertContains(ciIntegration, "BEAR Decision: PASS");
         assertTrue(Files.exists(repoRoot.resolve("docs/public/examples/github-actions-bear-ci.yml")), "GitHub Actions sample must exist");
         String githubSample = Files.readString(repoRoot.resolve("docs/public/examples/github-actions-bear-ci.yml"));
         assertContains(githubSample, "actions/checkout@v4");

@@ -148,9 +148,10 @@ The report also stores `bearRaw.checkAgentJson`, `bearRaw.prCheckAgentJson`, and
 
 ## Console Summary
 
-Wrapper stdout stays compact:
+Wrapper stdout stays compact and begins with a human-facing decision header. The structured line remains immediately after it for deterministic parsing:
 
 ```text
+BEAR Decision: PASS
 MODE=observe DECISION=pass BASE=<sha>
 CHECK exit=0 code=- classes=CI_NO_STRUCTURAL_CHANGE
 PR-CHECK exit=0 code=- classes=CI_NO_STRUCTURAL_CHANGE
@@ -171,7 +172,7 @@ The wrapper always writes a deterministic markdown summary to:
 
 If `GITHUB_STEP_SUMMARY` is set, the wrapper appends the exact file contents to that GitHub summary path.
 
-The markdown summary is derived only from the same wrapper facts already used for console output, report generation, allow evaluation, and final decision.
+The markdown summary is derived only from the same wrapper facts already used for console output, report generation, allow evaluation, and final decision. Near the top it includes the same human-facing decision header, for example `BEAR Decision: REVIEW REQUIRED`, while retaining the bullet metadata below it.
 
 Summary sections:
 - heading with `mode`, `decision`, `base SHA`, and report path

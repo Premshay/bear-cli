@@ -60,6 +60,22 @@ function Get-PropertyValue($object, $name) {
     return $property.Value
 }
 
+function Get-FirstNormalizedValue($value) {
+    if ($null -eq $value) {
+        return $null
+    }
+    if ($value -is [string]) {
+        return [string]$value
+    }
+    foreach ($item in @($value)) {
+        $candidate = [string]$item
+        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
 function Normalize-Lines($text) {
     if ($null -eq $text -or $text.Length -eq 0) {
         return @()
@@ -165,9 +181,8 @@ function Parse-AgentFailure($agentJson, $exitCode) {
         return New-InvalidFooter
     }
 
-    $clusterFiles = New-OrderedArray (Get-PropertyValue $primaryCluster 'files')
     $pathCandidates = @(
-        $(if ($clusterFiles.Count -gt 0) { [string]$clusterFiles[0] } else { $null }),
+        (Get-FirstNormalizedValue (Get-PropertyValue $primaryCluster 'files')),
         [string](Get-PropertyValue $primaryProblem 'file')
     )
     $path = $null
@@ -479,10 +494,22 @@ function Get-ClassesDisplay($classes) {
     return ($classes -join ',')
 }
 
+function Get-DecisionHeader($decision) {
+    switch ($decision) {
+        'pass' { return 'BEAR Decision: PASS' }
+        'review-required' { return 'BEAR Decision: REVIEW REQUIRED' }
+        'fail' { return 'BEAR Decision: FAIL' }
+        'allowed-expansion' { return 'BEAR Decision: ALLOWED EXPANSION' }
+        default { return 'BEAR Decision: ' + $decision.ToUpperInvariant() }
+    }
+}
+
 function New-MarkdownSummary($modeValue, $decision, $baseResolution, $checkReport, $prReport, $combinedBoundaryDeltas, $allowEntryCandidate) {
     $baseDisplay = if ($baseResolution.resolved) { $baseResolution.value } else { 'unresolved' }
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('# BEAR CI Governance')
+    $lines.Add('')
+    $lines.Add((Get-DecisionHeader $decision))
     $lines.Add('')
     $lines.Add('- Mode: ' + $modeValue)
     $lines.Add('- Decision: ' + $decision)
@@ -796,6 +823,7 @@ try {
     $baseDisplay = if ($baseResolution.resolved) { $baseResolution.value } else { '<unresolved>' }
     $checkCodeDisplay = Get-CodeDisplay $checkResult.footer.code
     $checkClassesDisplay = Get-ClassesDisplay $checkClasses
+    Write-Output (Get-DecisionHeader $decision)
     Write-Output ('MODE=' + $mode + ' DECISION=' + $decision + ' BASE=' + $baseDisplay)
     Write-Output ('CHECK exit=' + $checkResult.exitCode + ' code=' + $checkCodeDisplay + ' classes=' + $checkClassesDisplay)
     if ($prStatus -eq 'ran') {
@@ -824,6 +852,8 @@ try {
         Remove-Item -Recurse -Force $script:tempDir
     }
 }
+
+
 
 
 

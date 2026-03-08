@@ -29,6 +29,7 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of("GITHUB_EVENT_PATH", eventPath.toString()), "--mode", "enforce");
 
         assertEquals(0, run.exitCode());
+        assertTrue(run.stdout().startsWith("BEAR Decision: PASS"), run.stdout());
         assertTrue(run.stdout().contains("MODE=enforce DECISION=pass BASE=base-sha-123"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"resolvedBaseSha\":\"base-sha-123\""), report);
@@ -46,6 +47,7 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-200");
 
         assertEquals(1, run.exitCode());
+        assertTrue(run.stdout().startsWith("BEAR Decision: FAIL"), run.stdout());
         assertTrue(run.stdout().contains("CHECK exit=3 code=DRIFT_DETECTED classes=CI_GOVERNANCE_DRIFT"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"decision\":\"fail\""), report);
@@ -69,11 +71,13 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-review");
 
         assertEquals(0, run.exitCode(), run.stdout());
+        assertTrue(run.stdout().startsWith("BEAR Decision: REVIEW REQUIRED"), run.stdout());
         assertTrue(run.stdout().contains("MODE=observe DECISION=review-required BASE=base-sha-review"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"decision\":\"review-required\""), report);
         assertTrue(report.contains("\"prCheck\":{\"status\":\"ran\",\"reason\":null,\"exitCode\":5"), report);
         String summary = readSummary(repoRoot);
+        assertTrue(summary.contains("BEAR Decision: REVIEW REQUIRED"), summary);
         assertTrue(summary.contains("- Decision: review-required"), summary);
         assertTrue(summary.contains("- Review Required: boundary expansion detected."), summary);
         assertFalse(summary.contains("## Allow Entry Candidate"), summary);
@@ -108,10 +112,13 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-agent-json");
 
         assertEquals(1, run.exitCode(), run.stdout());
+        assertTrue(run.stdout().startsWith("BEAR Decision: FAIL"), run.stdout());
         assertTrue(run.stdout().contains("CHECK exit=3 code=DRIFT_MISSING_BASELINE classes=CI_GOVERNANCE_DRIFT"), run.stdout());
         assertTrue(run.stdout().contains("PR-CHECK exit=7 code=BLOCK_PORT_IMPL_INVALID classes=CI_POLICY_BYPASS_ATTEMPT"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"decision\":\"fail\""), report);
+        assertTrue(report.contains("\"check\":{\"status\":\"ran\",\"exitCode\":3,\"code\":\"DRIFT_MISSING_BASELINE\",\"path\":\"build/generated/bear\""), report);
+        assertTrue(report.contains("\"prCheck\":{\"status\":\"ran\",\"reason\":null,\"exitCode\":7,\"code\":\"BLOCK_PORT_IMPL_INVALID\",\"path\":\"build/generated/bear/src/main/java\""), report);
         assertFalse(report.contains("WRAPPER_FOOTER_INVALID"), report);
     }
 
@@ -124,6 +131,7 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-invalid-footer");
 
         assertEquals(1, run.exitCode(), run.stdout());
+        assertTrue(run.stdout().startsWith("BEAR Decision: FAIL"), run.stdout());
         assertTrue(run.stdout().contains("CHECK exit=3 code=WRAPPER_FOOTER_INVALID classes=CI_INTERNAL_ERROR"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"decision\":\"fail\""), report);
@@ -149,6 +157,7 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce", "--base-sha", "base-sha-allow");
 
         assertEquals(0, run.exitCode());
+        assertTrue(run.stdout().startsWith("BEAR Decision: ALLOWED EXPANSION"), run.stdout());
         assertTrue(run.stdout().contains("MODE=enforce DECISION=allowed-expansion BASE=base-sha-allow"), run.stdout());
         assertTrue(run.stdout().contains("ALLOW_ENTRY_CANDIDATE:"), run.stdout());
         assertTrue(run.stdout().contains("{\"baseSha\":\"base-sha-allow\",\"deltaIds\":[\"BOUNDARY_EXPANDING|ALLOWED_DEPS|ADDED|.:_shared:com.example:demo@1.0.0\"]}"), run.stdout());
@@ -158,6 +167,7 @@ class BearCiIntegrationScriptsTest {
         assertTrue(report.contains("\"classes\":[\"CI_BOUNDARY_EXPANSION\",\"CI_DEPENDENCY_POWER_EXPANSION\"]"), report);
         assertTrue(report.contains("\"allowEntryCandidate\":{\"baseSha\":\"base-sha-allow\",\"deltaIds\":[\"BOUNDARY_EXPANDING|ALLOWED_DEPS|ADDED|.:_shared:com.example:demo@1.0.0\"]}"), report);
         String summary = readSummary(repoRoot);
+        assertTrue(summary.contains("BEAR Decision: ALLOWED EXPANSION"), summary);
         assertTrue(summary.contains("## Boundary Deltas"), summary);
         assertTrue(summary.contains("## Allow Entry Candidate"), summary);
         assertTrue(summary.contains("\"baseSha\": \"base-sha-allow\""), summary);
@@ -182,6 +192,7 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce", "--base-sha", "base-sha-missing");
 
         assertEquals(1, run.exitCode());
+        assertTrue(run.stdout().startsWith("BEAR Decision: FAIL"), run.stdout());
         assertTrue(run.stdout().contains("ALLOW_ENTRY_CANDIDATE: UNAVAILABLE"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"decision\":\"fail\""), report);
@@ -201,6 +212,7 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "enforce");
 
         assertEquals(1, run.exitCode());
+        assertTrue(run.stdout().startsWith("BEAR Decision: FAIL"), run.stdout());
         assertTrue(run.stdout().contains("PR-CHECK NOT_RUN: BASE_UNRESOLVED"), run.stdout());
         String report = readReport(repoRoot);
         assertTrue(report.contains("\"prCheck\":{\"status\":\"not-run\",\"reason\":\"BASE_UNRESOLVED\""), report);
@@ -285,13 +297,41 @@ class BearCiIntegrationScriptsTest {
         ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of("GITHUB_STEP_SUMMARY", stepSummary.toString()), "--mode", "observe", "--base-sha", "base-sha-summary");
 
         assertEquals(0, run.exitCode(), run.stderr());
+        assertTrue(run.stdout().startsWith("BEAR Decision: PASS"), run.stdout());
         String summary = readSummary(repoRoot);
         assertTrue(summary.contains("# BEAR CI Governance"), summary);
+        assertTrue(summary.contains("BEAR Decision: PASS"), summary);
         assertTrue(summary.contains("- Mode: observe"), summary);
         assertTrue(summary.contains("- Decision: pass"), summary);
         assertTrue(summary.contains("- Base SHA: base-sha-summary"), summary);
         assertFalse(summary.contains("## Allow Entry Candidate"), summary);
         assertEquals(summary, Files.readString(stepSummary, StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void powerShellWrapperUsesProblemFileWhenClusterFilesAreAbsent(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = createFixtureRepo(tempDir.resolve("repo"));
+        writeCheckFixture(repoRoot, CliCodes.EXIT_OK, checkJson(CliCodes.EXIT_OK), "");
+        writePrFixture(repoRoot, CliCodes.EXIT_BOUNDARY_BYPASS, agentFailureJson("BLOCK_PORT_IMPL_INVALID", null, "spec/accounts.bear.yaml"), "");
+
+        ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-problem-file");
+
+        assertEquals(1, run.exitCode(), run.stdout());
+        String report = readReport(repoRoot);
+        assertTrue(report.contains("\"prCheck\":{\"status\":\"ran\",\"reason\":null,\"exitCode\":7,\"code\":\"BLOCK_PORT_IMPL_INVALID\",\"path\":\"spec/accounts.bear.yaml\""), report);
+    }
+
+    @Test
+    void powerShellWrapperFallsBackToAgentJsonPathWhenNoAgentPathsExist(@TempDir Path tempDir) throws Exception {
+        Path repoRoot = createFixtureRepo(tempDir.resolve("repo"));
+        writeCheckFixture(repoRoot, CliCodes.EXIT_OK, checkJson(CliCodes.EXIT_OK), "");
+        writePrFixture(repoRoot, CliCodes.EXIT_BOUNDARY_BYPASS, agentFailureJson("BLOCK_PORT_IMPL_INVALID", null, null), "");
+
+        ScriptRunResult run = runPowerShellWrapper(repoRoot, Map.of(), "--mode", "observe", "--base-sha", "base-sha-agent-path");
+
+        assertEquals(1, run.exitCode(), run.stdout());
+        String report = readReport(repoRoot);
+        assertTrue(report.contains("\"prCheck\":{\"status\":\"ran\",\"reason\":null,\"exitCode\":7,\"code\":\"BLOCK_PORT_IMPL_INVALID\",\"path\":\"agent.json\""), report);
     }
 
     @Test
@@ -421,6 +461,25 @@ class BearCiIntegrationScriptsTest {
         return "CODE=" + code + "\r\nPATH=" + path + "\r\nREMEDIATION=" + remediation + "\r\n";
     }
 
+    private static String agentFailureJson(String code, String clusterFile, String problemFile) {
+        String clusterFiles = clusterFile == null
+            ? "[]"
+            : "[\"" + clusterFile + "\"]";
+        String problemFileValue = problemFile == null ? "null" : "\"" + problemFile + "\"";
+        return "{"
+            + "\"schemaVersion\":\"bear.nextAction.v1\","
+            + "\"command\":\"pr-check\","
+            + "\"mode\":\"all\","
+            + "\"collectMode\":\"all\","
+            + "\"status\":\"fail\","
+            + "\"exitCode\":7,"
+            + "\"problems\":[{\"failureCode\":\"" + code + "\",\"file\":" + problemFileValue + ",\"messageKey\":\"" + code + "\"}],"
+            + "\"clusters\":[{\"clusterId\":\"cluster-1\",\"failureCode\":\"" + code + "\",\"files\":" + clusterFiles + "}],"
+            + "\"nextAction\":{\"primaryClusterId\":\"cluster-1\",\"steps\":[\"Review generated agent diagnostics.\"]},"
+            + "\"extensions\":{}"
+            + "}";
+    }
+
     private static String readReport(Path repoRoot) throws Exception {
         return Files.readString(repoRoot.resolve("build/bear/ci/bear-ci-report.json"), StandardCharsets.UTF_8).trim();
     }
@@ -547,3 +606,4 @@ class BearCiIntegrationScriptsTest {
     private record ScriptRunResult(int exitCode, String stdout, String stderr) {
     }
 }
+

@@ -212,10 +212,14 @@ Wrapper report:
 Wrapper markdown summary:
 - path: `build/bear/ci/bear-ci-summary.md`
 - when `GITHUB_STEP_SUMMARY` is set, the wrapper appends the exact markdown content there
-- summary sections are derived only from the same wrapper facts used for report generation and decisioning`r`n- in `observe`, wrapper `decision` may be `review-required` for boundary expansion without changing any BEAR core CLI contract
+- summary sections are derived only from the same wrapper facts used for report generation and decisioning
+- markdown summary starts with a human-facing `BEAR Decision: PASS|REVIEW REQUIRED|FAIL|ALLOWED EXPANSION` header, while keeping the existing metadata lines below it
+- in `observe`, wrapper `decision` may be `review-required` for boundary expansion without changing any BEAR core CLI contract
 
 Wrapper console additions:
-- baseline summary lines remain:
+- additive human-facing header appears first:
+  - `BEAR Decision: PASS|REVIEW REQUIRED|FAIL|ALLOWED EXPANSION`
+- baseline summary lines remain immediately after it:
   - `MODE=<mode> DECISION=<pass|review-required|fail|allowed-expansion> BASE=<sha|<unresolved>>`
   - `CHECK exit=<n> code=<CODE|-> classes=<csv|->`
   - `PR-CHECK exit=<n> code=<CODE|-> classes=<csv|->`
@@ -232,6 +236,8 @@ Wrapper console additions:
 - [commands-pr-check.md](commands-pr-check.md)
 - [commands-validate.md](commands-validate.md)
 - [troubleshooting.md](troubleshooting.md)
+
+
 
 
 

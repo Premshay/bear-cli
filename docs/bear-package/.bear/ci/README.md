@@ -8,10 +8,10 @@ Files:
 - `baseline-allow.json`: exact-match allow file for approved boundary expansion
 
 Canonical outputs:
-- console summary lines for `MODE`, `CHECK`, and `PR-CHECK`, including `DECISION=review-required` in observe-mode governance review paths
+- console summary starts with `BEAR Decision: PASS|REVIEW REQUIRED|FAIL|ALLOWED EXPANSION`, followed by the structured `MODE=... DECISION=... BASE=...` line and the `CHECK` / `PR-CHECK` lines
 - optional `ALLOW_ENTRY_CANDIDATE` block on enforce-mode boundary expansion
 - report artifact at `build/bear/ci/bear-ci-report.json`
-- markdown summary at `build/bear/ci/bear-ci-summary.md`
+- markdown summary at `build/bear/ci/bear-ci-summary.md`, using the same `BEAR Decision: ...` header near the top
 - when `GITHUB_STEP_SUMMARY` is set, the wrapper appends the exact markdown summary content there
 
 Canonical usage:
