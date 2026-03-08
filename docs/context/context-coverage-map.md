@@ -7,7 +7,7 @@ Purpose:
 | Topic | Canonical active destination | Archive destination (if historical) |
 | --- | --- | --- |
 | Session handoff protocol | `docs/context/state.md`, `docs/context/start-here.md` | `docs/context/archive/archive-state-history.md` |
-| Milestone status and ordered queue | `docs/context/program-board.md` | `docs/context/archive/archive-state-history.md` |
+| Milestone status and ordered queue | `roadmap/board.md`, `roadmap/scope.md`, `docs/context/program-board.md` | `docs/context/archive/archive-state-history.md` |
 | Milestone definitions and done criteria | `docs/context/roadmap.md` | `docs/context/archive/archive-roadmap-v0.md` |
 | IR schema/normalization/semantic rule | `docs/context/ir-spec.md` | n/a |
 | Governance diff classification and enforcement intent | `docs/context/governance.md` | `docs/context/archive/archive-state-history.md` |
@@ -21,4 +21,3 @@ Compaction contract:
 1. No section may be removed unless mapped here.
 2. Historical details move to archive with a dated snapshot header.
 3. Active docs keep only current canonical wording.
-

@@ -6,30 +6,33 @@ This is the quick navigation map for active work.
 
 1. `docs/context/CONTEXT_BOOTSTRAP.md`
 2. `docs/context/state.md`
-3. `docs/context/program-board.md`
-4. `docs/context/roadmap.md`
-5. `docs/context/ir-spec.md`
-6. `docs/context/user-guide.md`
+3. `roadmap/board.md`
+4. `roadmap/scope.md`
+5. `docs/context/roadmap.md`
+6. `docs/context/ir-spec.md`
+7. `docs/context/user-guide.md`
 
 On demand:
-1. `docs/context/governance.md`
-2. `docs/context/architecture.md`
-3. `docs/context/demo-agent-simulation.md`
-4. `docs/context/bear-run-grading-rubric.md`
-5. `docs/context/prompt-bootstrap.md`
-6. `docs/context/archive/archive-readme.md`
+1. `docs/context/program-board.md`
+2. `docs/context/governance.md`
+3. `docs/context/architecture.md`
+4. `docs/context/demo-agent-simulation.md`
+5. `docs/context/bear-run-grading-rubric.md`
+6. `docs/context/prompt-bootstrap.md`
+7. `docs/context/archive/archive-readme.md`
 
 ## Source Ownership
 
 1. `docs/context/state.md`: short current-window handoff.
-2. `docs/context/program-board.md`: active milestone status and queue ordering.
+2. `roadmap/board.md` + `roadmap/scope.md`: canonical live roadmap planning state.
 3. `docs/context/roadmap.md`: milestone definitions and done criteria.
-4. `docs/context/ir-spec.md`: canonical v1 IR contract.
-5. `docs/context/archive/*`: historical references only.
+4. `docs/context/program-board.md`: compatibility bridge to minimap planning.
+5. `docs/context/ir-spec.md`: canonical v1 IR contract.
+6. `docs/context/archive/*`: historical references only.
 
 Interpretation guardrail:
 - "What are milestone features?" -> `docs/context/roadmap.md`
-- "Where are we standing now?" -> `docs/context/program-board.md`
+- "Where are we standing now?" -> `roadmap/board.md` + `roadmap/scope.md`
 - "What should I do this session?" -> `docs/context/state.md`
 
 ## Session Close Protocol
@@ -40,7 +43,7 @@ Interpretation guardrail:
 - `Next Concrete Task`
 - short `Session Notes`
  - keep `Session Notes` within `ContextDocsConsistencyTest` cap; move oldest notes to `docs/context/archive/archive-state-history.md` when needed.
-2. Update `docs/context/program-board.md` if status/queue/risk changed.
+2. Update `roadmap/board.md`, `roadmap/scope.md`, and the owning minimap item files if roadmap status or ordering changed.
 3. Update canonical docs only when semantics changed:
 - `docs/context/ir-spec.md`
 - `docs/context/architecture.md`

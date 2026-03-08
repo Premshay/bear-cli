@@ -48,7 +48,9 @@ Session constraints:
 Reference split:
 - `docs/context/architecture.md`: scope guarantees and non-guarantees
 - `docs/context/roadmap.md`: milestone definitions and done criteria
-- `docs/context/program-board.md`: live status and queue (repo sessions)
+- `roadmap/board.md`: live roadmap groups and queue (repo sessions)
+- `roadmap/scope.md`: current roadmap focus narrative
+- `docs/context/program-board.md`: compatibility bridge for older routing
 - `docs/context/ir-spec.md`: canonical IR contract
 
 ---

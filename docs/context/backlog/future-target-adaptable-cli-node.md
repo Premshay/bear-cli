@@ -4,6 +4,10 @@
 
 Future initiative only; preparation phases have been promoted into active roadmap work via `docs/context/backlog/p3-target-adaptable-cli-preparation.md`, but Node-target execution remains parked.
 
+Containment/profile note:
+- `docs/context/backlog/future-node-containment-profile.md` is the canonical discovery spec for what a first Node slice can honestly claim.
+- If this older phase sketch conflicts with the containment-profile doc, the containment-profile doc wins.
+
 ## Normative Constraints
 
 - Preserve deterministic CLI behavior and deterministic failure envelope; the last three stderr lines remain `CODE/PATH/REMEDIATION`.
@@ -216,3 +220,4 @@ Deliverables:
   - pass drift and containment checks deterministically
   - participate in `pr-check` boundary governance deterministically
 - CLI core has no JVM or Node conditionals outside the target dispatch boundary.
+

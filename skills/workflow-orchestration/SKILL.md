@@ -17,7 +17,7 @@ Use a consistent execution loop that balances speed with correctness:
 
 This skill maps to the existing BEAR context flow:
 - use `docs/context/state.md` for session handoff updates
-- use `docs/context/program-board.md` when queue/status/risk changes
+- use `roadmap/board.md`, `roadmap/scope.md`, and minimap item files when roadmap queue/status changes
 - do not introduce parallel trackers like `tasks/todo.md` or `tasks/lessons.md` unless the user explicitly asks
 - stay within v1-preview guardrails in `docs/context/architecture.md` and `docs/context/roadmap.md`
 
@@ -54,7 +54,10 @@ Skip this skill when:
   - `bear pr-check --all --project <repoRoot> --base <ref>`
 6. Close loop:
 - update `docs/context/state.md` (`Last Updated`, `Current Focus`, `Next Concrete Task`, short `Session Notes`)
-- update `docs/context/program-board.md` only when queue/status/risk changes
+- update the minimap roadmap files only when queue/status/parked planning changed:
+  - `roadmap/board.md`
+  - `roadmap/scope.md`
+  - relevant `roadmap/features/*.md` or `roadmap/ideas/*.md`
 - summarize verification evidence and any residual risk
 
 ## Quality Bar

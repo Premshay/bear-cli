@@ -1,73 +1,27 @@
 # BEAR Future Ideas (Parking Lot)
 
 Anything listed here is explicitly not part of the active roadmap queue.
-These ideas are intentionally deferred to protect scope.
-Spec-backed future initiatives should live in `docs/context/backlog/` and be linked from here.
+Concrete parked roadmap items now live in minimap under `roadmap/ideas/*.md`.
+Use this file only for broader idea families that are not yet promoted into individual roadmap items.
 
----
+Parked spec-backed future items already promoted into minimap include:
+- `future-target-adaptable-cli-node`
+- `future-node-containment-profile`
+- `future-spec-to-bear-ir-lowering`
+- `future-compile-package-customization`
+- `future-optional-scalar-inputs`
+- `p1-preview-closure-gaps`
 
-## Highest-Value Parked Initiatives
+## Broad Future Idea Families
 
-These items are not committed roadmap work yet, but they are currently considered the most strategically valuable parked ideas.
-
-1. `Target-Adaptable CLI + Initial Node/TypeScript Target`
-- expands BEAR beyond the JVM and increases product applicability directly
-- spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
-
-2. `Spec -> BEAR IR Lowering`
-- could materially improve BEAR adoption by shortening the path from feature intent to governed IR
-- currently an idea family only; not yet backed by a dedicated backlog spec
-
-3. `Compile Package Customization`
-- improves fit into real codebases, but is less strategically important than target expansion or easier authoring
-- spec: `docs/context/backlog/future-compile-package-customization.md`
-
-4. `Optional Scalar Inputs In BEAR IR`
-- allows BEAR IR and generated contracts to represent truly optional scalar input presence without sentinel-value workarounds
-- spec: `docs/context/backlog/future-optional-scalar-inputs.md`
-
----
-
-## Deferred Initiatives With Spec Files
-
-### Target-Adaptable CLI + Initial Node/TypeScript Target
-
-Future initiative only; the preparation phase is now part of the active P3 queue, but Node-target execution remains parked.
-
-Full spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
-
-Planned direction:
-- refactor CLI core behind one target dispatch seam while preserving byte-stable JVM behavior
-- keep IR unchanged; target selection is detector or pin based (`.bear/target.id`), not IR-driven
-- move JVM behavior behind `JvmTarget` without behavior change first
-- add a strict Node or TypeScript plus pnpm profile as an initial scan-only target
-- Node first slice should support deterministic generate, drift, `pr-check` governance, and governed-root import containment before any Node test-runner work
-- later follow-ups may add covered undeclared-reach checks, repo-level dependency governance, and pnpm verification runner support
-
-Guardrails:
-- no IR schema changes
-- no exit-code expansion
-- no broad docs neutralization sweep
-- CLI core remains target-agnostic outside a single dispatch boundary
-
-### Compile Package Customization
-
-Future initiative only; not part of the active roadmap queue.
-
-Full spec: `docs/context/backlog/future-compile-package-customization.md`
-
----
-
-## Spec -> BEAR IR Lowering
+### Spec -> BEAR IR Lowering
 
 - LLM-assisted transformation from feature specs to BEAR IR
 - Validation that spec-derived IR matches domain constraints
-- Diffing spec vs IR
+- Diffing intent vs IR
 - Partial regeneration when spec changes
 
----
-
-## LLM Integration (Optional Layer)
+### LLM Integration (Optional Layer)
 
 - "Implement block" helper command
 - Iterative agent loop inside CLI
@@ -76,9 +30,7 @@ Full spec: `docs/context/backlog/future-compile-package-customization.md`
 
 BEAR core must remain deterministic and agent-agnostic.
 
----
-
-## Cross-Block / System Modeling
+### Cross-Block / System Modeling
 
 - Multi-block graph
 - Dependency modeling
@@ -89,9 +41,7 @@ BEAR core must remain deterministic and agent-agnostic.
 
 Not part of v0.
 
----
-
-## Extended Invariants
+### Extended Invariants
 
 - Referential integrity checks
 - Concurrency invariants
@@ -102,9 +52,7 @@ Not part of v0.
 v0 supports only:
 - non_negative(field=...)
 
----
-
-## Capability / Effects Model Expansion
+### Capability / Effects Model Expansion
 
 - Effect types (read/write/network/event)
 - Side-effect classification
@@ -121,9 +69,7 @@ v0 supports only:
 v0 supports only:
 - simple allowlist of effects
 
----
-
-## Side-Effect Taxonomy (v1 Candidate)
+### Side-Effect Taxonomy (v1 Candidate)
 
 Principle:
 - side-effect gating, not library gating
@@ -139,19 +85,12 @@ Candidate cross-language categories:
 - time or random (policy-dependent)
 - reflection or escape-hatch
 
-JVM candidate enforcement artifacts:
-- forbidden package or class symbol lists per category
-- module boundary rules (block modules vs integration modules)
-- CI checks that fail on undeclared side-effect surface usage
-
 Success target:
 - agents can use pure libraries freely
 - new external side effects require declared boundary or IR changes
 - policy remains small and stable
 
----
-
-## Boundary Usage Constraints (Post-v0)
+### Boundary Usage Constraints (Post-v0)
 
 This track addresses the gap between:
 - capability allowance ("can call this")
@@ -163,37 +102,20 @@ Candidate constraint types (optional, narrow, boundary-focused):
 - exactly-once style interaction expectations where meaningful
 - interaction ordering constraints for specific boundary events
 
-Enforcement direction:
-- deterministic validation or normalization in IR layer
-- generated policy assertion tests in target scaffolding
-- CI-visible signals for interaction-pattern changes
-
 Non-goal:
 - full business-behavior specification DSL
 
----
-
-## Operation-Set Governance Precision (Future Expansion Candidate)
+### Operation-Set Governance Precision (Future Expansion Candidate)
 
 Current baseline:
 - IR v1 includes first-class `block.operations` with per-operation contract or usages and block-level boundary authority.
 - operation usage is constrained by block effects, idempotency capability, and allowed invariant set.
 
 Candidate direction:
-- improve precision of operation-level governance signals (for example richer usage-shape diagnostics)
+- improve precision of operation-level governance signals
 - strengthen cross-operation boundary diagnostics without introducing router-style contracts
 
-Design guardrails:
-- remain deterministic and machine-checkable
-- preserve block-level boundary authority as the canonical governance envelope
-- avoid untyped opcode or action router patterns
-
-Status:
-- tracked as future expansion only; not committed to active milestone scope
-
----
-
-## Multi-Target Support
+### Multi-Target Support
 
 - Kotlin target
 - TypeScript target
@@ -204,36 +126,31 @@ Status:
 v0 supports:
 - JVM (Java) only
 
----
+Parked discovery note:
+- the current spec-backed Node discovery recommends keeping Node support parked unless the product explicitly accepts the narrow `node-ts-pnpm-single-package-v1` profile documented in `docs/context/backlog/future-node-containment-profile.md`
 
-## Plugin Architecture
+### Plugin Architecture
 
 - External invariant providers
 - External target providers
 - Extension SPI
 - Third-party effect packs
 
----
-
-## UI / Visualization
+### UI / Visualization
 
 - Block graph visualization
 - IR inspector
 - Generated artifact viewer
 - IDE plugin
 
----
-
-## Self-Hosting BEAR
+### Self-Hosting BEAR
 
 - Kernel isolation proof
 - Formal bootstrapping model
 
 Not before v1+.
 
----
-
-## Packaging & Distribution
+### Packaging & Distribution
 
 - Standalone binary distribution
 - Homebrew install
@@ -243,29 +160,22 @@ Not before v1+.
 
 v0 can run as plain CLI only.
 
----
-
-## Enterprise Features
+### Enterprise Features
 
 - Policy enforcement modes
 - Signed IR files
 - Drift audit logs
 - CI integration templates
 
----
-
-## Research Ideas
+### Research Ideas
 
 - Formal verification integration
 - Constraint solving backends
 - Deterministic replay models
 - Stronger semantic guarantees
 
----
-
 If something feels exciting but does not directly contribute to:
 
 "Naive withdraw fails. Correct withdraw passes."
 
 It belongs here.
-

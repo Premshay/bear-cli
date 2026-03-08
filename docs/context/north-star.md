@@ -1,4 +1,4 @@
-﻿# BEAR North Star
+# BEAR North Star
 
 ## BEAR: Making AI-Written Software Safer and More Predictable
 
@@ -100,5 +100,4 @@ This doc is the long-horizon target model, not a claim that all properties exist
 - `docs/context/architecture.md`: what BEAR guarantees now (v0 contract).
 - `docs/context/governance.md`: normative classification and review policy.
 - `docs/context/roadmap.md`: milestone definitions and phased path to stronger enforcement.
-- `docs/context/program-board.md`: live milestone execution status and evidence (operational view).
-
+- `roadmap/board.md` + `roadmap/scope.md`: live milestone execution status and operational planning view.

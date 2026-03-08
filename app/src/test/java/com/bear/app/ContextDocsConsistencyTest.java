@@ -64,7 +64,10 @@ class ContextDocsConsistencyTest {
         );
 
         assertTrue(agents.contains("docs/context/CONTEXT_BOOTSTRAP.md"));
+        assertTrue(agents.contains("tools/minimap/SKILL.md"));
         assertTrue(bootstrap.contains("docs/context/state.md"));
+        assertTrue(bootstrap.contains("roadmap/board.md"));
+        assertTrue(bootstrap.contains("roadmap/scope.md"));
         assertTrue(bootstrap.contains("docs/context/program-board.md"));
         assertTrue(bootstrap.contains("docs/context/roadmap.md"));
         assertTrue(bootstrap.contains("docs/context/ir-spec.md"));
@@ -183,4 +186,3 @@ class ContextDocsConsistencyTest {
         return -1;
     }
 }
-

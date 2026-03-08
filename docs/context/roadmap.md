@@ -1,22 +1,29 @@
 # BEAR Roadmap
 
 This file defines milestone feature contracts and done criteria.
-Live execution status and queue ordering are tracked in `docs/context/program-board.md`.
-Concrete feature specs live under `docs/context/backlog/`.
-Deferred initiatives and idea buckets live in `docs/context/future.md`.
+Live roadmap planning now lives in minimap:
+- `roadmap/board.md`: canonical live groups and item order
+- `roadmap/scope.md`: canonical current-focus narrative
+- `roadmap/features/*.md`: committed or active roadmap items
+- `roadmap/ideas/*.md`: parked or uncommitted roadmap items
 
-## Planning Doc Roles
+Detailed feature specs still live under `docs/context/backlog/`.
+Long-horizon idea families that are not yet minimap items still live in `docs/context/future.md`.
+
+## Planning Split
 
 1. `docs/context/roadmap.md`:
-- milestone contracts and done criteria (definition)
-2. `docs/context/program-board.md`:
-- active milestone status and ordered execution queue (operations)
-3. `docs/context/backlog/*.md`:
-- one feature spec per queued or deferred feature-sized item
-4. `docs/context/future.md`:
-- parked initiatives and idea buckets that are not committed roadmap work
-5. `docs/context/state.md`:
-- current-window handoff (session)
+- milestone contracts, done criteria, and scope guardrails
+2. `roadmap/board.md` + `roadmap/scope.md`:
+- canonical live planning state and execution order
+3. `roadmap/features/*.md` and `roadmap/ideas/*.md`:
+- minimap item summaries for committed and parked work
+4. `docs/context/backlog/*.md`:
+- detailed feature specs and locked contracts
+5. `docs/context/future.md`:
+- broad future idea families that are not yet tracked as minimap items
+6. `docs/context/state.md`:
+- current-window handoff only
 
 ## Milestone Pipeline
 
@@ -61,51 +68,13 @@ Preview definition of done:
 3. Covered boundary bypass attempts fail with deterministic remediation.
 4. Workflow remains low-friction and deterministic.
 
-## Active Post-Preview Feature Roadmap
+## Live Planning Note
 
-Execution priority (capability/value first):
-1. `P3` Broader boundary-escape coverage. Spec: `docs/context/backlog/p3-broader-boundary-escape-coverage.md`
-2. `P3` Multi-block and multi-module composition hardening. Spec: `docs/context/backlog/p3-multi-block-multi-module-composition-hardening.md`
-3. `P3` Capability templates. Spec: `docs/context/backlog/p3-capability-templates.md`
-4. `P2` Minimal taste-invariants rule pack. Spec: `docs/context/backlog/p2-minimal-taste-invariants-rule-pack.md`
-5. `P3` Maven allowed-deps containment parity (optional future expansion). Spec: `docs/context/backlog/p3-maven-allowed-deps-containment.md`
-6. `P3` Optional deterministic policy hooks. Spec: `docs/context/backlog/p3-optional-deterministic-policy-hooks.md`
-
-Priority notes:
-1. Ordering is based on product value and BEAR capability demonstration, not only hardening or compatibility work.
-2. Stability, regression, and compatibility slices remain important, but they do not lead the queue unless they unblock the capability-first items.
-3. Milestone targets still live in each backlog spec; the order above is the execution priority for committed roadmap work.
-
-## Full-List Strategic Value View
-
-This view includes both committed roadmap work and the highest-value parked initiatives.
-It is not the same as the active execution queue.
-
-1. `P3` Broader boundary-escape coverage.
-2. `Future` Target-adaptable CLI + initial Node/TypeScript target. Spec: `docs/context/backlog/future-target-adaptable-cli-node.md`
-3. `P3` Multi-block and multi-module composition hardening.
-4. `Future` Spec -> BEAR IR lowering. Idea family in `docs/context/future.md`.
-5. `P3` Capability templates.
-6. `P2` Minimal taste-invariants rule pack.
-7. `P3` Maven allowed-deps containment parity.
-8. `P3` Optional deterministic policy hooks.
-
-Strategic notes:
-1. The prep slice landed, so the next highest-value committed work is broader boundary-escape coverage while the full multi-target initiative remains partially parked.
-2. The full `Target-adaptable CLI + initial Node/TypeScript target` initiative still remains partially parked; the kernel-owned seam is now in place for that later work.
-3. `Spec -> BEAR IR lowering` is also high-value for adoption, but it remains less execution-ready and carries more product-shape risk.
-
-Shipped in active post-Preview work already:
-1. `Target-adaptable CLI preparation` (kernel-owned target seam, JVM behavior preserved, no target-selection UX yet).
-2. `bear fix` for generated artifacts only.
-3. Generated structural tests (default evidence-only; opt-in strict mode remains available via JVM property).
-4. Declared allowed-deps containment for Gradle or JVM projects.
-5. Boundary regression suite.
-6. CI boundary governance + PR diff ergonomics + telemetry unification.
-
-Parked and non-committed items:
-1. Future initiatives and idea families belong in `docs/context/future.md`, not in the active roadmap queue.
-2. Documentation-only historical cleanup belongs in `docs/context/backlog/p1-preview-closure-gaps.md` and remains non-blocking.
+Do not duplicate live queue ordering or parked-item state in this file.
+When the roadmap changes:
+1. update the owning minimap item file under `roadmap/features/` or `roadmap/ideas/`
+2. update `roadmap/board.md` if grouping or order changed
+3. update `roadmap/scope.md` if near-term focus changed
 
 ## Out of Scope (Current Roadmap)
 
