@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,7 +20,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class GovernedReflectionDispatchScanner {
+public final class GovernedReflectionDispatchScanner {
     private static final String USER_MAIN_ROOT = "src/main/java/";
     private static final String SHARED_ROOT = "src/main/java/blocks/_shared/";
 
@@ -53,7 +53,7 @@ final class GovernedReflectionDispatchScanner {
     private GovernedReflectionDispatchScanner() {
     }
 
-    static List<UndeclaredReachFinding> scanForbiddenReflectionDispatch(
+    public static List<UndeclaredReachFinding> scanForbiddenReflectionDispatch(
         Path projectRoot,
         List<WiringManifest> manifests
     ) throws IOException {

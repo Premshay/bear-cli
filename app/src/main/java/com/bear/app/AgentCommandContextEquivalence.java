@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import com.bear.kernel.target.RepoPathNormalizer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import com.bear.kernel.identity.BlockIdentityCanonicalizer;
 
@@ -22,11 +22,11 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class BlockPortBindingEnforcer {
-    static final String RULE_BLOCK_PORT_IMPL_INVALID = "BLOCK_PORT_IMPL_INVALID";
-    static final String RULE_BLOCK_PORT_REFERENCE_FORBIDDEN = "BLOCK_PORT_REFERENCE_FORBIDDEN";
-    static final String RULE_BLOCK_PORT_INBOUND_EXECUTE_FORBIDDEN = "BLOCK_PORT_INBOUND_EXECUTE_FORBIDDEN";
-    static final String USER_MAIN_IMPL_DETAIL =
+public final class BlockPortBindingEnforcer {
+    public static final String RULE_BLOCK_PORT_IMPL_INVALID = "BLOCK_PORT_IMPL_INVALID";
+    public static final String RULE_BLOCK_PORT_REFERENCE_FORBIDDEN = "BLOCK_PORT_REFERENCE_FORBIDDEN";
+    public static final String RULE_BLOCK_PORT_INBOUND_EXECUTE_FORBIDDEN = "BLOCK_PORT_INBOUND_EXECUTE_FORBIDDEN";
+    public static final String USER_MAIN_IMPL_DETAIL =
         "BLOCK_PORT_IMPL_INVALID: block-port interface must not be implemented in src/main/java; only generated client allowed";
 
     private static final String USER_MAIN_ROOT = "src/main/java/";
@@ -52,7 +52,7 @@ final class BlockPortBindingEnforcer {
     private BlockPortBindingEnforcer() {
     }
 
-    static List<BoundaryBypassFinding> scan(
+    public static List<BoundaryBypassFinding> scan(
         Path projectRoot,
         List<WiringManifest> manifests,
         Set<String> inboundTargetWrapperFqcns
@@ -113,7 +113,7 @@ final class BlockPortBindingEnforcer {
             for (BlockPortBinding binding : manifest.blockPortBindings()) {
                 TreeSet<String> targetWrapperFqcns = new TreeSet<>();
                 for (String op : binding.targetOps()) {
-                    targetWrapperFqcns.add(BlockPortGraphResolver.wrapperFqcn(binding.targetBlock(), op));
+                    targetWrapperFqcns.add(wrapperFqcn(binding.targetBlock(), op));
                 }
                 contexts.add(new BlockPortBindingContext(
                     manifest.blockKey(),
@@ -167,6 +167,33 @@ final class BlockPortBindingEnforcer {
         }
 
         return findings;
+    }
+
+    private static String wrapperFqcn(String blockKey, String operationName) {
+        String packageSegment = sanitizePackageSegment(blockKey);
+        String blockName = toPascalCase(blockKey);
+        String opName = toPascalCase(operationName);
+        return "com.bear.generated." + packageSegment + "." + blockName + "_" + opName;
+    }
+
+    private static String sanitizePackageSegment(String raw) {
+        List<String> tokens = BlockIdentityCanonicalizer.canonicalTokens(raw);
+        if (tokens.isEmpty()) {
+            return "block";
+        }
+        return String.join(".", tokens);
+    }
+
+    private static String toPascalCase(String raw) {
+        List<String> tokens = BlockIdentityCanonicalizer.canonicalTokens(raw);
+        if (tokens.isEmpty()) {
+            return "Block";
+        }
+        StringBuilder out = new StringBuilder();
+        for (String token : tokens) {
+            out.append(Character.toUpperCase(token.charAt(0))).append(token.substring(1));
+        }
+        return out.toString();
     }
 
     private static String renderImplementorFqcns(List<TypeDecl> decls) {
@@ -553,13 +580,8 @@ final class BlockPortBindingEnforcer {
         return raw.replace('\\', '/');
     }
 
-    private static String sanitizePackageSegment(String blockKey) {
-        List<String> tokens = BlockIdentityCanonicalizer.canonicalTokens(blockKey);
-        if (tokens.isEmpty()) {
-            return "block";
-        }
-        return String.join(".", tokens);
-    }
+
+
 
     private static String packageOf(String fqcn) {
         if (fqcn == null) {

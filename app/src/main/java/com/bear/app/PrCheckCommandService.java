@@ -1,11 +1,12 @@
 package com.bear.app;
 
+import com.bear.kernel.target.*;
+
 import com.bear.kernel.ir.BearIr;
 import com.bear.kernel.ir.BearIrValidationException;
 import com.bear.kernel.policy.SharedAllowedDepsPolicy;
 import com.bear.kernel.policy.SharedAllowedDepsPolicyException;
 import com.bear.kernel.policy.SharedAllowedDepsPolicyParser;
-import com.bear.kernel.target.JvmTarget;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 final class PrCheckCommandService {
     private static final IrPipeline IR_PIPELINE = new DefaultIrPipeline();
+    private static final TargetRegistry TARGET_REGISTRY = TargetRegistry.defaultRegistry();
     private static final String TEMP_BASE_IR_RELATIVE = "work/base/base.bear.yaml";
     private static final String TEMP_BASE_WIRING_ROOT_RELATIVE = "generated/base";
     private static final String TEMP_HEAD_WIRING_ROOT_RELATIVE = "generated/head";
@@ -78,11 +80,33 @@ final class PrCheckCommandService {
         Path explicitIndexPath,
         boolean collectAll
     ) {
+        return executePrCheck(
+            projectRoot,
+            repoRelativePath,
+            baseRef,
+            includeSharedPolicyDeltas,
+            projectRootLabel,
+            explicitIndexPath,
+            collectAll,
+            null
+        );
+    }
+
+    static PrCheckResult executePrCheck(
+        Path projectRoot,
+        String repoRelativePath,
+        String baseRef,
+        boolean includeSharedPolicyDeltas,
+        String projectRootLabel,
+        Path explicitIndexPath,
+        boolean collectAll,
+        Target explicitTarget
+    ) {
         Path tempRoot = null;
         try {
             lastTempRootForTest = null;
             maybeFailInternalForTest();
-            JvmTarget target = new JvmTarget();
+            Target target = explicitTarget == null ? TARGET_REGISTRY.resolve(projectRoot) : explicitTarget;
 
             Path headIrPath = projectRoot.resolve(repoRelativePath).normalize();
             if (!headIrPath.startsWith(projectRoot) || !Files.isRegularFile(headIrPath)) {
@@ -235,7 +259,7 @@ final class PrCheckCommandService {
             target.generateWiringOnly(head, projectRoot, headWiringRoot, blockKey);
             WiringManifest headWiring;
             try {
-                headWiring = ManifestParsers.parseWiringManifest(headWiringManifestPath);
+                headWiring = target.parseWiringManifest(headWiringManifestPath);
             } catch (ManifestParseException e) {
                 String line = "pr-check: MANIFEST_INVALID: " + e.reasonCode();
                 return prFailure(
@@ -327,7 +351,7 @@ final class PrCheckCommandService {
                 }
                 target.generateWiringOnly(base, projectRoot, baseWiringRoot, blockKey);
                 try {
-                    baseWiring = ManifestParsers.parseWiringManifest(baseWiringManifestPath);
+                    baseWiring = target.parseWiringManifest(baseWiringManifestPath);
                 } catch (ManifestParseException e) {
                     String line = "pr-check: MANIFEST_INVALID: " + e.reasonCode();
                     return prFailure(
@@ -350,11 +374,11 @@ final class PrCheckCommandService {
                 : BlockPortGraphResolver.inboundTargetWrapperFqcns(blockPortGraph);
 
             List<BoundaryBypassFinding> containmentFindings = new ArrayList<>();
-            containmentFindings.addAll(BoundaryBypassScanner.scanPortImplContainmentBypass(
+            containmentFindings.addAll(target.scanPortImplContainmentBypass(
                 projectRoot,
                 List.of(headWiring)
             ));
-            containmentFindings.addAll(BlockPortBindingEnforcer.scan(
+            containmentFindings.addAll(target.scanBlockPortBindings(
                 projectRoot,
                 List.of(headWiring),
                 inboundTargetWrapperFqcns
@@ -408,7 +432,7 @@ final class PrCheckCommandService {
                 bypassPaths.add(finding.path());
             }
             List<PrGovernanceTelemetry.Signal> structuredGovernanceSignals = new ArrayList<>();
-            List<MultiBlockPortImplAllowedSignal> allowedSignals = PortImplContainmentScanner.scanMultiBlockPortImplAllowedSignals(
+            List<MultiBlockPortImplAllowedSignal> allowedSignals = target.scanMultiBlockPortImplAllowedSignals(
                 projectRoot,
                 List.of(headWiring)
             );
@@ -421,7 +445,7 @@ final class PrCheckCommandService {
 
             List<PrDelta> deltas = new ArrayList<>(PrDeltaClassifier.computePrDeltas(base, head));
             if (includeSharedPolicyDeltas) {
-                SharedPolicyDeltaComputation sharedDeltaComputation = computeSharedPolicyDeltas(projectRoot, mergeBase, projectRootLabel);
+                SharedPolicyDeltaComputation sharedDeltaComputation = computeSharedPolicyDeltasAtMergeBase(projectRoot, mergeBase, projectRootLabel);
                 if (sharedDeltaComputation.failureResult() != null) {
                     return sharedDeltaComputation.failureResult();
                 }
@@ -863,7 +887,7 @@ final class PrCheckCommandService {
                     false
                 ));
             }
-            return computeSharedPolicyDeltas(projectRoot, mergeBase, projectRootLabel);
+            return computeSharedPolicyDeltasAtMergeBase(projectRoot, mergeBase, projectRootLabel);
         } catch (PrCheckGitException e) {
             return SharedPolicyDeltaComputation.failure(prFailure(
                 CliCodes.EXIT_IO,
@@ -894,7 +918,7 @@ final class PrCheckCommandService {
         }
     }
 
-    private static SharedPolicyDeltaComputation computeSharedPolicyDeltas(
+    static SharedPolicyDeltaComputation computeSharedPolicyDeltasAtMergeBase(
         Path projectRoot,
         String mergeBase,
         String projectRootLabel

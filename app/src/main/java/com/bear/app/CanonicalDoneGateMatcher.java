@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import com.bear.kernel.target.RepoPathNormalizer;
 import java.util.List;
 import java.util.Locale;
 

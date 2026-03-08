@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import com.bear.kernel.target.RepoPathNormalizer;
 import com.bear.kernel.identity.BlockIdentityCanonicalizer;
 
 import java.io.IOException;

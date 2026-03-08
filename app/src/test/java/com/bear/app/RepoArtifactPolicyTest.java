@@ -49,7 +49,11 @@ class RepoArtifactPolicyTest {
             if (!isPolicyScannedTextPath(relPath)) {
                 continue;
             }
-            String content = Files.readString(repoRoot.resolve(relPath), StandardCharsets.UTF_8);
+            Path file = repoRoot.resolve(relPath);
+            if (!Files.isRegularFile(file)) {
+                continue;
+            }
+            String content = Files.readString(file, StandardCharsets.UTF_8);
             assertFalse(
                 STALE_BUILD_PATH_TOKEN.matcher(content).find(),
                 "Stale build path token forbidden in tracked file: " + relPath

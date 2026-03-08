@@ -2,7 +2,8 @@ package com.bear.app;
 
 import com.bear.kernel.ir.BearIr;
 import com.bear.kernel.ir.BearIrValidationException;
-import com.bear.kernel.target.JvmTarget;
+import com.bear.kernel.target.Target;
+import com.bear.kernel.target.TargetRegistry;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 public final class BearCli {
     private static final IrPipeline IR_PIPELINE = new DefaultIrPipeline();
+    private static final TargetRegistry TARGET_REGISTRY = TargetRegistry.defaultRegistry();
     private static final Map<String, CommandHandler> COMMAND_HANDLERS = Map.of(
         "validate", BearCliCommandHandlers::runValidate,
         "compile", BearCliCommandHandlers::runCompile,
@@ -147,7 +149,7 @@ public final class BearCli {
     ) {
         try {
             maybeFailInternalForTest("fix");
-            JvmTarget target = new JvmTarget();
+            Target target = TARGET_REGISTRY.resolve(projectRoot);
             BearIr normalized = IR_PIPELINE.parseValidateNormalize(irFile);
             Path resolvedIndexPath = explicitIndexPath;
             if (BlockPortGraphResolver.hasBlockPortEffects(normalized)) {
@@ -233,7 +235,7 @@ public final class BearCli {
     ) {
         try {
             maybeFailInternalForTest("compile");
-            JvmTarget target = new JvmTarget();
+            Target target = TARGET_REGISTRY.resolve(projectRoot);
             BearIr normalized = IR_PIPELINE.parseValidateNormalize(irFile);
             Path resolvedIndexPath = explicitIndexPath;
             if (BlockPortGraphResolver.hasBlockPortEffects(normalized)) {

@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.io.BufferedReader;
 import java.io.IOException;

@@ -316,26 +316,6 @@ record CheckBlockedState(boolean blocked, String reason, String detail) {
     }
 }
 
-record UndeclaredReachFinding(String path, String surface) {
-}
-
-record UndeclaredReachSurface(String label, Pattern pattern) {
-    boolean matches(String content) {
-        return pattern.matcher(content).find();
-    }
-}
-
-record BoundaryBypassFinding(String rule, String path, String detail) {
-}
-
-record PortImplContainmentFinding(String interfaceFqcn, String implClassFqcn, String path) {
-}
-
-record MultiBlockPortImplFinding(String kind, String implClassFqcn, String generatedPackageCsv, String path) {
-}
-
-record MultiBlockPortImplAllowedSignal(String implClassFqcn, String generatedPackageCsv, String path) {
-}
 
 record AllCheckOptions(
     Path repoRoot,
@@ -489,102 +469,5 @@ record BoundaryManifest(
 ) {
 }
 
-record WiringManifest(
-    String schemaVersion,
-    String blockKey,
-    String entrypointFqcn,
-    String logicInterfaceFqcn,
-    String implFqcn,
-    String implSourcePath,
-    String blockRootSourceDir,
-    List<String> governedSourceRoots,
-    List<String> requiredEffectPorts,
-    List<String> constructorPortParams,
-    List<String> logicRequiredPorts,
-    List<String> wrapperOwnedSemanticPorts,
-    List<String> wrapperOwnedSemanticChecks,
-    List<BlockPortBinding> blockPortBindings
-) {
-    WiringManifest(
-        String schemaVersion,
-        String blockKey,
-        String entrypointFqcn,
-        String logicInterfaceFqcn,
-        String implFqcn,
-        String implSourcePath,
-        String blockRootSourceDir,
-        List<String> governedSourceRoots,
-        List<String> requiredEffectPorts,
-        List<String> constructorPortParams,
-        List<String> logicRequiredPorts,
-        List<String> wrapperOwnedSemanticPorts,
-        List<String> wrapperOwnedSemanticChecks
-    ) {
-        this(
-            schemaVersion,
-            blockKey,
-            entrypointFqcn,
-            logicInterfaceFqcn,
-            implFqcn,
-            implSourcePath,
-            blockRootSourceDir,
-            governedSourceRoots,
-            requiredEffectPorts,
-            constructorPortParams,
-            logicRequiredPorts,
-            wrapperOwnedSemanticPorts,
-            wrapperOwnedSemanticChecks,
-            List.of()
-        );
-    }
-
-}
-
-record BlockPortBinding(
-    String port,
-    String targetBlock,
-    List<String> targetOps,
-    String portInterfaceFqcn,
-    String expectedClientImplFqcn
-) {
-}
-
-final class ManifestParseException extends Exception {
-    private final String reasonCode;
-
-    ManifestParseException(String reasonCode) {
-        super(reasonCode);
-        this.reasonCode = reasonCode;
-    }
-
-    String reasonCode() {
-        return reasonCode;
-    }
-}
-
-enum ProjectTestStatus {
-    PASSED,
-    FAILED,
-    COMPILE_FAILURE,
-    SHARED_DEPS_VIOLATION,
-    INVARIANT_VIOLATION,
-    TIMEOUT,
-    LOCKED,
-    BOOTSTRAP_IO
-}
-
-record ProjectTestResult(
-    ProjectTestStatus status,
-    String output,
-    String attemptTrail,
-    String firstLockLine,
-    String firstBootstrapLine,
-    String firstSharedDepsViolationLine,
-    String cacheMode,
-    boolean fallbackToUserCache,
-    String phase,
-    String lastObservedTask
-) {
-}
 
 

@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -11,16 +11,16 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-final class PolicyAllowlistParser {
-    static final String REFLECTION_ALLOWLIST_PATH = "bear-policy/reflection-allowlist.txt";
-    static final String HYGIENE_ALLOWLIST_PATH = "bear-policy/hygiene-allowlist.txt";
-    static final String PURE_SHARED_IMMUTABLE_TYPES_ALLOWLIST_PATH = "bear-policy/pure-shared-immutable-types.txt";
+public final class PolicyAllowlistParser {
+    public static final String REFLECTION_ALLOWLIST_PATH = "bear-policy/reflection-allowlist.txt";
+    public static final String HYGIENE_ALLOWLIST_PATH = "bear-policy/hygiene-allowlist.txt";
+    public static final String PURE_SHARED_IMMUTABLE_TYPES_ALLOWLIST_PATH = "bear-policy/pure-shared-immutable-types.txt";
     private static final Pattern FQCN_PATTERN = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)+$");
 
     private PolicyAllowlistParser() {
     }
 
-    static Set<String> parseExactPathAllowlist(Path projectRoot, String policyRelativePath)
+    public static Set<String> parseExactPathAllowlist(Path projectRoot, String policyRelativePath)
         throws IOException, PolicyValidationException {
         Path policyFile = projectRoot.resolve(policyRelativePath).normalize();
         if (!Files.exists(policyFile)) {
@@ -57,7 +57,7 @@ final class PolicyAllowlistParser {
         return Set.copyOf(entries);
     }
 
-    static Set<String> parseFqcnAllowlist(Path projectRoot, String policyRelativePath)
+    public static Set<String> parseFqcnAllowlist(Path projectRoot, String policyRelativePath)
         throws IOException, PolicyValidationException {
         Path policyFile = projectRoot.resolve(policyRelativePath).normalize();
         if (!Files.exists(policyFile)) {

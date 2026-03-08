@@ -1,5 +1,7 @@
 package com.bear.app;
 
+import com.bear.kernel.target.*;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
@@ -14,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class CheckAllCommandService {
+    private static final TargetRegistry TARGET_REGISTRY = TargetRegistry.defaultRegistry();
     private static final String CHECK_BLOCKED_REASON_LOCK = "LOCK";
     private static final String CHECK_BLOCKED_REASON_BOOTSTRAP = "BOOTSTRAP_IO";
     private static final String CONTAINMENT_ENTRYPOINT_PATH = "build/generated/bear/gradle/bear-containment.gradle";
@@ -207,6 +210,7 @@ final class CheckAllCommandService {
         }
 
         List<BlockExecutionResult> blockResults = new ArrayList<>();
+        Map<String, Target> targetsByRoot = new HashMap<>();
         Map<String, Boolean> rootContainmentRequiredBySelection = new TreeMap<>();
         for (BlockIndexEntry block : selected) {
             if (!block.enabled()) {
@@ -217,7 +221,9 @@ final class CheckAllCommandService {
                 continue;
             }
             Path irPath = options.repoRoot().resolve(block.ir()).normalize();
-            if (CheckCommandService.blockDeclaresAllowedDeps(irPath)) {
+            Path rootPath = options.repoRoot().resolve(block.projectRoot()).normalize();
+            Target target = targetsByRoot.computeIfAbsent(block.projectRoot(), ignored -> TARGET_REGISTRY.resolve(rootPath));
+            if (target.blockDeclaresAllowedDeps(irPath)) {
                 rootContainmentRequiredBySelection.put(block.projectRoot(), true);
             }
         }
@@ -226,7 +232,8 @@ final class CheckAllCommandService {
                 continue;
             }
             Path rootPath = options.repoRoot().resolve(entry.getKey()).normalize();
-            if (CheckCommandService.sharedContainmentInScope(rootPath)) {
+            Target target = targetsByRoot.computeIfAbsent(entry.getKey(), ignored -> TARGET_REGISTRY.resolve(rootPath));
+            if (target.sharedContainmentInScope(rootPath)) {
                 rootContainmentRequiredBySelection.put(entry.getKey(), true);
             }
         }
@@ -282,7 +289,8 @@ final class CheckAllCommandService {
                 continue;
             }
             Path root = options.repoRoot().resolve(entry.getKey()).normalize();
-            String infoLine = CheckCommandService.containmentSkipInfoLine(entry.getKey(), root, false);
+            Target target = targetsByRoot.computeIfAbsent(entry.getKey(), ignored -> TARGET_REGISTRY.resolve(root));
+            String infoLine = target.containmentSkipInfoLine(entry.getKey(), root, false);
             if (infoLine == null || infoLine.isBlank()) {
                 continue;
             }
@@ -307,6 +315,7 @@ final class CheckAllCommandService {
         int rootTestSkippedDueToReach = 0;
         for (Map.Entry<String, List<Integer>> entry : rootPassIndexes.entrySet()) {
             Path root = options.repoRoot().resolve(entry.getKey()).normalize();
+            Target target = targetsByRoot.computeIfAbsent(entry.getKey(), ignored -> TARGET_REGISTRY.resolve(root));
             try {
                 Set<String> reflectionAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
                     root,
@@ -334,7 +343,7 @@ final class CheckAllCommandService {
                     }
                 }
 
-                List<UndeclaredReachFinding> undeclaredReach = UndeclaredReachScanner.scanUndeclaredReach(root);
+                List<UndeclaredReachFinding> undeclaredReach = target.scanUndeclaredReach(root);
                 if (!undeclaredReach.isEmpty()) {
                     rootReachFailed++;
                     rootTestSkippedDueToReach++;
@@ -360,11 +369,11 @@ final class CheckAllCommandService {
                     String blockKey = blockResults.get(idx).name();
                     rootBlockKeys.add(blockKey);
                     Path wiringPath = root.resolve("build/generated/bear/wiring/" + blockKey + ".wiring.json");
-                    wiringManifests.add(ManifestParsers.parseWiringManifest(wiringPath));
+                    wiringManifests.add(target.parseWiringManifest(wiringPath));
                 }
 
                 List<UndeclaredReachFinding> reflectionDispatchFindings =
-                    GovernedReflectionDispatchScanner.scanForbiddenReflectionDispatch(root, wiringManifests);
+                    target.scanForbiddenReflectionDispatch(root, wiringManifests);
                 if (!reflectionDispatchFindings.isEmpty()) {
                     rootReachFailed++;
                     rootTestSkippedDueToReach++;
@@ -393,12 +402,12 @@ final class CheckAllCommandService {
                 );
 
                 List<BoundaryBypassFinding> bypassFindings = new ArrayList<>();
-                bypassFindings.addAll(BoundaryBypassScanner.scanBoundaryBypass(
+                bypassFindings.addAll(target.scanBoundaryBypass(
                     root,
                     wiringManifests,
                     reflectionAllowlist
                 ));
-                bypassFindings.addAll(BlockPortBindingEnforcer.scan(
+                bypassFindings.addAll(target.scanBlockPortBindings(
                     root,
                     wiringManifests,
                     inboundTargetWrapperFqcns
@@ -427,12 +436,15 @@ final class CheckAllCommandService {
 
                 boolean considerContainmentSurfaces = rootContainmentRequiredBySelection.getOrDefault(entry.getKey(), false);
                 ArrayList<String> containmentPreflightDiagnostics = new ArrayList<>();
-                CheckResult containmentPreflightFailure = CheckCommandService.preflightContainmentIfRequired(
+                TargetCheckIssue containmentPreflightIssue = target.preflightContainmentIfRequired(
                     root,
-                    containmentPreflightDiagnostics,
                     considerContainmentSurfaces
                 );
-                if (containmentPreflightFailure != null) {
+                if (containmentPreflightIssue != null) {
+                    CheckResult containmentPreflightFailure = CheckCommandService.targetIssueFailure(
+                        containmentPreflightIssue,
+                        containmentPreflightDiagnostics
+                    );
                     String detail = containmentPreflightFailure.detail() != null && !containmentPreflightFailure.detail().isBlank()
                         ? containmentPreflightFailure.detail()
                         : containmentPreflightDiagnostics.isEmpty() ? "check: CONTAINMENT_REQUIRED: preflight failed" : containmentPreflightDiagnostics.get(0);
@@ -459,7 +471,7 @@ final class CheckAllCommandService {
                 ProjectTestResult testResult = null;
                 int rootTestExit = CliCodes.EXIT_INTERNAL;
                 try {
-                    testResult = ProjectTestRunner.runProjectTests(
+                    testResult = target.runProjectVerification(
                         root,
                         considerContainmentSurfaces ? CONTAINMENT_ENTRYPOINT_PATH : null
                     );
@@ -667,12 +679,15 @@ final class CheckAllCommandService {
                     }
                 } else if (testResult.status() == ProjectTestStatus.PASSED) {
                     ArrayList<String> containmentDiagnostics = new ArrayList<>();
-                    CheckResult containmentMarkerFailure = CheckCommandService.verifyContainmentMarkersIfRequired(
+                    TargetCheckIssue containmentMarkerIssue = target.verifyContainmentMarkersIfRequired(
                         root,
-                        containmentDiagnostics,
                         considerContainmentSurfaces
                     );
-                    if (containmentMarkerFailure != null) {
+                    if (containmentMarkerIssue != null) {
+                        CheckResult containmentMarkerFailure = CheckCommandService.targetIssueFailure(
+                            containmentMarkerIssue,
+                            containmentDiagnostics
+                        );
                         String detail = containmentMarkerFailure.detail() != null && !containmentMarkerFailure.detail().isBlank()
                             ? containmentMarkerFailure.detail()
                             : containmentDiagnostics.isEmpty() ? "check: CONTAINMENT_REQUIRED: verification failed" : containmentDiagnostics.get(0);

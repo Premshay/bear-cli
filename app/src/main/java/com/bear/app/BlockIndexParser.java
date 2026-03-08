@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import com.bear.kernel.target.RepoPathNormalizer;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 

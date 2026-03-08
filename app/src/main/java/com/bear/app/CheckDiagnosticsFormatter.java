@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import com.bear.kernel.target.ProjectTestResult;
 import java.io.IOException;
 
 final class CheckDiagnosticsFormatter {

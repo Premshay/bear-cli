@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

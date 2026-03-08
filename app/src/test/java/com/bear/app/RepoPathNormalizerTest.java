@@ -1,5 +1,6 @@
 package com.bear.app;
 
+import com.bear.kernel.target.RepoPathNormalizer;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

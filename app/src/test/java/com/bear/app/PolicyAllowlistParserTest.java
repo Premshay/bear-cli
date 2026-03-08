@@ -1,5 +1,7 @@
 package com.bear.app;
 
+import com.bear.kernel.target.PolicyAllowlistParser;
+import com.bear.kernel.target.PolicyValidationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

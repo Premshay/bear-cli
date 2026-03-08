@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 final class BoundaryJavaSourceSanitizer {
     private BoundaryJavaSourceSanitizer() {

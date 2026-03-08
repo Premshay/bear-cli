@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +19,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class BoundaryBypassScanner {
+public final class BoundaryBypassScanner {
     private static final String PORT_IMPL_BYPASS_RULE = "PORT_IMPL_OUTSIDE_GOVERNED_ROOT";
     private static final String MULTI_BLOCK_PORT_IMPL_RULE = "MULTI_BLOCK_PORT_IMPL_FORBIDDEN";
     private static final String PLACEHOLDER_MARKER_TODO = "TODO: replace this entire method body with business logic.";
@@ -50,12 +50,12 @@ final class BoundaryBypassScanner {
     private BoundaryBypassScanner() {
     }
 
-    static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests)
+    public static List<BoundaryBypassFinding> scanBoundaryBypass(Path projectRoot, List<WiringManifest> manifests)
         throws IOException, ManifestParseException, PolicyValidationException {
         return scanBoundaryBypass(projectRoot, manifests, Set.of());
     }
 
-    static List<BoundaryBypassFinding> scanBoundaryBypass(
+    public static List<BoundaryBypassFinding> scanBoundaryBypass(
         Path projectRoot,
         List<WiringManifest> manifests,
         Set<String> reflectionAllowlist
@@ -214,7 +214,7 @@ final class BoundaryBypassScanner {
         return findings;
     }
 
-    static List<BoundaryBypassFinding> scanPortImplContainmentBypass(
+    public static List<BoundaryBypassFinding> scanPortImplContainmentBypass(
         Path projectRoot,
         List<WiringManifest> manifests
     ) throws IOException, ManifestParseException {
@@ -277,12 +277,12 @@ final class BoundaryBypassScanner {
             || relPath.startsWith("build/generated/bear/");
     }
 
-    static String firstDirectImplUsageToken(String source) {
+    public static String firstDirectImplUsageToken(String source) {
         String token = BoundaryImplUsageDetector.firstDirectImplUsageToken(source);
         return token == null ? null : normalizeToken(token);
     }
 
-    static String firstReflectionClassloadingToken(String source) {
+    public static String firstReflectionClassloadingToken(String source) {
         return BoundaryImplUsageDetector.firstReflectionClassloadingToken(source);
     }
 
@@ -639,12 +639,12 @@ final class BoundaryBypassScanner {
         return false;
     }
 
-    static String firstReflectiveImplUsageToken(String source) {
+    public static String firstReflectiveImplUsageToken(String source) {
         String token = BoundaryImplUsageDetector.firstReflectiveImplUsageToken(source);
         return token == null ? null : normalizeToken(token);
     }
 
-    static String firstTopLevelNullPortWiringToken(
+    public static String firstTopLevelNullPortWiringToken(
         String source,
         Set<String> governedEntrypointFqcns,
         Map<String, Integer> governedSimpleNameCounts
@@ -782,7 +782,7 @@ final class BoundaryBypassScanner {
         return token.replaceAll("\\s+", " ").trim();
     }
 
-    static String stripJavaCommentsStringsAndChars(String source) {
+    public static String stripJavaCommentsStringsAndChars(String source) {
         return BoundaryJavaSourceSanitizer.stripJavaCommentsStringsAndChars(source);
     }
 

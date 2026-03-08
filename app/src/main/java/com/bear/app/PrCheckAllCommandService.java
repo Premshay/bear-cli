@@ -1,13 +1,17 @@
 package com.bear.app;
 
+import com.bear.kernel.target.*;
+
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 final class PrCheckAllCommandService {
+    private static final TargetRegistry TARGET_REGISTRY = TargetRegistry.defaultRegistry();
     private PrCheckAllCommandService() {
     }
 
@@ -120,6 +124,7 @@ final class PrCheckAllCommandService {
             );
         }
 
+        Map<String, Target> targetsByRoot = new TreeMap<>();
         TreeMap<String, PrCheckCommandService.SharedPolicyDeltaComputation> sharedByRoot = new TreeMap<>();
         for (BlockIndexEntry block : selected) {
             if (!block.enabled()) {
@@ -127,11 +132,11 @@ final class PrCheckAllCommandService {
             }
             sharedByRoot.computeIfAbsent(
                 block.projectRoot(),
-                root -> PrCheckCommandService.computeSharedPolicyDeltasForProjectRoot(
-                    options.repoRoot().resolve(root).normalize(),
-                    options.baseRef(),
-                    root
-                )
+                root -> {
+                    Path projectRoot = options.repoRoot().resolve(root).normalize();
+                    targetsByRoot.computeIfAbsent(root, ignored -> TARGET_REGISTRY.resolve(projectRoot));
+                    return PrCheckCommandService.computeSharedPolicyDeltasForProjectRoot(projectRoot, options.baseRef(), root);
+                }
             );
         }
         List<BlockExecutionResult> blockResults = new ArrayList<>();

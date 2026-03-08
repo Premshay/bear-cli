@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

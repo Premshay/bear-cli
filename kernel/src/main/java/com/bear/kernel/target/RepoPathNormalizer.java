@@ -1,20 +1,20 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.nio.file.Path;
 import java.util.Locale;
 
-final class RepoPathNormalizer {
+public final class RepoPathNormalizer {
     private RepoPathNormalizer() {
     }
 
-    static String normalizePathForIdentity(Path path) {
+    public static String normalizePathForIdentity(Path path) {
         if (path == null) {
             return "";
         }
         return normalizePathForIdentity(path.toString());
     }
 
-    static String normalizePathForIdentity(String rawPath) {
+    public static String normalizePathForIdentity(String rawPath) {
         if (rawPath == null) {
             return "";
         }
@@ -31,14 +31,14 @@ final class RepoPathNormalizer {
         return normalized;
     }
 
-    static String normalizePathForPrefix(Path path) {
+    public static String normalizePathForPrefix(Path path) {
         if (path == null) {
             return "";
         }
         return normalizePathForPrefix(path.toString());
     }
 
-    static String normalizePathForPrefix(String rawPath) {
+    public static String normalizePathForPrefix(String rawPath) {
         String normalized = normalizePathForIdentity(rawPath);
         if (normalized.isBlank() || isRootSentinel(normalized)) {
             return normalized;
@@ -46,7 +46,7 @@ final class RepoPathNormalizer {
         return normalized + "/";
     }
 
-    static boolean hasSegmentPrefix(String pathIdentity, String prefixIdentityOrPrefix) {
+    public static boolean hasSegmentPrefix(String pathIdentity, String prefixIdentityOrPrefix) {
         String normalizedPath = normalizePathForIdentity(pathIdentity);
         String normalizedPrefix = normalizePathForPrefix(prefixIdentityOrPrefix);
         if (normalizedPath.isBlank() || normalizedPrefix.isBlank()) {
@@ -59,7 +59,7 @@ final class RepoPathNormalizer {
         return normalizedPath.startsWith(normalizedPrefix);
     }
 
-    static String toRepoRelativeOrThrow(Path repoRoot, Path candidatePath) {
+    public static String toRepoRelativeOrThrow(Path repoRoot, Path candidatePath) {
         if (repoRoot == null || candidatePath == null) {
             throw new IllegalArgumentException("repoRoot and candidatePath are required");
         }
@@ -78,11 +78,11 @@ final class RepoPathNormalizer {
         return normalizedRelative;
     }
 
-    static boolean equivalentPathMeaning(String left, String right, Path anchor) {
+    public static boolean equivalentPathMeaning(String left, String right, Path anchor) {
         return normalizePathForComparison(left, anchor).equals(normalizePathForComparison(right, anchor));
     }
 
-    static String normalizePathForComparison(String rawPath, Path anchor) {
+    public static String normalizePathForComparison(String rawPath, Path anchor) {
         if (rawPath == null || rawPath.isBlank()) {
             return "";
         }

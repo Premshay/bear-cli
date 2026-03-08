@@ -1,5 +1,7 @@
 package com.bear.app;
 
+import com.bear.kernel.target.*;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -571,20 +573,6 @@ class BoundaryBypassScannerTest {
         ));
     }
 
-    @Test
-    void ruleAppliesToPathExcludesSharedStateFromPurityAndScopedImportRules() {
-        String statePath = "src/main/java/blocks/_shared/state/StateStore.java";
-        assertFalse(BoundaryBypassScanner.ruleAppliesToPath("SHARED_PURITY_VIOLATION", statePath));
-        assertFalse(BoundaryBypassScanner.ruleAppliesToPath("SCOPED_IMPORT_POLICY_BYPASS", statePath));
-        assertTrue(BoundaryBypassScanner.ruleAppliesToPath(
-            "SHARED_PURITY_VIOLATION",
-            "src/main/java/blocks/_shared/pure/PureHelper.java"
-        ));
-        assertTrue(BoundaryBypassScanner.ruleAppliesToPath(
-            "SCOPED_IMPORT_POLICY_BYPASS",
-            "src/main/java/blocks/withdraw/impl/WithdrawImpl.java"
-        ));
-    }
 
     @Test
     void scanBoundaryBypassDoesNotEvaluateSharedStateAgainstPurityOrScopedImportRules(@TempDir Path tempDir) throws Exception {

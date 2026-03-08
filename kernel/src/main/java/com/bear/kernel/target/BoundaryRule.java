@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.util.Objects;
 import java.util.function.Predicate;

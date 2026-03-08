@@ -1,8 +1,6 @@
 # P3 Feature Spec: Target-Adaptable CLI Preparation
 
-## Status
-
-Queued
+## Status`r`n`r`nCompleted
 
 ## Goal
 

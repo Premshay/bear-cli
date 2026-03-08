@@ -10,25 +10,19 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-The packaged downstream CI integration is now complete and stable, including deterministic wrapper/report behavior, exact allow-entry output, GitHub-readable markdown summary generation, and the new observe-mode decision split between `pass`, `review-required`, and `fail`. With the wrapper surface settled, the roadmap focus stays on `P3` target-adaptable CLI preparation and broader enforcement expansion rather than more CI-surface growth.
+The packaged downstream CI integration is now complete and stable, and `main` now also includes the completed JVM-only target-adaptation prep slice. With the target seam in place, the next active product-value feature is broader boundary-escape coverage.
 
 ## Next Concrete Task
 
-1. Start `docs/context/backlog/p3-target-adaptable-cli-preparation.md` as the next execution slice.
-2. Keep the shipped CI contracts stable in adopter or demo usage: `extensions.prGovernance`, `bear.ci.governance.v1`, `.bear/ci/baseline-allow.json`, and `build/bear/ci/bear-ci-summary.md`.
-3. Revisit whether `capability templates` should stay in the near-term queue or remain behind the stronger architectural and enforcement slices.
+1. Start `docs/context/backlog/p3-broader-boundary-escape-coverage.md` as the next execution slice.
+2. Keep the shipped target-seam and CI contracts stable while future multi-target work stays parked behind the prep seam.
+3. Revisit whether `capability templates` should stay in the near-term queue or remain behind the stronger enforcement and scale slices.
 
 ## Session Notes
 
-- Extended the packaged CI wrapper with an observe-mode decision split: clean runs report `pass`, boundary expansion reports `review-required`, and blocking problems still report `fail`, while `enforce` remains unchanged and retains `allowed-expansion` for matched allow-file cases.
-- The decision split is wrapper-only: no BEAR core CLI exits, failure envelopes, or `extensions.prGovernance` contracts changed.
-- Updated `.bear/ci/bear-gates.ps1`, wrapper markdown summary wording, package/public CI docs, and the GitHub Actions sample so `observe` is the canonical review-friendly workflow mode.
-- Expanded wrapper integration coverage for observe-mode review-required, blocking drift/test/bypass behavior, enforce regression stability, and docs consistency around the new decision vocabulary.
-- Verification: `./gradlew.bat :app:test --tests com.bear.app.AgentDiagnosticsTest --tests com.bear.app.BearCliAgentModeTest --tests com.bear.app.BearCiIntegrationScriptsTest --tests com.bear.app.BearPackageDocsConsistencyTest --tests com.bear.app.ContextDocsConsistencyTest`
-- Parked a new future feature for optional scalar inputs in BEAR IR so the idea is preserved as a spec-backed item without entering the active queue; see docs/context/backlog/future-optional-scalar-inputs.md.
-- Root-caused the remaining Ubuntu GitHub Actions failures in `BearCiIntegrationScriptsTest`: the Linux fake `bear` fixture script read `.exit` files under `set -e`, and the test wrote those files without a trailing newline, so `read` returned non-zero at EOF and every fixture process exited `1` even when the file content said `0`, `3`, or `5`.
-- Fixed the CI issue by writing fixture `.exit` files with a trailing newline in `BearCiIntegrationScriptsTest`, then removed the temporary GitHub-only diagnostic dumps and failed-test stream logging used to expose the mismatch.
-- Reordered the roadmap for higher product value: target-adaptable CLI preparation is now the top active item, broader boundary-escape coverage stays next, and the weaker `capability templates` item now sits behind the stronger architectural and governance slices.
-- Public docs now point more directly to `CI_INTEGRATION.md` from `INDEX.md`, `OVERVIEW.md`, and `QUICKSTART.md` so the downstream wrapper pattern is easier to discover.
-- Verification: `./gradlew.bat :app:test --tests com.bear.app.BearCiIntegrationScriptsTest`, `./gradlew.bat :app:test :kernel:test`.
-- Local `main` already contains the shipped CI boundary-governance integration, repo-owned layout split, and containment hardening; those contracts should stay stable while the target-adaptation prep slice starts.
+- Completed `P3` target-adaptable CLI preparation as a JVM-only slice: app command orchestration now routes through a kernel-owned `Target` seam via `TargetRegistry`, with no Node behavior, no `.bear/target.id`, and no CLI surface changes.
+- Root-caused and fixed the main target-prep regressions: the moved containment logic was checking the wrong `containment-required.json` path, the skip-info reason drifted from the existing contract, and the required-block parser was capturing every JSON string instead of only `blockKey` values.
+- Tightened the moved test surface by updating imports after the kernel move, removing direct package-private helper assertions, and letting repo artifact policy checks skip tracked paths that are deleted in the working tree during large refactors.
+- The packaged downstream CI wrapper is complete and stable, including deterministic wrapper/report behavior, exact allow-entry output, GitHub-readable markdown summary generation, and the wrapper-only observe-mode `review-required` decision split.
+- Parked a new future feature for optional scalar inputs in BEAR IR so the idea is preserved as a spec-backed item without entering the active queue; see `docs/context/backlog/future-optional-scalar-inputs.md`.
+- Verification: `./gradlew.bat --no-daemon :kernel:test`, `./gradlew.bat --no-daemon :app:test`, `./gradlew.bat --no-daemon :app:test :kernel:test`, `./gradlew.bat :app:test --tests com.bear.app.BearCiIntegrationScriptsTest`.

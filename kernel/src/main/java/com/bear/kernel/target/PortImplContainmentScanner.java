@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,11 +16,11 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class PortImplContainmentScanner {
-    static final String AMBIGUOUS_PORT_OWNER_REASON_CODE = "AMBIGUOUS_PORT_OWNER";
-    static final String ALLOW_MULTI_BLOCK_PORT_IMPL_MARKER = "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL";
-    static final String MULTI_BLOCK_PORT_IMPL_FORBIDDEN_KIND = "MULTI_BLOCK_PORT_IMPL_FORBIDDEN";
-    static final String MARKER_MISUSED_OUTSIDE_SHARED_KIND = "MARKER_MISUSED_OUTSIDE_SHARED";
+public final class PortImplContainmentScanner {
+    public static final String AMBIGUOUS_PORT_OWNER_REASON_CODE = "AMBIGUOUS_PORT_OWNER";
+    public static final String ALLOW_MULTI_BLOCK_PORT_IMPL_MARKER = "// BEAR:ALLOW_MULTI_BLOCK_PORT_IMPL";
+    public static final String MULTI_BLOCK_PORT_IMPL_FORBIDDEN_KIND = "MULTI_BLOCK_PORT_IMPL_FORBIDDEN";
+    public static final String MARKER_MISUSED_OUTSIDE_SHARED_KIND = "MARKER_MISUSED_OUTSIDE_SHARED";
 
     private static final Pattern PACKAGE_DECL_PATTERN = Pattern.compile(
         "(?m)^\\s*package\\s+([A-Za-z_][A-Za-z0-9_\\.]*)\\s*;"
@@ -38,7 +38,7 @@ final class PortImplContainmentScanner {
     private PortImplContainmentScanner() {
     }
 
-    static List<PortImplContainmentFinding> scanPortImplOutsideGovernedRoots(
+    public static List<PortImplContainmentFinding> scanPortImplOutsideGovernedRoots(
         Path projectRoot,
         List<WiringManifest> manifests
     ) throws IOException, ManifestParseException {
@@ -109,7 +109,7 @@ final class PortImplContainmentScanner {
         return findings;
     }
 
-    static List<MultiBlockPortImplFinding> scanMultiBlockPortImplFindings(
+    public static List<MultiBlockPortImplFinding> scanMultiBlockPortImplFindings(
         Path projectRoot,
         List<WiringManifest> manifests
     ) throws IOException, ManifestParseException {
@@ -214,7 +214,7 @@ final class PortImplContainmentScanner {
         return findings;
     }
 
-    static List<MultiBlockPortImplAllowedSignal> scanMultiBlockPortImplAllowedSignals(
+    public static List<MultiBlockPortImplAllowedSignal> scanMultiBlockPortImplAllowedSignals(
         Path projectRoot,
         List<WiringManifest> manifests
     ) throws IOException, ManifestParseException {

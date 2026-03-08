@@ -1,8 +1,9 @@
 package com.bear.app;
 
+import com.bear.kernel.target.*;
+
 import com.bear.kernel.ir.BearIr;
 import com.bear.kernel.ir.BearIrValidationException;
-import com.bear.kernel.target.JvmTarget;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,6 +21,7 @@ import java.util.TreeSet;
 
 final class CheckCommandService {
     private static final IrPipeline IR_PIPELINE = new DefaultIrPipeline();
+    private static final TargetRegistry TARGET_REGISTRY = TargetRegistry.defaultRegistry();
     private static final String GENERATED_BEAR_ROOT = "build/generated/bear";
     private static final String GENERATED_WIRING_PREFIX = GENERATED_BEAR_ROOT + "/wiring/";
     private static final String CONTAINMENT_ENTRYPOINT_PATH = "build/generated/bear/gradle/bear-containment.gradle";
@@ -192,6 +194,34 @@ final class CheckCommandService {
         Path explicitIndexPath,
         boolean collectAll
     ) {
+        return executeCheck(
+            irFile,
+            projectRoot,
+            runReachAndTests,
+            strictHygiene,
+            expectedBlockKey,
+            expectedBlockLocator,
+            considerContainmentSurfacesOverride,
+            runContainmentPreflight,
+            explicitIndexPath,
+            collectAll,
+            null
+        );
+    }
+
+    static CheckResult executeCheck(
+        Path irFile,
+        Path projectRoot,
+        boolean runReachAndTests,
+        boolean strictHygiene,
+        String expectedBlockKey,
+        String expectedBlockLocator,
+        Boolean considerContainmentSurfacesOverride,
+        boolean runContainmentPreflight,
+        Path explicitIndexPath,
+        boolean collectAll,
+        Target explicitTarget
+    ) {
         Path baselineRoot = projectRoot.resolve("build").resolve("generated").resolve("bear");
         Path tempRoot = null;
         BlockPortGraph blockPortGraph = null;
@@ -201,7 +231,7 @@ final class CheckCommandService {
             if (forcedTimeout != null) {
                 return forcedTimeout;
             }
-            JvmTarget target = new JvmTarget();
+            Target target = explicitTarget == null ? TARGET_REGISTRY.resolve(projectRoot) : explicitTarget;
             BearIr normalized = IR_PIPELINE.parseValidateNormalize(irFile);
 
             Path resolvedIndexPath = explicitIndexPath;
@@ -227,7 +257,7 @@ final class CheckCommandService {
             }
             boolean considerContainmentSurfaces = considerContainmentSurfacesOverride != null
                 ? considerContainmentSurfacesOverride
-                : CheckContainmentStage.hasAllowedDeps(normalized) || sharedContainmentInScope(projectRoot);
+                : target.considerContainmentSurfaces(normalized, projectRoot);
             BlockIdentityResolution identity = expectedBlockKey == null
                 ? BlockIdentityResolver.resolveSingleCommandIdentity(irFile, projectRoot, normalized.block().name(), resolvedIndexPath)
                 : BlockIdentityResolver.resolveIndexIdentity(
@@ -238,13 +268,7 @@ final class CheckCommandService {
                     normalized.block().name()
                 );
             String blockKey = identity.blockKey();
-            String packageSegment = toGeneratedPackageSegment(normalized.block().name());
-            Set<String> ownedPrefixes = Set.of(
-                "src/main/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
-                "src/test/java/com/bear/generated/" + packageSegment.replace('.', '/') + "/",
-                RUNTIME_LEGACY_PREFIX,
-                RUNTIME_CANONICAL_PREFIX
-            );
+            Set<String> ownedPrefixes = target.ownedGeneratedPrefixes(normalized.block().name());
             String markerRelPath = "surfaces/" + blockKey + ".surface.json";
             String wiringRelPath = "wiring/" + blockKey + ".wiring.json";
             Path legacyMarkerPath = baselineRoot.resolve("bear.surface.json");
@@ -276,9 +300,7 @@ final class CheckCommandService {
             }
 
             tempRoot = Files.createTempDirectory("bear-check-");
-            if (Files.isDirectory(projectRoot.resolve("src/main/java/blocks/_shared"))) {
-                Files.createDirectories(tempRoot.resolve("src/main/java/blocks/_shared"));
-            }
+            target.prepareCheckWorkspace(projectRoot, tempRoot);
             target.compile(normalized, tempRoot, blockKey);
             Path candidateRoot = tempRoot.resolve("build").resolve("generated").resolve("bear");
             Path baselineManifestPath = baselineRoot.resolve(markerRelPath);
@@ -289,7 +311,7 @@ final class CheckCommandService {
             applyCandidateManifestTestMode(candidateManifestPath);
 
             List<String> diagnostics = new ArrayList<>();
-            String containmentSkipInfo = containmentSkipInfoLine(
+            String containmentSkipInfo = target.containmentSkipInfoLine(
                 projectRoot.toString().replace('\\', '/'),
                 projectRoot,
                 considerContainmentSurfaces
@@ -356,7 +378,7 @@ final class CheckCommandService {
             }
             WiringManifest baselineWiringManifest;
             try {
-                baselineWiringManifest = ManifestParsers.parseWiringManifest(baselineWiringPath);
+                baselineWiringManifest = target.parseWiringManifest(baselineWiringPath);
             } catch (ManifestParseException e) {
                 if (isManifestSemanticFieldError(e)) {
                     String line = "check: MANIFEST_INVALID: " + e.reasonCode();
@@ -382,7 +404,7 @@ final class CheckCommandService {
             }
             WiringManifest candidateWiringManifest;
             try {
-                candidateWiringManifest = ManifestParsers.parseWiringManifest(candidateWiringPath);
+                candidateWiringManifest = target.parseWiringManifest(candidateWiringPath);
             } catch (ManifestParseException e) {
                 if (isManifestSemanticFieldError(e)) {
                     String line = "check: MANIFEST_INVALID: " + e.reasonCode();
@@ -541,7 +563,7 @@ final class CheckCommandService {
                 }
             }
 
-            List<UndeclaredReachFinding> undeclaredReach = UndeclaredReachScanner.scanUndeclaredReach(projectRoot);
+            List<UndeclaredReachFinding> undeclaredReach = target.scanUndeclaredReach(projectRoot);
             if (!undeclaredReach.isEmpty()) {
                 List<UndeclaredReachFinding> selectedUndeclaredReach = collectAll
                     ? List.copyOf(undeclaredReach)
@@ -577,7 +599,7 @@ final class CheckCommandService {
             }
 
             List<UndeclaredReachFinding> reflectionDispatchFindings =
-                GovernedReflectionDispatchScanner.scanForbiddenReflectionDispatch(projectRoot, List.of(baselineWiringManifest));
+                target.scanForbiddenReflectionDispatch(projectRoot, List.of(baselineWiringManifest));
             if (!reflectionDispatchFindings.isEmpty()) {
                 List<UndeclaredReachFinding> selectedReflectionFindings = collectAll
                     ? List.copyOf(reflectionDispatchFindings)
@@ -620,12 +642,12 @@ final class CheckCommandService {
                 );
 
             List<BoundaryBypassFinding> bypassFindings = new ArrayList<>();
-            bypassFindings.addAll(BoundaryBypassScanner.scanBoundaryBypass(
+            bypassFindings.addAll(target.scanBoundaryBypass(
                 projectRoot,
                 List.of(baselineWiringManifest),
                 reflectionAllowlist
             ));
-            bypassFindings.addAll(BlockPortBindingEnforcer.scan(
+            bypassFindings.addAll(target.scanBlockPortBindings(
                 projectRoot,
                 List.of(baselineWiringManifest),
                 inboundTargetWrapperFqcns
@@ -674,7 +696,7 @@ final class CheckCommandService {
                 );
             }
 
-            ProjectTestResult testResult = ProjectTestRunner.runProjectTests(
+            ProjectTestResult testResult = target.runProjectVerification(
                 projectRoot,
                 considerContainmentSurfaces ? CONTAINMENT_ENTRYPOINT_PATH : null
             );
@@ -1012,7 +1034,9 @@ final class CheckCommandService {
         List<String> diagnostics,
         boolean considerContainmentSurfaces
     ) throws IOException {
-        return CheckContainmentStage.preflightContainmentIfRequired(projectRoot, diagnostics, considerContainmentSurfaces);
+        TargetCheckIssue issue = TARGET_REGISTRY.resolve(projectRoot)
+            .preflightContainmentIfRequired(projectRoot, considerContainmentSurfaces);
+        return issue == null ? null : targetIssueFailure(issue, diagnostics);
     }
 
     static CheckResult verifyContainmentMarkersIfRequired(
@@ -1020,19 +1044,22 @@ final class CheckCommandService {
         List<String> diagnostics,
         boolean considerContainmentSurfaces
     ) throws IOException {
-        return CheckContainmentStage.verifyContainmentMarkersIfRequired(projectRoot, diagnostics, considerContainmentSurfaces);
+        TargetCheckIssue issue = TARGET_REGISTRY.resolve(projectRoot)
+            .verifyContainmentMarkersIfRequired(projectRoot, considerContainmentSurfaces);
+        return issue == null ? null : targetIssueFailure(issue, diagnostics);
     }
 
     static boolean sharedContainmentInScope(Path projectRoot) {
-        return CheckContainmentStage.sharedContainmentInScope(projectRoot);
+        return TARGET_REGISTRY.resolve(projectRoot).sharedContainmentInScope(projectRoot);
     }
 
     static boolean blockDeclaresAllowedDeps(Path irFile) {
-        return CheckContainmentStage.blockDeclaresAllowedDeps(irFile);
+        return TARGET_REGISTRY.resolve(irFile.toAbsolutePath().normalize()).blockDeclaresAllowedDeps(irFile);
     }
 
     static String containmentSkipInfoLine(String projectRootLabel, Path projectRoot, boolean considerContainmentSurfaces) {
-        return CheckContainmentStage.containmentSkipInfoLine(projectRootLabel, projectRoot, considerContainmentSurfaces);
+        return TARGET_REGISTRY.resolve(projectRoot)
+            .containmentSkipInfoLine(projectRootLabel, projectRoot, considerContainmentSurfaces);
     }
 
     private static void applyCandidateManifestTestMode(Path candidateManifestPath) throws IOException {
@@ -1197,6 +1224,58 @@ final class CheckCommandService {
             case "CHANGED" -> 2;
             case "ADDED" -> 3;
             default -> 99;
+        };
+    }
+
+    static CheckResult targetIssueFailure(TargetCheckIssue issue, List<String> diagnostics) {
+        ArrayList<String> lines = diagnostics == null ? new ArrayList<>() : new ArrayList<>(diagnostics);
+        lines.add(issue.legacyLine());
+        return switch (issue.kind()) {
+            case POLICY_INVALID -> checkFailure(
+                CliCodes.EXIT_VALIDATION,
+                lines,
+                "VALIDATION",
+                CliCodes.POLICY_INVALID,
+                issue.path(),
+                issue.remediation(),
+                issue.legacyLine()
+            );
+            case CONTAINMENT_UNSUPPORTED_TARGET -> checkFailure(
+                CliCodes.EXIT_IO,
+                lines,
+                "CONTAINMENT",
+                CliCodes.CONTAINMENT_UNSUPPORTED_TARGET,
+                issue.path(),
+                issue.remediation(),
+                issue.legacyLine()
+            );
+            case DRIFT_MISSING_BASELINE -> checkFailure(
+                CliCodes.EXIT_DRIFT,
+                lines,
+                "DRIFT",
+                CliCodes.DRIFT_MISSING_BASELINE,
+                issue.path(),
+                issue.remediation(),
+                issue.legacyLine()
+            );
+            case DRIFT_DETECTED -> checkFailure(
+                CliCodes.EXIT_DRIFT,
+                lines,
+                "DRIFT",
+                CliCodes.DRIFT_DETECTED,
+                issue.path(),
+                issue.remediation(),
+                issue.legacyLine()
+            );
+            case CONTAINMENT_NOT_VERIFIED -> checkFailure(
+                CliCodes.EXIT_IO,
+                lines,
+                "CONTAINMENT",
+                CliCodes.CONTAINMENT_NOT_VERIFIED,
+                issue.path(),
+                issue.remediation(),
+                issue.legacyLine()
+            );
         };
     }
 

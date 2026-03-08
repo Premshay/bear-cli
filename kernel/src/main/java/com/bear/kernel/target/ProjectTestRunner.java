@@ -1,4 +1,4 @@
-package com.bear.app;
+package com.bear.kernel.target;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class ProjectTestRunner {
+public final class ProjectTestRunner {
     private static final String INVARIANT_MARKER_PREFIX = "BEAR_INVARIANT_VIOLATION|";
     private static final String SHARED_DEPS_VIOLATION_MARKER_PREFIX = "BEAR_SHARED_DEPS_VIOLATION|";
     private static final List<String> INVARIANT_MARKER_KEYS =
@@ -67,11 +67,11 @@ final class ProjectTestRunner {
     private ProjectTestRunner() {
     }
 
-    static ProjectTestResult runProjectTests(Path projectRoot) throws IOException, InterruptedException {
+    public static ProjectTestResult runProjectTests(Path projectRoot) throws IOException, InterruptedException {
         return runProjectTests(projectRoot, null);
     }
 
-    static ProjectTestResult runProjectTests(Path projectRoot, String initScriptRelativePath) throws IOException, InterruptedException {
+    public static ProjectTestResult runProjectTests(Path projectRoot, String initScriptRelativePath) throws IOException, InterruptedException {
         Path normalizedProjectRoot = projectRoot.toAbsolutePath().normalize();
         Path wrapper = resolveWrapper(normalizedProjectRoot);
         List<ProjectTestAttempt> attempts = new ArrayList<>();
@@ -563,7 +563,7 @@ final class ProjectTestRunner {
     }
 
     static boolean isGradleWrapperLockOutput(String output, String gradleUserHome) {
-        String lower = CliText.normalizeLf(output).toLowerCase(Locale.ROOT);
+        String lower = TargetText.normalizeLf(output).toLowerCase(Locale.ROOT);
         if (lower.contains(".zip.lck")) {
             return true;
         }
@@ -581,7 +581,7 @@ final class ProjectTestRunner {
     }
 
     static boolean isGradleWrapperBootstrapIoOutput(String output, String gradleUserHome) {
-        String lower = CliText.normalizeLf(output).toLowerCase(Locale.ROOT);
+        String lower = TargetText.normalizeLf(output).toLowerCase(Locale.ROOT);
         if (lower.contains("project_test_gradle_bootstrap_simulated")) {
             return true;
         }
@@ -604,12 +604,12 @@ final class ProjectTestRunner {
             || lower.contains("project_test_gradle_bootstrap");
     }
 
-    static String firstGradleLockLine(String output) {
+    public static String firstGradleLockLine(String output) {
         return firstGradleLockLine(output, null);
     }
 
     static String firstGradleLockLine(String output, String gradleUserHome) {
-        for (String line : CliText.normalizeLf(output).lines().toList()) {
+        for (String line : TargetText.normalizeLf(output).lines().toList()) {
             String lower = line.toLowerCase(Locale.ROOT);
             if (lower.contains(".zip.lck") || lower.contains("access is denied")) {
                 return line.trim();
@@ -621,12 +621,12 @@ final class ProjectTestRunner {
         return null;
     }
 
-    static String firstGradleBootstrapIoLine(String output) {
+    public static String firstGradleBootstrapIoLine(String output) {
         return firstGradleBootstrapIoLine(output, null);
     }
 
     static String firstGradleBootstrapIoLine(String output, String gradleUserHome) {
-        for (String line : CliText.normalizeLf(output).lines().toList()) {
+        for (String line : TargetText.normalizeLf(output).lines().toList()) {
             String trimmed = line.trim();
             if (trimmed.isEmpty()) {
                 continue;
@@ -650,7 +650,7 @@ final class ProjectTestRunner {
     }
 
     private static boolean containsGradleScopedTempDeleteFailure(String output, String gradleUserHome) {
-        for (String line : CliText.normalizeLf(output).lines().toList()) {
+        for (String line : TargetText.normalizeLf(output).lines().toList()) {
             if (isGradleScopedTempDeleteFailureLine(line, gradleUserHome)) {
                 return true;
             }
@@ -749,8 +749,8 @@ final class ProjectTestRunner {
         return normalized;
     }
 
-    static String firstRelevantProjectTestFailureLine(String output) {
-        List<String> lines = CliText.normalizeLf(output).lines()
+    public static String firstRelevantProjectTestFailureLine(String output) {
+        List<String> lines = TargetText.normalizeLf(output).lines()
             .map(String::trim)
             .filter(line -> !line.isEmpty())
             .toList();
@@ -769,7 +769,7 @@ final class ProjectTestRunner {
         }
         return null;
     }
-    static String firstCompileFailureLine(String output) {
+    public static String firstCompileFailureLine(String output) {
         List<String> tail = tailNormalizedLines(output, COMPILE_MARKER_TAIL_WINDOW);
         for (Pattern markerPattern : COMPILE_MARKER_PATTERNS) {
             for (String line : tail) {
@@ -793,7 +793,7 @@ final class ProjectTestRunner {
     }
 
     private static List<String> tailNormalizedLines(String output, int maxLines) {
-        List<String> lines = CliText.normalizeLf(output).lines().toList();
+        List<String> lines = TargetText.normalizeLf(output).lines().toList();
         int from = Math.max(0, lines.size() - maxLines);
         ArrayList<String> tail = new ArrayList<>();
         for (int i = from; i < lines.size(); i++) {
@@ -809,8 +809,8 @@ final class ProjectTestRunner {
         return firstInvariantViolationLine(output) != null;
     }
 
-    static String firstSharedDepsViolationLine(String output) {
-        for (String line : CliText.normalizeLf(output).lines().toList()) {
+    public static String firstSharedDepsViolationLine(String output) {
+        for (String line : TargetText.normalizeLf(output).lines().toList()) {
             String trimmed = line.trim();
             if (trimmed.startsWith(SHARED_DEPS_VIOLATION_MARKER_PREFIX)) {
                 return trimmed;
@@ -819,8 +819,8 @@ final class ProjectTestRunner {
         return null;
     }
 
-    static String firstInvariantViolationLine(String output) {
-        for (String line : CliText.normalizeLf(output).lines().toList()) {
+    public static String firstInvariantViolationLine(String output) {
+        for (String line : TargetText.normalizeLf(output).lines().toList()) {
             String trimmed = line.trim();
             int markerIndex = trimmed.indexOf(INVARIANT_MARKER_PREFIX);
             if (markerIndex >= 0) {
@@ -905,7 +905,7 @@ final class ProjectTestRunner {
         return -1;
     }
 
-    static String projectTestDetail(String base, String firstLine, String tail) {
+    public static String projectTestDetail(String base, String firstLine, String tail) {
         StringBuilder detail = new StringBuilder(base);
         if (firstLine != null && !firstLine.isBlank()) {
             detail.append("; line: ").append(firstLine.trim());
@@ -939,7 +939,7 @@ final class ProjectTestRunner {
         return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win");
     }
 
-    static int testTimeoutSeconds() {
+    public static int testTimeoutSeconds() {
         String raw = System.getProperty("bear.check.testTimeoutSeconds");
         if (raw == null || raw.isBlank()) {
             return 300;

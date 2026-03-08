@@ -1,5 +1,7 @@
 package com.bear.app;
 
+import com.bear.kernel.target.*;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -227,7 +229,7 @@ final class CheckManifestValidation {
             || "INVALID_BLOCK_PORT_BINDINGS".equals(code)
             || "UNSUPPORTED_WIRING_SCHEMA_VERSION".equals(code)
             || "INVALID_GOVERNED_SOURCE_ROOTS".equals(code)
-            || PortImplContainmentScanner.AMBIGUOUS_PORT_OWNER_REASON_CODE.equals(code)
+            || "AMBIGUOUS_PORT_OWNER".equals(code)
             || "INVALID_ROOT_PATH_blockRootSourceDir".equals(code)
             || "INVALID_ROOT_PATH_governedSourceRoots".equals(code);
     }

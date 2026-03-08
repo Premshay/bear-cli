@@ -58,10 +58,9 @@ Preview standing note:
 
 ## Ready Queue (Ordered, Execution Work Items)
 
-1. P3 target-adaptable CLI preparation. Spec: `docs/context/backlog/p3-target-adaptable-cli-preparation.md`
-2. P3 broader boundary-escape coverage. Spec: `docs/context/backlog/p3-broader-boundary-escape-coverage.md`
-3. P3 multi-block and multi-module composition hardening. Spec: `docs/context/backlog/p3-multi-block-multi-module-composition-hardening.md`
-4. P3 capability templates. Spec: `docs/context/backlog/p3-capability-templates.md`
+1. P3 broader boundary-escape coverage. Spec: `docs/context/backlog/p3-broader-boundary-escape-coverage.md`
+2. P3 multi-block and multi-module composition hardening. Spec: `docs/context/backlog/p3-multi-block-multi-module-composition-hardening.md`
+3. P3 capability templates. Spec: `docs/context/backlog/p3-capability-templates.md`
 
 ## Later Queue (Ordered, Still Important But Lower Value Priority)
 
@@ -75,6 +74,13 @@ Queue notes:
 - Gradle allowed-deps containment is already shipped; remaining parity work is Maven-only.
 - Documentation-only preview cleanup remains parked and non-blocking.
 - The full Node or TypeScript initiative is still parked, but its prep phase is now promoted into active execution because the architecture seam is the highest-value next move.
+
+## Recently Completed (P3)
+
+1. `Target-adaptable CLI preparation`
+   - moved the target seam into `kernel` so app command services now dispatch through `TargetRegistry` and `Target` instead of an app-local abstraction
+   - widened `Target`/`JvmTarget` enough to own JVM-only wiring, containment, boundary-scan, and verification behavior while preserving current CLI behavior
+   - added parity and guard coverage (`TargetRegistryTest`, `TargetSeamParityTest`, `RepoCodeQualityGuardsTest`) with no Node work, no `.bear/target.id`, and no CLI surface changes
 
 ## Recently Completed (P2)
 
@@ -250,7 +256,7 @@ Detailed locked spec text was moved to:
   - `docs/context/backlog/p2-minimal-taste-invariants-rule-pack.md` (`Queued`)
   - `docs/context/backlog/p2-boundary-regression-suite.md` (`Completed`)
 - `P3`
-  - `docs/context/backlog/p3-target-adaptable-cli-preparation.md` (`Queued`)
+  - `docs/context/backlog/p3-target-adaptable-cli-preparation.md` (`Completed`)
   - `docs/context/backlog/p3-maven-allowed-deps-containment.md` (`Queued`)
   - `docs/context/backlog/p3-capability-templates.md` (`Queued`)
   - `docs/context/backlog/p3-broader-boundary-escape-coverage.md` (`Queued`)
