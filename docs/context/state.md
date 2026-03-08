@@ -29,4 +29,6 @@ The packaged downstream CI integration is complete and stable, and `main` now al
 - Imported the parked Node discovery work into minimap and kept the recommendation intentionally narrow: do not pursue Node unless the product explicitly accepts the `node-ts-pnpm-single-package-v1` profile.
 - Added parked .NET discovery docs as a stronger-fit second-target candidate, focused on a narrow C# SDK-style profile with deterministic `dotnet` verification and project/package governance.
 - Archived or removed stale process docs that no longer earn their keep in a public repo, including the old simulation, grading, checkpoint, and duplicate board docs.
-- Verification: `./gradlew.bat --no-daemon :kernel:test`, `./gradlew.bat --no-daemon :app:test`, `./gradlew.bat --no-daemon :app:test :kernel:test`, `./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest`, `./gradlew.bat :app:compileJava :app:compileTestJava :kernel:compileJava :kernel:compileTestJava`.
+- Tightened README and public docs wording so the intended agent loop is explicit: boundary changes update IR first, BEAR compiles constraints, then implementation happens inside those constraints.
+- Verification: ./gradlew.bat --no-daemon :kernel:test, ./gradlew.bat --no-daemon :app:test, ./gradlew.bat --no-daemon :app:test :kernel:test, ./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest, ./gradlew.bat :app:compileJava :app:compileTestJava :kernel:compileJava :kernel:compileTestJava.
+

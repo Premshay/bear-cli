@@ -3,8 +3,9 @@
 BEAR is a deterministic governance CLI and CI gate for agentic backend development.
 
 In plain terms:
-- an agent updates code and BEAR IR
-- `bear compile` generates deterministic boundary glue
+- when boundary authority changes, the agent updates BEAR IR first
+- `bear compile` generates deterministic structural constraints from that IR
+- the agent implements code inside those constraints
 - `bear check` verifies repo consistency and covered bypasses
 - `bear pr-check` tells you whether a pull request widened governed boundary authority
 
@@ -115,3 +116,4 @@ If you want the packaged CI and PR-review model used by the demo, continue with:
 
 - [CI_INTEGRATION.md](CI_INTEGRATION.md)
 - [PR_REVIEW.md](PR_REVIEW.md)
+

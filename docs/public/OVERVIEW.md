@@ -8,8 +8,9 @@ The goal is to move trust from intent to machine-checkable gates and explicit go
 
 ## What BEAR does
 
-- **Agent updates** code and IR when boundary authority must change.
-- **BEAR compiles** deterministic wrappers/ports/manifests from IR.
+- **Agent updates IR first** when boundary authority must change.
+- **BEAR compiles** deterministic wrappers, ports, and manifests from that IR.
+- **Agent updates code inside those constraints** instead of widening structure implicitly.
 - **BEAR checks** repo state for drift and covered boundary bypasses.
 - **BEAR governs PR deltas** with explicit boundary-expansion classification.
 
@@ -38,3 +39,4 @@ The agent updates IR as needed; developers review resulting governance signals.
 - [PR_REVIEW.md](PR_REVIEW.md)
 - [CI_INTEGRATION.md](CI_INTEGRATION.md) for the packaged downstream CI pattern and GitHub Actions usage
 - [FOUNDATIONS.md](FOUNDATIONS.md) for full mechanics
+

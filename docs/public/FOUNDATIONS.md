@@ -19,11 +19,12 @@ BEAR exists to make boundary authority changes explicit, enforceable, and CI-vis
 ## Intended Workflow Loop
 
 Agent loop:
-1. Update implementation + IR from domain intent.
+1. Update IR first when domain intent changes boundary authority.
 2. Run `bear validate`.
-3. Run `bear compile` or `bear fix`.
-4. Run `bear check --collect=all --agent` until `status=ok`.
-5. Run `bear pr-check --base <ref> --collect=all --agent` for governance classification.
+3. Run `bear compile` or `bear fix` to materialize the governed structural constraints.
+4. Update implementation inside those constraints.
+5. Run `bear check --collect=all --agent` until `status=ok`.
+6. Run `bear pr-check --base <ref> --collect=all --agent` for governance classification.
 
 Developer role:
 - review explicit boundary signals in PR/CI
@@ -60,3 +61,4 @@ It is intentionally not full behavioral verification or runtime policy enforceme
 - [ENFORCEMENT.md](ENFORCEMENT.md)
 - [PR_REVIEW.md](PR_REVIEW.md)
 - [CONTRACTS.md](CONTRACTS.md)
+

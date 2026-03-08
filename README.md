@@ -1,30 +1,41 @@
-# BEAR (bear-cli)
+# BEAR
+
+Block Enforceable Architectural Representation
 
 <p align="center">
   <img src="assets/logo/bear-header-1400x320-clean.png" alt="BEAR logo" width="100%" />
 </p>
 
-BEAR is a deterministic governance CLI and CI gate for agentic backend development.
+Agents can generate large amounts of code very quickly.
+The dangerous changes are often structural: new dependencies, widened boundaries, and new authority surfaces.
 
-You edit code plus BEAR IR, then BEAR reports stable, machine-parseable signals: either green, or a precise failure with a remediation hint.
+BEAR makes those architectural changes explicit and visible in CI.
+
+BEAR is a deterministic governance CLI and CI gate for agent-driven backend development.
+
+Demo repo: [bear-account-demo](https://github.com/rore/bear-account-demo)
+
+When boundary authority changes, the agent updates BEAR IR first, BEAR compiles deterministic structural constraints, and then implementation code fits inside those constraints.
+The result is a stable, machine-parseable governance signal: either green, or a precise failure with a remediation hint.
 
 ```mermaid
 %% id: bear-workflow-v1
 flowchart LR
-  A[Agent / Dev edits code]:::actor --> B[Edit BEAR IR file]:::ir
+  A[Agent / Dev identifies boundary change]:::actor --> B[Update BEAR IR]:::ir
   B --> C[bear compile]:::cmd
-  C --> D[Generate boundary glue]:::gen
-  D --> E[bear check]:::cmd
-  E --> F{CI green?}:::gate
-  F -- yes --> G[Merge]:::ok
-  F -- no --> H[Fix code or IR]:::bad
+  C --> D[Generate structural constraints]:::gen
+  D --> E[Agent / Dev implements inside constraints]:::actor
+  E --> F[bear check]:::cmd
+  F --> G{CI green?}:::gate
+  G -- yes --> H[Merge]:::ok
+  G -- no --> I[Fix code or IR]:::bad
 
-  I[bear pr-check]:::cmd --> J{Boundary delta in PR?}:::gate
-  J -- none --> F
-  J -- expansion/bypass --> H
+  J[bear pr-check]:::cmd --> K{Boundary delta in PR?}:::gate
+  K -- none --> G
+  K -- expansion/bypass --> I
 
-  E -. emits .-> S1[[CI contract output:<br/>exit code + CODE/PATH/REMEDIATION]]:::signal
-  I -. emits .-> S2[[PR output:<br/>pr-delta + verdict + footer]]:::signal
+  F -. emits .-> S1[[CI contract output:<br/>exit code + CODE/PATH/REMEDIATION]]:::signal
+  J -. emits .-> S2[[PR output:<br/>pr-delta + verdict + footer]]:::signal
 
   classDef actor fill:#EEF2FF,stroke:#6366F1,color:#0B1220;
   classDef ir fill:#FFFBEB,stroke:#F59E0B,color:#0B1220;
@@ -39,11 +50,11 @@ flowchart LR
 
 ## What BEAR does (plain terms)
 
-- An agent updates code and (when needed) a small YAML IR contract (BEAR IR).
+- When boundary authority must change, the agent updates a small YAML IR contract (BEAR IR) first.
 - A block is a governed backend unit; its operations, allowed effects, and ports are declared in BEAR IR.
-- BEAR generates deterministic guardrails (wrappers/ports) from that declaration.
+- BEAR compiles that declaration into deterministic guardrails (wrappers, ports, manifests).
+- The agent then implements code inside those guardrails instead of inventing the boundary shape ad hoc.
 - Blocks interact only through declared ports; cross-boundary access outside a declared port is flagged as a violation (or PR signal).
-- Implementation can evolve freely inside those guardrails.
 - CI gets deterministic governance signals from `check` and `pr-check`.
 
 ## What you get
@@ -157,3 +168,7 @@ The demo currently showcases three PR outcomes:
 - Primary containment enforcement path is Java plus Gradle wrapper when `impl.allowedDeps` is declared.
 
 This project uses [Minimap](https://github.com/rore/minimap) for repo-local roadmap and feature planning.
+
+
+
+

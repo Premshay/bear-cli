@@ -22,10 +22,10 @@ Set-Location ..\bear-account-demo
 .\.bear\tools\bear-cli\bin\bear.bat --help
 ```
 
-3. Let your agent implement the spec.
+3. Let your agent update the IR if boundary authority changes, then implement the code inside the generated constraints.
 
 ```text
-Implement the specs.
+Implement the specs. Update BEAR IR first if the boundary must change.
 ```
 
 4. Compile deterministic generated artifacts.
@@ -107,3 +107,4 @@ If something fails, go to [troubleshooting.md](troubleshooting.md).
 - [ENFORCEMENT.md](ENFORCEMENT.md)
 - [CONTRACTS.md](CONTRACTS.md)
 - [CI_INTEGRATION.md](CI_INTEGRATION.md)
+
