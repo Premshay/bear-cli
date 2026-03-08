@@ -50,7 +50,7 @@ Reference split:
 - `docs/context/roadmap.md`: milestone definitions and done criteria
 - `roadmap/board.md`: live roadmap groups and queue (repo sessions)
 - `roadmap/scope.md`: current roadmap focus narrative
-- `docs/context/program-board.md`: compatibility bridge for older routing
+- `roadmap/features/*.md`: completed and committed roadmap items (repo sessions)
 - `docs/context/ir-spec.md`: canonical IR contract
 
 ---

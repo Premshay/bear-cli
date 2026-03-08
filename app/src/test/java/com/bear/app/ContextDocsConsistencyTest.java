@@ -23,7 +23,6 @@ class ContextDocsConsistencyTest {
         budgets.put("docs/context/CONTEXT_BOOTSTRAP.md", 160);
         budgets.put("docs/context/state.md", 200);
         budgets.put("docs/context/start-here.md", 80);
-        budgets.put("docs/context/program-board.md", 280);
         budgets.put("docs/context/prompt-bootstrap.md", 120);
 
         for (Map.Entry<String, Integer> entry : budgets.entrySet()) {
@@ -68,16 +67,15 @@ class ContextDocsConsistencyTest {
         assertTrue(bootstrap.contains("docs/context/state.md"));
         assertTrue(bootstrap.contains("roadmap/board.md"));
         assertTrue(bootstrap.contains("roadmap/scope.md"));
-        assertTrue(bootstrap.contains("docs/context/program-board.md"));
+        assertTrue(bootstrap.contains("roadmap/features/*.md"));
         assertTrue(bootstrap.contains("docs/context/roadmap.md"));
         assertTrue(bootstrap.contains("docs/context/ir-spec.md"));
         assertTrue(bootstrap.contains("docs/context/governance.md"));
         assertTrue(bootstrap.contains("docs/context/safety-rules.md"));
         assertTrue(bootstrap.contains("docs/context/user-guide.md"));
-        assertTrue(bootstrap.contains("docs/context/demo-agent-simulation.md"));
-        assertTrue(bootstrap.contains("docs/context/bear-run-grading-rubric.md"));
         assertTrue(bootstrap.contains("docs/context/prompt-bootstrap.md"));
         assertTrue(bootstrap.contains("docs/context/project-log.md"));
+        assertTrue(bootstrap.contains("docs/context/archive/archive-readme.md"));
     }
 
     @Test
@@ -91,8 +89,8 @@ class ContextDocsConsistencyTest {
                 repoRoot.resolve("docs/context/start-here.md"),
                 StandardCharsets.UTF_8
         );
-        String simulation = Files.readString(
-                repoRoot.resolve("docs/context/demo-agent-simulation.md"),
+        String archiveReadme = Files.readString(
+                repoRoot.resolve("docs/context/archive/archive-readme.md"),
                 StandardCharsets.UTF_8
         );
         String safety = Files.readString(
@@ -106,7 +104,7 @@ class ContextDocsConsistencyTest {
         assertTrue(bootstrap.contains("use targeted/method-level tests during edits when possible"));
         assertTrue(bootstrap.contains("run full `:app:test :kernel:test` only on explicit `full verify`"));
         assertTrue(startHere.contains("## Session Close Protocol"));
-        assertTrue(simulation.contains("BEAR run grade:"));
+        assertTrue(archiveReadme.contains("archive-state-history.md"));
         assertTrue(safety.contains("Never run recursive delete"));
     }
 
@@ -140,14 +138,15 @@ class ContextDocsConsistencyTest {
 
         assertTrue(map.contains("Session handoff protocol"));
         assertTrue(map.contains("Milestone status and ordered queue"));
+        assertTrue(map.contains("Completed roadmap history"));
         assertTrue(map.contains("Milestone definitions and done criteria"));
         assertTrue(map.contains("IR schema/normalization/semantic rule"));
         assertTrue(map.contains("Governance diff classification and enforcement intent"));
         assertTrue(map.contains("Safety cleanup/deletion guardrails"));
-        assertTrue(map.contains("Demo simulation protocol and grading rubric"));
         assertTrue(map.contains("Operator command/failure guidance"));
         assertTrue(map.contains("Architecture scope lock and non-goals"));
         assertTrue(map.contains("Historical rationale trail"));
+        assertTrue(map.contains("Archive policy and retained history"));
     }
 
     private static void assertNoBannedPattern(Path path, List<Pattern> banned) {

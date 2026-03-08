@@ -18,7 +18,6 @@ Session hygiene:
 - Keep `docs/context/state.md` within `ContextDocsConsistencyTest` budgets; if `Session Notes` approaches/exceeds cap, move oldest notes to `docs/context/archive/archive-state-history.md` and keep only recent operational notes in `state.md`.
 - Keep `docs/context/state.md` focused on BEAR development handoff only; do not use it to store local tool, sandbox, editor, or terminal-diagnostics history unless that behavior changes BEAR development workflow.
 - Update `roadmap/board.md`, `roadmap/scope.md`, and the relevant `roadmap/features/*.md` or `roadmap/ideas/*.md` files when roadmap status, ordering, or parked-item state changes.
-- Keep `docs/context/program-board.md` as a thin compatibility bridge only; do not reintroduce a second live board there.
 - Update `docs/context/project-log.md` only for major architectural shifts/decisions.
 - Before ending a session, follow `docs/context/start-here.md` -> `Session Close Protocol`.
 - Exception: routine demo cleanup/reset operations do not require `docs/context/state.md` updates unless cleanup policy/process changed.
@@ -45,7 +44,7 @@ For roadmap planning and roadmap file updates in the minimap workspace, follow `
 Treat `roadmap/` as the canonical live planning surface for humans and agents:
 - `roadmap/board.md`: group names and canonical item order
 - `roadmap/scope.md`: current roadmap focus narrative
-- `roadmap/features/*.md`: committed or active roadmap work
+- `roadmap/features/*.md`: committed, active, and completed roadmap work
 - `roadmap/ideas/*.md`: parked or uncommitted roadmap ideas
 
 Keep `docs/context/roadmap.md` for milestone definitions and scope guardrails, not live queue ownership.

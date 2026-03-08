@@ -4,7 +4,7 @@ This file defines milestone feature contracts and done criteria.
 Live roadmap planning now lives in minimap:
 - `roadmap/board.md`: canonical live groups and item order
 - `roadmap/scope.md`: canonical current-focus narrative
-- `roadmap/features/*.md`: committed or active roadmap items
+- `roadmap/features/*.md`: committed, active, and completed roadmap items
 - `roadmap/ideas/*.md`: parked or uncommitted roadmap items
 
 Detailed feature specs still live under `docs/context/backlog/`.
@@ -17,7 +17,7 @@ Long-horizon idea families that are not yet minimap items still live in `docs/co
 2. `roadmap/board.md` + `roadmap/scope.md`:
 - canonical live planning state and execution order
 3. `roadmap/features/*.md` and `roadmap/ideas/*.md`:
-- minimap item summaries for committed and parked work
+- minimap item summaries for completed, active, committed, and parked work
 4. `docs/context/backlog/*.md`:
 - detailed feature specs and locked contracts
 5. `docs/context/future.md`:
@@ -70,7 +70,7 @@ Preview definition of done:
 
 ## Live Planning Note
 
-Do not duplicate live queue ordering or parked-item state in this file.
+Do not duplicate live queue ordering, parked-item state, or completed-item summaries in this file.
 When the roadmap changes:
 1. update the owning minimap item file under `roadmap/features/` or `roadmap/ideas/`
 2. update `roadmap/board.md` if grouping or order changed

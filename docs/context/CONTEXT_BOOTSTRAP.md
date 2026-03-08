@@ -10,8 +10,8 @@ Purpose:
 2. `docs/context/state.md` is current-window handoff only.
 3. `roadmap/board.md` is the canonical live roadmap board.
 4. `roadmap/scope.md` is the canonical near-term roadmap narrative.
-5. `docs/context/roadmap.md` is milestone definitions/done criteria.
-6. `docs/context/program-board.md` is a thin compatibility bridge pointing back to minimap.
+5. `roadmap/features/*.md` and `roadmap/ideas/*.md` are the canonical item files.
+6. `docs/context/roadmap.md` is milestone definitions and done criteria.
 7. `docs/context/ir-spec.md` is canonical IR contract.
 8. `docs/context/governance.md` is canonical diff-class policy.
 9. Completion evidence expects both local gates:
@@ -35,27 +35,21 @@ Load by intent:
 - `roadmap/board.md`
 3. Current roadmap focus narrative:
 - `roadmap/scope.md`
-4. Milestone status bridge and compatibility routing:
-- `docs/context/program-board.md`
-5. Milestone definitions and done criteria:
+4. Milestone definitions and done criteria:
 - `docs/context/roadmap.md`
-6. IR schema, validation, normalization, semantic constraints:
+5. IR schema, validation, normalization, semantic constraints:
 - `docs/context/ir-spec.md`
-7. Governance classification policy:
+6. Governance classification policy:
 - `docs/context/governance.md`
-8. Architecture guarantees and scope lock:
+7. Architecture guarantees and scope lock:
 - `docs/context/architecture.md`
-9. Operator command and failure handling:
+8. Operator command and failure handling:
 - `docs/context/user-guide.md`
-10. Safety rules before cleanup/delete operations:
+9. Safety rules before cleanup/delete operations:
 - `docs/context/safety-rules.md`
-11. Demo simulation protocol and grading rubric:
-- `docs/context/demo-agent-simulation.md`
-12. Reusable BEAR run grading rubric (cross-run consistency):
-- `docs/context/bear-run-grading-rubric.md`
-13. Non-repo chat bootstrap prompt:
+10. Non-repo chat bootstrap prompt:
 - `docs/context/prompt-bootstrap.md`
-14. Historical rationale:
+11. Historical rationale and archive policy:
 - `docs/context/project-log.md`
 - `docs/context/archive/archive-readme.md`
 
@@ -65,8 +59,8 @@ Load by intent:
 - short current-window handoff only
 2. `roadmap/board.md` + `roadmap/scope.md`:
 - canonical live roadmap ordering and focus
-3. `docs/context/program-board.md`:
-- thin compatibility bridge for older routing and tests
+3. `roadmap/features/*.md` + `roadmap/ideas/*.md`:
+- canonical item summaries for completed, active, and parked work
 4. `docs/context/roadmap.md`:
 - milestone feature contracts and done criteria
 5. `docs/context/ir-spec.md`:

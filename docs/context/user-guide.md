@@ -445,13 +445,15 @@ Why both:
 - local `pr-check --all` gives fast governance feedback before CI.
 - CI `pr-check` remains the authoritative remote enforcement gate.
 
-## Demo simulation references
+## Run evaluation references
 
-Use `docs/context/demo-agent-simulation.md` for canonical isolated-agent simulation instructions (fresh session, demo-only context, branch-under-test metadata, mandatory BEAR analysis, and run grading/readiness rubric).
+The old simulation-specific runbook and grading docs have been retired from active context.
 
-Run-evaluation policy:
-- the BEAR run grading model in `docs/context/demo-agent-simulation.md` is also the default rubric for any run review (including non-simulated runs and user-provided transcripts).
-- run completion/accounting expects the same mechanically-checkable `GOVERNANCE_SIGNAL_DISPOSITION` block used in simulation runs.
+Run-evaluation policy still expects:
+- the same mechanically-checkable `GOVERNANCE_SIGNAL_DISPOSITION` block used in prior evaluations
+- deterministic gate evidence from `check --all` and `pr-check --all`
+
+For historical evaluation examples, use `docs/context/archive/archive-state-history.md`.
 
 `scripts/run-demo-simulated.ps1` is prep/smoke automation only:
 - clean demo
@@ -459,3 +461,4 @@ Run-evaluation policy:
 - optional compile/check/pr-check smoke
 
 It is not a substitute for a true isolated agent reasoning session.
+

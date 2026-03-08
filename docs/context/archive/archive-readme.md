@@ -1,17 +1,18 @@
 # Archive Index
 
-This folder stores superseded planning/state files kept for traceability.
+This folder stores the small amount of historical context we still keep in-repo.
+It is intentionally slim.
 
-| Original path | Archived path | Reason | Canonical replacement |
-| --- | --- | --- | --- |
-| `docs/context/roadmap-v0.md` | `docs/context/archive/archive-roadmap-v0.md` | Roadmap consolidation into one active roadmap, later replaced by minimap for live queue ownership. | `docs/context/roadmap.md` + `roadmap/board.md` + `roadmap/scope.md` |
-| `docs/context/state.md` (historical long-form content) | `docs/context/archive/archive-state-history.md` | Session handoff file was compacted to current-window state only. | `docs/context/state.md` + `roadmap/board.md` + `roadmap/scope.md` |
-| `docs/context/state.md` (pre-compaction snapshot on 2026-02-25) | `docs/context/archive/archive-state-history.md` | No-loss context compaction during bootstrap routing refactor. | `docs/context/CONTEXT_BOOTSTRAP.md` + `docs/context/state.md` |
+## Retained Archive Files
 
-Notes:
-- Archived text may reference retired BEAR package file names from pre-hard-cut layouts:
-  - `.bear/agent/BEAR_AGENT.md` -> `.bear/agent/BOOTSTRAP.md`
-  - `.bear/agent/WORKFLOW.md` -> `.bear/agent/CONTRACTS.md` + `.bear/agent/TROUBLESHOOTING.md` + `.bear/agent/REPORTING.md`
-  - `.bear/agent/doc/IR_QUICKREF.md` and `.bear/agent/doc/IR_EXAMPLES.md` -> `.bear/agent/ref/IR_REFERENCE.md`
-- `docs/context/roadmap-v0.md` has been fully retired; use the archived copy if historical review is needed.
-- Archived files are read-only references and should not be used as active planning sources.
+| Path | Purpose | Canonical active replacement |
+| --- | --- | --- |
+| `docs/context/archive/archive-state-history.md` | Old long-form session notes and handoff history that no longer belongs in `state.md`. | `docs/context/state.md` + `roadmap/board.md` + `roadmap/scope.md` |
+
+## Archive Policy
+
+1. Keep only archive files that still add real historical value beyond normal git history.
+2. Do not use archive files as active planning or routing sources.
+3. Put live roadmap state in minimap under `roadmap/`.
+4. Put milestone definitions in `docs/context/roadmap.md`.
+5. Prefer deleting obsolete process/checkpoint docs when git history already preserves them well enough.

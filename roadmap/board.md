@@ -16,6 +16,10 @@
 - future-optional-scalar-inputs
 - p1-preview-closure-gaps
 
-# Recently Completed
-- p3-target-adaptable-cli-preparation
+# Completed
+- p2-bear-fix-generated-only
+- p2-generated-structural-tests
+- p2-declared-allowed-deps-containment
+- p2-boundary-regression-suite
 - p2-ci-boundary-governance-and-telemetry
+- p3-target-adaptable-cli-preparation
