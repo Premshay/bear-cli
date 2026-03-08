@@ -56,6 +56,32 @@ Priority:
 
 If no base SHA can be resolved, `pr-check` is not run and the wrapper fails closed.
 
+## Demo Pattern In GitHub
+
+The companion demo repo shows the intended GitHub usage pattern:
+
+- demo repo: [bear-account-demo](https://github.com/rore/bear-account-demo)
+- demo guide: [DEMO.md](DEMO.md)
+
+That pattern is:
+
+1. checkout with full history
+2. set up Java
+3. run `bear compile --all --project .`
+4. run `.bear/ci/bear-gates.sh --mode observe`
+5. upload `bear-ci-report.json` and `bear-ci-summary.md`
+6. publish a sticky PR comment summarizing the BEAR decision
+
+In that setup:
+- `PASS` means the PR is structurally clean
+- `REVIEW REQUIRED` means BEAR detected intentional governance expansion, but the CI lane stays non-blocking
+- `FAIL` means the PR has a real blocking BEAR problem
+
+The PR target branch defines the comparison base in CI. In the demo, that is what makes these two cases differ cleanly:
+
+- greenfield baseline review against `main` -> `REVIEW REQUIRED`
+- ordinary feature extension against `baseline/greenfield-output` -> `PASS`
+
 ## Allow File And Allow Entry Candidate
 
 Path:
@@ -193,6 +219,9 @@ Canonical sample workflow:
 Ubuntu runner (`observe`, recommended for review UX):
 
 ```yaml
+- name: Generate BEAR artifacts
+  run: ./.bear/tools/bear-cli/bin/bear compile --all --project .
+
 - name: BEAR CI governance
   run: ./.bear/ci/bear-gates.sh --mode observe
 ```
@@ -200,6 +229,9 @@ Ubuntu runner (`observe`, recommended for review UX):
 Ubuntu runner (`enforce`):
 
 ```yaml
+- name: Generate BEAR artifacts
+  run: ./.bear/tools/bear-cli/bin/bear compile --all --project .
+
 - name: BEAR CI governance (enforce)
   run: ./.bear/ci/bear-gates.sh --mode enforce
 ```
@@ -215,8 +247,10 @@ Windows runner (`enforce`):
 The sample workflow shows the intended GitHub pattern:
 - checkout with full history so BEAR base resolution has the expected git context
 - set up Java before invoking the vendored BEAR wrapper
+- compile generated artifacts before running governance so `check` evaluates repo state rather than stale generated output
 - run `.bear/ci/bear-gates.sh --mode observe` when you want governance-review PRs to stay non-blocking but visible
 - upload `build/bear/ci/bear-ci-report.json` and `build/bear/ci/bear-ci-summary.md` as artifacts
+- optionally publish a sticky PR comment using the report + summary files, as the demo repo does
 
 Runtime note:
 - `bear-gates.sh` is a thin bash launcher that requires `pwsh`
@@ -225,6 +259,7 @@ Runtime note:
 
 ## Related
 
+- [DEMO.md](DEMO.md)
 - [INSTALL.md](INSTALL.md)
 - [QUICKSTART.md](QUICKSTART.md)
 - [PR_REVIEW.md](PR_REVIEW.md)

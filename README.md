@@ -120,12 +120,26 @@ Local sanity (base is self):
 .\.bear\tools\bear-cli\bin\bear.bat pr-check --all --project . --base HEAD
 ```
 
-In a real PR/CI flow, set `--base` to the merge-base target (for example `origin/main`).
+In a real PR/CI flow, set `--base` to the target branch or merge-base target.
+
+## See The Live Demo
+
+The companion demo repo shows BEAR in the actual review flow, not only as local commands:
+
+- Demo repo: [bear-account-demo](https://github.com/rore/bear-account-demo)
+- Demo guide: [docs/public/DEMO.md](docs/public/DEMO.md)
+
+The demo currently showcases three PR outcomes:
+
+- greenfield baseline review -> `REVIEW REQUIRED`
+- ordinary feature extension -> `PASS`
+- intentional expansion on existing code -> `REVIEW REQUIRED`
 
 ## Links
 
 - Start here: [docs/public/INDEX.md](docs/public/INDEX.md)
 - Quickstart: [docs/public/QUICKSTART.md](docs/public/QUICKSTART.md)
+- Demo walkthrough: [docs/public/DEMO.md](docs/public/DEMO.md)
 - PR/CI review: [docs/public/PR_REVIEW.md](docs/public/PR_REVIEW.md)
 - Guarantees and non-goals: [docs/public/ENFORCEMENT.md](docs/public/ENFORCEMENT.md)
 - Automation/reference contracts: [docs/public/CONTRACTS.md](docs/public/CONTRACTS.md)
@@ -134,9 +148,3 @@ In a real PR/CI flow, set `--base` to the merge-base target (for example `origin
 
 - JVM/Java target in Preview.
 - Primary containment enforcement path is Java plus Gradle wrapper when `impl.allowedDeps` is declared.
-
-
-
-
-
-

@@ -2,13 +2,14 @@
 
 These docs are split into two lanes: a default guide path for humans and a reference path for automation/parsers.
 
-## Guide (Start Here: 3 pages)
+## Guide (Start Here: 4 pages)
 
 1. [OVERVIEW.md](OVERVIEW.md) - what BEAR is trying to validate and why it exists.
 2. [QUICKSTART.md](QUICKSTART.md) - first successful local run.
-3. [PR_REVIEW.md](PR_REVIEW.md) - how to interpret `check`/`pr-check` outcomes in PR/CI.
+3. [DEMO.md](DEMO.md) - what the live demo repo and showcase PRs are proving.
+4. [PR_REVIEW.md](PR_REVIEW.md) - how to interpret `check`/`pr-check` outcomes in PR/CI.
 
-If you are adopting BEAR in a real CI workflow, continue with [CI_INTEGRATION.md](CI_INTEGRATION.md) after QUICKSTART.
+If you are adopting BEAR in a real CI workflow, continue with [CI_INTEGRATION.md](CI_INTEGRATION.md) after QUICKSTART or DEMO.
 
 ## Guide (Optional)
 

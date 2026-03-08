@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   governance:
@@ -25,8 +27,69 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Generate BEAR artifacts
+        run: ./.bear/tools/bear-cli/bin/bear compile --all --project .
+
       - name: Run BEAR governance
         run: ./.bear/ci/bear-gates.sh --mode observe
+
+      - name: Publish BEAR PR summary
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- bear-ci-governance -->';
+            const reportPath = 'build/bear/ci/bear-ci-report.json';
+            const summaryPath = 'build/bear/ci/bear-ci-summary.md';
+
+            let body = `${marker}\n## BEAR CI\n\nBEAR did not produce its expected CI report. Check the workflow logs.`;
+            if (fs.existsSync(reportPath) && fs.existsSync(summaryPath)) {
+              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+              const summary = fs.readFileSync(summaryPath, 'utf8').trim();
+              const decision = String(report.decision || 'unknown').toUpperCase().replace(/-/g, ' ');
+              const mode = report.mode || 'unknown';
+              const baseSha = report.resolvedBaseSha || 'unknown';
+              body = [
+                marker,
+                '## BEAR CI',
+                '',
+                `- Decision: \`${decision}\``,
+                `- Mode: \`${mode}\``,
+                `- Base SHA: \`${baseSha}\``,
+                '',
+                '<details><summary>BEAR summary</summary>',
+                '',
+                summary,
+                '',
+                '</details>'
+              ].join('\n');
+            }
+
+            const pr = context.payload.pull_request;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              per_page: 100
+            });
+
+            const existing = comments.find((comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body
+              });
+            }
 
       - name: Upload BEAR CI report
         if: always()

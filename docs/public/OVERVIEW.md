@@ -34,6 +34,7 @@ The agent updates IR as needed; developers review resulting governance signals.
 ## Read next
 
 - [QUICKSTART.md](QUICKSTART.md)
+- [DEMO.md](DEMO.md) for the live showcase repo and PR examples
 - [PR_REVIEW.md](PR_REVIEW.md)
 - [CI_INTEGRATION.md](CI_INTEGRATION.md) for the packaged downstream CI pattern and GitHub Actions usage
 - [FOUNDATIONS.md](FOUNDATIONS.md) for full mechanics

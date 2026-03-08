@@ -1,6 +1,6 @@
 # Quickstart
 
-This quickstart runs BEAR on the demo repo with the minimal command path.
+This quickstart runs BEAR on the demo repo with the minimal local command path.
 
 Prerequisites:
 
@@ -51,14 +51,27 @@ Expected outcome: all selected blocks pass and summary `EXIT_CODE: 0`.
 ```
 
 Expected outcome: `pr-check: OK: NO_BOUNDARY_EXPANSION` and exit `0`.
-For real PR/CI, set `--base` to the target merge base (for example `origin/main`).
+For real PR/CI, set `--base` to the target branch or merge-base target.
 
 7. Run the packaged CI wrapper.
 
 ```powershell
 .\.bear\ci\bear-gates.ps1 --mode observe --base-sha HEAD
 ```
+
 Expected outcome: summary lines on stdout, `build/bear/ci/bear-ci-report.json`, and `build/bear/ci/bear-ci-summary.md` for downstream CI audit and GitHub step-summary routing.
+
+## What This Does Not Show
+
+The quickstart proves the local command path only.
+
+The full review story lives in the companion demo repo, where BEAR is shown in actual pull requests with:
+
+- `PASS` for ordinary governed evolution
+- `REVIEW REQUIRED` for intentional boundary expansion
+- sticky PR comment plus uploaded CI artifacts in GitHub Actions
+
+See [DEMO.md](DEMO.md) for that walkthrough.
 
 For the packaged downstream CI pattern, allow-file approval flow, and copyable GitHub Actions usage, continue with [CI_INTEGRATION.md](CI_INTEGRATION.md).
 
@@ -89,7 +102,9 @@ If something fails, go to [troubleshooting.md](troubleshooting.md).
 ## Related
 
 - [OVERVIEW.md](OVERVIEW.md)
+- [DEMO.md](DEMO.md)
 - [PR_REVIEW.md](PR_REVIEW.md)
 - [ENFORCEMENT.md](ENFORCEMENT.md)
 - [CONTRACTS.md](CONTRACTS.md)
 - [CI_INTEGRATION.md](CI_INTEGRATION.md)
+

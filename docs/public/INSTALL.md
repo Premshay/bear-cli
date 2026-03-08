@@ -92,12 +92,13 @@ Use `--all` only when your repo has `bear.blocks.yaml`:
 If no block index exists yet, run single-block check:
 
 ```powershell
-.\.bear\tools\bear-cli\bin\bear.bat check spec\<block>.bear.yaml --project .
+.\.bear\tools\bear-cli\bin\bear.bat check bear-ir\<block>.bear.yaml --project .
 ```
 
 ## Related
 
 - [OVERVIEW.md](OVERVIEW.md)
+- [DEMO.md](DEMO.md)
 - [QUICKSTART.md](QUICKSTART.md)
 - [PR_REVIEW.md](PR_REVIEW.md)
 - [CI_INTEGRATION.md](CI_INTEGRATION.md)

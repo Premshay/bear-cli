@@ -47,6 +47,21 @@ When a downstream repo uses the packaged wrapper (`.bear/ci/bear-gates.*`), CI a
 - in `observe`, boundary expansion is surfaced as `DECISION=review-required` so review-needed governance does not look like a clean pass
 - the same facts are also written to `build/bear/ci/bear-ci-summary.md` for GitHub check and PR review surfaces
 
+## What The Demo PRs Show
+
+The companion demo repo is the easiest place to see these review states in GitHub:
+
+- demo repo: [bear-account-demo](https://github.com/rore/bear-account-demo)
+- demo guide: [DEMO.md](DEMO.md)
+
+The showcase PRs intentionally demonstrate three different review outcomes:
+
+- greenfield baseline review -> `REVIEW REQUIRED`
+- ordinary feature extension -> `PASS`
+- intentional expansion on existing code -> `REVIEW REQUIRED`
+
+That is the intended review split: BEAR stays quiet on ordinary governed evolution and becomes visible only when governance review or real failure is needed.
+
 ## How to interpret `pr-check`
 
 ### `exit 0`: no boundary expansion detected
@@ -70,6 +85,8 @@ Action:
 - accept (with intent) or revert
 - if your CI wrapper printed `ALLOW_ENTRY_CANDIDATE:`, copy that exact entry into `.bear/ci/baseline-allow.json` only after review approval
 
+In wrapper `observe` mode, this should normally surface to reviewers as `REVIEW REQUIRED`, not as a clean pass and not as a blocking failure.
+
 ### `exit 7`: boundary bypass detected
 This is not "a policy disagreement"; it is a structural bypass signal.
 
@@ -89,4 +106,3 @@ Action:
 - Full `pr-check` contract: [commands-pr-check.md](commands-pr-check.md)
 - Downstream wrapper/report contract: [CI_INTEGRATION.md](CI_INTEGRATION.md)
 - Governance policy (normative, maintainer doc): [docs/context/governance.md](../context/governance.md)
-
