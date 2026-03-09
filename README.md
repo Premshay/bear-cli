@@ -9,15 +9,26 @@ Block Enforceable Architectural Representation
 Agents can generate large amounts of code very quickly.
 The dangerous changes are often structural: new dependencies, widened boundaries, and new authority surfaces.
 
-BEAR makes those architectural changes explicit and visible in CI.
-
-BEAR is a deterministic governance CLI and CI gate for agent-driven backend development.
+BEAR is a deterministic governance CLI and CI gate that makes those structural changes explicit and visible in CI.
 
 Demo repo: [bear-account-demo](https://github.com/rore/bear-account-demo)
 
-When boundary authority changes, the agent updates BEAR IR first, BEAR compiles deterministic structural constraints, and then implementation code fits inside those constraints.
-The result is a stable, machine-parseable governance signal: either green, or a precise failure with a remediation hint.
+## How BEAR works (10 seconds)
 
+1. The agent updates BEAR IR when boundary authority must change.
+2. `bear compile` materializes deterministic structural constraints from that IR.
+3. The agent implements code inside those constraints.
+4. `check` and `pr-check` surface drift, bypass, and boundary expansion in CI.
+
+## Example governance signal
+
+```text
+BEAR Decision: REVIEW REQUIRED
+MODE=observe DECISION=review-required BASE=<target-base>
+
+CHECK exit=0 code=- classes=[CI_NO_STRUCTURAL_CHANGE]
+PR-CHECK exit=5 code=BOUNDARY_EXPANSION classes=[CI_BOUNDARY_EXPANSION]
+```
 ```mermaid
 %% id: bear-workflow-v1
 flowchart LR
@@ -112,10 +123,10 @@ macOS/Linux (bash/zsh):
 ./.bear/tools/bear-cli/bin/bear --help
 ```
 
-3. Let your agent implement specs.
+3. Let your agent update IR first if boundary authority changes, then implement the specs inside the generated constraints.
 
 ```text
-Implement the specs.
+Implement the specs. Update BEAR IR first if the boundary must change.
 ```
 
 4. Compile deterministic generated artifacts.
