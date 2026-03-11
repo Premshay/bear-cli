@@ -19,6 +19,53 @@ interface, JVM-identical exit behavior, and no IR schema changes.
 
 ---
 
+## Target + Analyzer Two-Seam Model
+
+To keep core governance deterministic as targets grow, use two explicit seams:
+
+1. `Target` (runtime/toolchain profile owner)
+2. `AnalyzerProvider` (evidence extraction owner)
+
+`Target` remains responsible for:
+- detection and target ambiguity resolution
+- generated artifact layout and compile/wiring lifecycle
+- governed-root definition
+- project verification command execution
+- mapping findings into BEAR governance lanes and exit semantics
+
+`AnalyzerProvider` is responsible for:
+- import/dependency edge extraction
+- symbol ownership and cross-boundary reference evidence
+- locator extraction (`file/module/symbol/span`)
+- optional call/reference graph evidence where supported
+
+This split keeps BEAR as the policy engine while allowing simple analyzers first and richer
+analyzers later.
+
+### `AnalyzerProvider` interface draft
+
+```
+interface AnalyzerProvider {
+  analyzerId(): AnalyzerId
+  supports(targetId, governanceProfile): boolean
+  collectEvidence(projectRoot, governedRoots, options): EvidenceBundle
+}
+```
+
+```
+interface EvidenceBundle {
+  imports: List<ImportEdge>
+  dependencies: List<DependencyEdge>
+  ownership: List<OwnershipFact>
+  references: List<ReferenceEdge>           // optional
+  findings: List<AnalyzerFinding>           // analyzer-native observations
+}
+```
+
+`Target` consumes `EvidenceBundle` and maps it deterministically into BEAR checks/findings.
+
+---
+
 ## Anchoring Constraint: What Must Not Change
 
 Before any per-target spec, the constraints that every implementation must satisfy:
@@ -92,6 +139,55 @@ Detection ambiguity behavior:
 - if multiple detectors match with equal confidence → fail `exit 64`, `CODE=TARGET_AMBIGUOUS`
 - pin file `.bear/target.id` (content: exactly `jvm`, `node`, `python`, or `react`) overrides
   detection; invalid pin content → fail `exit 2` using validation semantics
+
+---
+
+## Target vs Governance Profile
+
+Do not encode governance shape solely in target identity.
+
+Model:
+- `target`: runtime/toolchain and ecosystem (`jvm`, `node`, `python`, `react`)
+- `profile`: governance contract for project shape
+
+Initial profile examples:
+- `target=node`, `profile=backend-service`
+- `target=python`, `profile=service`
+- `target=react`, `profile=feature-ui`
+
+Benefits:
+- keeps language/runtime concerns separate from governance intent
+- allows multiple governance shapes within one language over time
+- avoids forcing frontend feature-boundary policy into backend-oriented assumptions
+
+---
+
+## Canonical Locator Schema (Required Before Deeper Evidence)
+
+Every finding must carry both:
+1. stable human-readable `PATH=...`
+2. structured `locator` object (internal canonical form)
+
+Canonical locator shape:
+```
+locator:
+  repository: <repoRootId>
+  project: <projectOrPackageId>
+  module: <repoRelativeFilePath>
+  symbol:
+    kind: function|class|method|component|module|unknown
+    name: <symbolName|null>
+  span:
+    startLine: <int|null>
+    startColumn: <int|null>
+    endLine: <int|null>
+    endColumn: <int|null>
+```
+
+Normalization rules:
+- file paths are repo-relative and slash-normalized
+- missing symbol/span information is explicit `null`, never inferred silently
+- locator ordering in output remains deterministic
 
 ---
 
@@ -342,6 +438,20 @@ REMEDIATION=Remove impl.allowedDeps for python target; block-level dependency al
   - `mypy` not installed → `ProjectTestStatus.TOOL_MISSING` → `exit 74`
   - timeout → `ProjectTestStatus.TIMEOUT` → `exit 4`
 
+### Scope guardrail (do not overclaim)
+
+Python first slice is intentionally limited to:
+- governed-root imports
+- dangerous power-surface detection
+- lock-file and dependency-delta governance
+- advisory installed-package scan
+- explicit opaque native-extension gap
+
+Out of scope in first slice:
+- deep runtime behavior proofs
+- complete transitive semantic reach proofs
+- reliable analysis of native or dynamically generated behavior
+
 ---
 
 ## React / TypeScript Frontend Target Spec
@@ -419,6 +529,10 @@ Enforced by `ReactApiBoundaryScanner` (implements `TargetCheck`, `PARTIAL` statu
   declared service files within each feature block, mapping to BEAR's "port" concept
 - status is `PARTIAL`: only the most direct call patterns are detected
 
+React emphasis:
+- primary enforcement units are module/feature ownership boundaries and service access boundaries
+- function/component-level evidence is supplementary and should not become the primary contract
+
 ### Dependency governance (pr-check)
 
 `ReactPrCheckContributor`:
@@ -443,19 +557,23 @@ Same as Node: `impl.allowedDeps` → `exit 64`, `CODE=UNSUPPORTED_TARGET`.
 
 ```
 Phase 0:  Contract freeze — regression harness for JVM byte-identical behavior (already done)
-Phase 1:  NodeTarget — scan-only (import containment + drift)              [see full spec above]
-Phase 2:  NodeTarget — undeclared reach (covered Node built-ins)
-Phase 3:  NodeTarget — dependency governance (pr-check)
-Phase 4:  NodeTarget — project verification (pnpm exec tsc --noEmit)
-Phase 5:  NodeTarget — agent docs overlay
-Phase 6:  DotnetTarget — separate initiative (future-target-adaptable-cli-dotnet.md)
-Phase 7:  PythonTarget — scan-only (import containment + drift)
-Phase 8:  PythonTarget — undeclared reach + dynamic import blocking
-Phase 9:  PythonTarget — site-packages scan (pr-check advisory)
-Phase 10: PythonTarget — dependency governance (pr-check)
-Phase 11: PythonTarget — project verification (mypy --strict)
-Phase 12: PythonTarget — agent docs overlay
-Phase 13: ReactTarget — only after explicit product decision + at least one backend target proven
+Phase 1:  Finalize canonical locator schema (PATH + structured locator)
+Phase 2:  Finalize target/profile separation contract
+Phase 3:  Add AnalyzerProvider SPI with simple/native analyzers
+Phase 4:  NodeTarget — scan-only (import containment + drift)              [see full spec above]
+Phase 5:  NodeTarget — undeclared reach (covered Node built-ins)
+Phase 6:  NodeTarget — dependency governance (pr-check)
+Phase 7:  NodeTarget — project verification (pnpm exec tsc --noEmit)
+Phase 8:  NodeTarget — agent docs overlay
+Phase 9:  DotnetTarget — separate initiative (future-target-adaptable-cli-dotnet.md)
+Phase 10: PythonTarget — scan-only (import containment + drift)
+Phase 11: PythonTarget — undeclared reach + dynamic import blocking
+Phase 12: PythonTarget — site-packages scan (pr-check advisory)
+Phase 13: PythonTarget — dependency governance (pr-check)
+Phase 14: PythonTarget — project verification (mypy --strict)
+Phase 15: PythonTarget — agent docs overlay
+Phase 16: ReactTarget — feature-boundary profile first; only after explicit product decision and
+          at least one non-JVM backend target is proven
 ```
 
 ### What stays the same across all phases
@@ -508,6 +626,17 @@ target-agnostic even though the enforcement is target-specific**.
 
 ---
 
+## Advisory `bear ir-suggest` (Future, Non-Authoritative)
+
+A future `bear ir-suggest` command may be useful for multi-target bootstrap:
+- emits draft IR and boundary suggestions with confidence and supporting evidence
+- never promotes inferred structure to authoritative governance automatically
+- requires explicit human or agent acceptance before IR becomes canonical
+
+This preserves BEAR's declared-governance model while still helping bootstrap new targets.
+
+---
+
 ## Spec Review Checklist
 
 Before any new target implementation begins, confirm:
@@ -521,3 +650,6 @@ Before any new target implementation begins, confirm:
 - [ ] Project verification command, timeout policy, and failure mapping are fully specified
 - [ ] Agent/branch workflow section is present in the profile doc
 - [ ] `.bear/target.id` pin value for the new target is registered in the target registry
+- [ ] Target/profile contract is defined for the target
+- [ ] Canonical locator mapping exists for all target findings
+- [ ] AnalyzerProvider implementation strategy is defined (simple/native first)
