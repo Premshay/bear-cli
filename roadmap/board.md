@@ -9,6 +9,8 @@
 - p3-optional-deterministic-policy-hooks
 
 # Ideas
+- future-multi-target-expansion-plan
+- future-multi-target-spec-design
 - future-spec-to-bear-ir-lowering
 - future-target-adaptable-cli-node
 - future-node-containment-profile
