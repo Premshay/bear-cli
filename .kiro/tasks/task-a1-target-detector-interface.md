@@ -27,7 +27,9 @@ None (first task)
 2. Create `DetectedTarget.java` in `kernel/src/main/java/com/bear/kernel/target/`:
    - Record or class with fields: `TargetId targetId`, `DetectionStatus status`, `String reason`
    - `DetectionStatus` enum: `SUPPORTED`, `UNSUPPORTED`, `NONE`
+   - `UNSUPPORTED` results carry an ecosystem family identifier (initially the same as `TargetId`) to enable the resolution pipeline to scope blocking to related ecosystems only
    - Factory methods: `supported(TargetId, String reason)`, `unsupported(TargetId, String reason)`, `none()`
+   - Update factory method: `unsupported(TargetId targetId, String reason)` implicitly uses `targetId` as the ecosystem family
 
 3. Create `TargetPinFile.java` in `kernel/src/main/java/com/bear/kernel/target/`:
    - `static Optional<TargetId> read(Path bearDir)` -- reads `.bear/target.id`

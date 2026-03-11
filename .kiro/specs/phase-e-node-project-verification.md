@@ -71,9 +71,25 @@ record ProjectTestResult(
     String lastObservedTask
 )
 ```
-Some fields are JVM-specific (cacheMode, fallbackToUserCache, firstLockLine, etc.).
-The Node runner should populate these as null/empty/false where not applicable, or
-`ProjectTestResult` may need a builder pattern or subclass to handle target-specific fields.
+**ProjectTestResult Target-Neutrality Prerequisite**:
+
+Several `ProjectTestResult` fields are JVM-specific: `firstLockLine`, `firstBootstrapLine`,
+`firstSharedDepsViolationLine`, `cacheMode`, `fallbackToUserCache`, `phase`, `lastObservedTask`.
+Before the Node runner lands, one of the following strategies must be chosen:
+
+- **Option A: Accept target-neutral nulls as v1 compromise.** Node runner populates JVM-specific
+  fields as `null`/`false`. This is the fastest path and acceptable if `ProjectTestResult`
+  consumers already handle nulls gracefully. Document this as an intentional v1 compromise,
+  not an oversight. Add a `@DesignDebt("v1-target-neutral-nulls")` annotation or comment to
+  `ProjectTestResult` to track the compromise.
+
+- **Option B: Add a lightweight builder/wrapper.** Introduce `ProjectTestResultBuilder` that
+  sets target-common fields (`status`, `output`, `attemptTrail`) and leaves target-specific
+  fields with safe defaults. Each target provides a static factory:
+  `ProjectTestResult.forNode(status, output)`, `ProjectTestResult.forJvm(status, output, ...jvmFields)`.
+
+Decision must be made before Task E1 implementation begins. Either option is acceptable for v1;
+the key requirement is that the choice is explicit and documented.
 
 **Constraints**:
 - If `pnpm` is unavailable, fail deterministically with existing usage or IO semantics rather
@@ -90,7 +106,8 @@ The Node runner should populate these as null/empty/false where not applicable, 
 - AC-E1.3: Missing `pnpm` maps to `ProjectTestStatus.TOOL_MISSING` and exit `74`
 - AC-E1.4: Timeout maps to `ProjectTestStatus.TIMEOUT` and exit `4`
 - AC-E1.5: Diagnostic output includes relevant tsc error lines (last N lines of stderr)
-- AC-E1.6: `ProjectTestResult` is populated with appropriate values for all fields
+- AC-E1.6: `ProjectTestResult` is populated using the chosen target-neutrality strategy
+  (Option A or Option B, decided before implementation)
 - AC-E1.7: Runner integrates into the check pipeline and replaces the Phase B "SKIPPED" output
 
 ## Python Forward Compatibility

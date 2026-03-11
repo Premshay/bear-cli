@@ -21,13 +21,26 @@ Phase B: Node Target - Scan Only
 1. Create `NodeImportContainmentScanner.java` in `kernel/src/main/java/com/bear/kernel/target/node/`:
    - Takes governed roots and block root paths as input
    - Scans all `.ts` files in governed roots
+   - Orchestrates three helper classes: `NodeImportSpecifierExtractor`, `NodeDynamicImportDetector`, and `NodeImportBoundaryResolver`
 
-2. Implement TypeScript import specifier extraction:
-   - Parse `import ... from 'specifier'` statements
-   - Parse `export ... from 'specifier'` statements
-   - Parse `import 'specifier'` (side-effect imports)
-   - Extract the specifier string from each import/export statement
-   - Use line-by-line scanning or simple regex (no full TS parser needed)
+2a. Create `NodeImportSpecifierExtractor.java` (helper class or inner class):
+    - Parse `import ... from 'specifier'` statements
+    - Parse `export ... from 'specifier'` statements
+    - Parse `import 'specifier'` (side-effect imports)
+    - Extract the specifier string from each import/export statement
+    - Use line-by-line scanning or simple regex (no full TS parser needed)
+    - Return a list of extracted specifiers with source file and line number
+
+2b. Create `NodeDynamicImportDetector.java` (helper class or inner class):
+    - Detect `import(...)` dynamic import expressions
+    - Return detection-only findings (these cannot be statically resolved)
+    - Separate from static import extraction to keep concerns isolated
+
+2c. Create `NodeImportBoundaryResolver.java` (helper class or inner class):
+    - Takes a resolved specifier path and the governed-root topology
+    - Classifies the resolved path: same-block (PASS), _shared (PASS), BEAR-generated (PASS),
+      sibling-block (FAIL), nongoverned (FAIL), escaped (FAIL)
+    - Returns the boundary decision for each resolved import
 
 3. Implement specifier classification:
    - **Relative specifier** (starts with `./` or `../`): resolve lexically against importing file
@@ -67,6 +80,9 @@ Phase B: Node Target - Scan Only
 
 ## Outputs
 - `kernel/src/main/java/com/bear/kernel/target/node/NodeImportContainmentScanner.java`
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeImportSpecifierExtractor.java`
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeDynamicImportDetector.java`
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeImportBoundaryResolver.java`
 - Modified `kernel/src/main/java/com/bear/kernel/target/node/NodeTarget.java` (wire scanner)
 - Test files with TypeScript fixture files
 

@@ -40,10 +40,17 @@ Phase A: Architecture Prerequisites
    - Static factory: `empty()` returning bundle with all empty lists
    - Builder pattern or static factory for convenient construction
 
+5a. Create `AnalyzerCapabilities.java`:
+    - Record with boolean fields: `supportsImports`, `supportsDependencies`, `supportsOwnership`,
+      `supportsSymbols`, `supportsSpans`, `supportsReferences`
+    - Static factory: `all()` returning all-true capabilities
+    - Static factory: `none()` returning all-false capabilities
+
 6. Create `AnalyzerProvider.java` interface:
    ```java
    public interface AnalyzerProvider {
        AnalyzerId analyzerId();
+       AnalyzerCapabilities capabilities();
        boolean supports(TargetId targetId, GovernanceProfile profile);
        EvidenceBundle collectEvidence(Path projectRoot, List<Path> governedRoots, AnalysisOptions options);
    }
@@ -54,6 +61,8 @@ Phase A: Architecture Prerequisites
    - EvidenceBundle with populated lists
    - ImportEdge, DependencyEdge, OwnershipFact construction
    - AnalyzerId equality
+   - `AnalyzerCapabilities.all()` returns all true
+   - `AnalyzerCapabilities.none()` returns all false
    - Verify all types are draft-only: no integration with Target or command pipeline
 
 ## Outputs
@@ -61,6 +70,7 @@ Phase A: Architecture Prerequisites
 - `kernel/src/main/java/com/bear/kernel/target/analyzer/AnalyzerId.java`
 - `kernel/src/main/java/com/bear/kernel/target/analyzer/AnalysisOptions.java`
 - `kernel/src/main/java/com/bear/kernel/target/analyzer/EvidenceBundle.java`
+- `kernel/src/main/java/com/bear/kernel/target/analyzer/AnalyzerCapabilities.java`
 - `kernel/src/main/java/com/bear/kernel/target/analyzer/ImportEdge.java`
 - `kernel/src/main/java/com/bear/kernel/target/analyzer/DependencyEdge.java`
 - `kernel/src/main/java/com/bear/kernel/target/analyzer/OwnershipFact.java`
@@ -75,6 +85,7 @@ Phase A: Architecture Prerequisites
 - No existing code paths are modified (all additive)
 - A test can construct an EvidenceBundle, add edges, and read them back
 - Types use CanonicalLocator from Task A3 where applicable
+- AC-A5.6: AnalyzerCapabilities record compiles with all six boolean capability flags and factory methods
 
 ## Estimated Effort
 1-2 hours

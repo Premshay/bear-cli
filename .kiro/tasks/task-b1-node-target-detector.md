@@ -41,6 +41,13 @@ Phase B: Node Target - Scan Only
    - pnpm-workspace.yaml present -> UNSUPPORTED
    - JVM project (build.gradle but no package.json) -> NONE
 
+## First-Slice Scope Documentation
+
+Add class-level Javadoc to `NodeTargetDetector.java` documenting:
+- This is a first-slice detector covering ESM + pnpm + TypeScript projects only
+- Intentional exclusions: CJS (NONE), npm (NONE), yarn (NONE), bun (NONE), workspaces (UNSUPPORTED), no TypeScript (NONE)
+- Future slices may broaden detection to additional project shapes
+
 ## Outputs
 - `kernel/src/main/java/com/bear/kernel/target/node/NodeTargetDetector.java`
 - Test file for NodeTargetDetector
