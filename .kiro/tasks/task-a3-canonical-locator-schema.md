@@ -34,6 +34,17 @@ None (independent of A1/A2, can be done in parallel)
    - `symbol` and `span` are nullable
    - Override `toString()` for deterministic human-readable output
 
+5a. Add `identityKey()` method to `CanonicalLocator`:
+    - If `symbol.name` is non-null: return `module + ":" + symbol.kind + ":" + symbol.name`
+    - If `symbol.name` is null but span is non-null: return `module + ":" + span.startLine`
+    - If both null: return `module`
+    - This provides a stable merge key across formatting-only edits
+
+5b. Add deterministic fallback naming helpers:
+    - `static String anonymousName(String module, int startLine)` returning `"<anonymous@" + module + ":" + startLine + ">"`
+    - `static String defaultExportName(String module)` returning `"<default@" + module + ">"`
+    - These are used when constructing locators for unnamed symbols
+
 6. Add optional `CanonicalLocator` to existing finding types (backward-compatible):
    - Option A: Add new constructors to existing records that accept an optional locator
    - Option B: Create extended versions (e.g., `LocatedUndeclaredReachFinding`) wrapping originals
@@ -46,6 +57,9 @@ None (independent of A1/A2, can be done in parallel)
    - LocatorSpan with all-null fields
    - Deterministic toString output
    - File path normalization (backslash to forward slash)
+   - `identityKey()` with symbol name returns module:kind:name
+   - `identityKey()` with null name falls back to module:startLine
+   - `anonymousName()` and `defaultExportName()` produce deterministic strings
 
 ## Outputs
 - `kernel/src/main/java/com/bear/kernel/target/locator/CanonicalLocator.java`

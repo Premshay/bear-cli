@@ -32,7 +32,9 @@ Phase A: Architecture Prerequisites
    6. Exactly one SUPPORTED: return that target
    7. Zero SUPPORTED: throw TargetResolutionException (exit 64, TARGET_NOT_DETECTED)
    8. Multiple SUPPORTED without pin: throw TargetResolutionException (exit 64, TARGET_AMBIGUOUS)
-   9. Any UNSUPPORTED blocks resolution (unless pin overrides)
+   9. If any UNSUPPORTED result shares the same ecosystem family as a SUPPORTED result,
+      block that SUPPORTED resolution (exit 64, remediation for unsupported shape)
+  10. UNSUPPORTED results from unrelated ecosystem families are silently ignored
    ```
 
 3. Create `TargetResolutionException.java` for structured error reporting:
@@ -47,6 +49,7 @@ Phase A: Architecture Prerequisites
    - No detector matches: TargetResolutionException with TARGET_NOT_DETECTED
    - Multiple detectors match: TargetResolutionException with TARGET_AMBIGUOUS
    - Invalid pin file: exception mapped to exit 2
+   - UNSUPPORTED from unrelated ecosystem (e.g., Python workspace) does not block a valid Node SUPPORTED resolution
    - Verify all existing JVM tests still pass unmodified
 
 ## Outputs

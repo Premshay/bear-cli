@@ -44,6 +44,21 @@ supported Node/TypeScript project.
 - `pnpm-workspace.yaml` present -> `UNSUPPORTED` (workspace layout excluded from first slice), exit `64`
 - Any required file absent -> `NONE` (not a Node project)
 
+**First-Slice Scope Limitations**:
+
+This detector implements a *supported first-slice project shape*, not a general Node detector.
+The following project configurations are intentionally out of scope for this slice:
+
+- CJS projects (no `"type": "module"`) -> `NONE`
+- npm-managed projects (no pnpm lockfile) -> `NONE`
+- yarn-managed projects -> `NONE`
+- bun-managed projects -> `NONE`
+- pnpm workspace/monorepo layouts -> `UNSUPPORTED`
+- Projects without TypeScript (no `tsconfig.json`) -> `NONE`
+
+These exclusions are deliberate scope boundaries, not detection gaps. Future slices may broaden
+detection to additional project shapes as the product validates this first slice.
+
 **Design Decisions**:
 - Detection is file-presence based; package.json is parsed minimally for `type` and `packageManager`
 - No version checking in first slice (version-aware detection is a future enhancement)
@@ -185,6 +200,29 @@ in governed TypeScript source files. This is the primary containment mechanism f
 - Bare specifiers are unconditionally blocked from governed roots (simplifies containment)
 - Scanner implements the existing `TargetCheck` pattern or equivalent
 - Finding locator includes the importing file path (repo-relative) and the import specifier
+
+**Concern Separation**:
+
+The scanner must separate three distinct concerns into separate helper methods or classes to
+prevent the scanner from growing into a monolithic do-everything class (a pattern already
+observed in JVM target code):
+
+1. **Import specifier extraction** (`NodeImportSpecifierExtractor`): Responsible for parsing
+   TypeScript source lines and extracting import/export specifiers. Handles static
+   `import ... from`, `export ... from`, side-effect `import`, and (detection-only) dynamic
+   `import()` expressions. Returns a list of extracted specifiers with source locations.
+
+2. **Dynamic import detection** (`NodeDynamicImportDetector`): Responsible for identifying
+   `import()` expressions that cannot be resolved statically. These are flagged separately
+   from static imports and may produce advisory findings in future phases.
+
+3. **Path resolution and boundary decision** (`NodeImportBoundaryResolver`): Responsible for
+   classifying a resolved specifier against the governed-root topology. Takes a resolved path
+   and determines: same-block (PASS), `_shared` (PASS), BEAR-generated (PASS), sibling-block
+   (FAIL), nongoverned (FAIL), escaped (FAIL).
+
+The top-level `NodeImportContainmentScanner` orchestrates these three helpers. This separation
+keeps each concern testable in isolation and prevents coupling as Node analysis expands.
 
 **New Files**:
 - `kernel/.../target/node/NodeImportContainmentScanner.java`

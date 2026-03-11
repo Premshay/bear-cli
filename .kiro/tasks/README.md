@@ -49,9 +49,13 @@ A1 ──┬── A2 ──── B2 ──┬── B3 ──┬── B5
      └── A4 ──── A5
 
 A3 (independent, can run at any point)
+P0 (independent, can run at any point)
 ```
 
-## Total: 16 tasks across 5 phases
+### Phase P: Python Planning (no implementation, scope-locking only)
+- **Task P0**: Python Scope and Detector Planning (independent, can run at any point)
+
+## Total: 17 tasks across 6 phases
 
 | Phase | Tasks | Estimated Total |
 |---|---|---|
@@ -60,4 +64,5 @@ A3 (independent, can run at any point)
 | C: Node Undeclared Reach | C1, C2 | 2-3 hours |
 | D: Node Dependency Governance | D1 | 2 hours |
 | E: Node Project Verification | E1 | 1-2 hours |
-| **Total** | **16 tasks** | **18-26 hours** |
+| P: Python Planning | P0 | 1 hour |
+| **Total** | **17 tasks** | **19-27 hours** |

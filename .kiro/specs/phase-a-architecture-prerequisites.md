@@ -89,8 +89,17 @@ with a detection-based resolution pipeline that supports multiple registered det
   4. Exactly one `SUPPORTED` result -> use that target
   5. Zero `SUPPORTED` results -> fail exit `64`, `CODE=TARGET_NOT_DETECTED`
   6. Multiple `SUPPORTED` results -> fail exit `64`, `CODE=TARGET_AMBIGUOUS`
-  7. Any `UNSUPPORTED` result blocks resolution even if another detector returns `SUPPORTED`,
-     unless `.bear/target.id` pin explicitly overrides
+  7. If any `UNSUPPORTED` result shares the same ecosystem family as a `SUPPORTED` result,
+     that `UNSUPPORTED` blocks the `SUPPORTED` resolution -- fail exit `64` with actionable
+     remediation explaining the unsupported project shape within that ecosystem
+  8. `UNSUPPORTED` results from unrelated ecosystem families are ignored during resolution
+     (e.g., a Python workspace-layout `UNSUPPORTED` does not block a valid Node `SUPPORTED`)
+
+**Rationale**: In polyglot or partially migrated repos, an unrelated `UNSUPPORTED` detector
+must not block a valid resolution. Only `UNSUPPORTED` results from the same ecosystem family
+as a `SUPPORTED` result are blocking. This prevents a repo with one valid target plus some
+unrelated unsupported layout marker from failing unnecessarily.
+
 - `TargetRegistry` constructor takes `List<TargetDetector>` in addition to `Map<TargetId, Target>`
 - JVM-only projects must continue to resolve identically (byte-identical behavior)
 
@@ -146,6 +155,26 @@ and future analyzer integration across all targets.
 - Missing symbol/span information is explicit null, never inferred silently
 - Locator ordering in output remains deterministic
 - Existing finding types gain an optional `CanonicalLocator` field (backward-compatible)
+
+**Identity and Stability Semantics**:
+
+Before coding, the following identity rules must be defined:
+
+- **Formatting stability**: Locator identity is stable across formatting-only edits (whitespace
+  changes, trailing comma insertion, import reordering). The `module` field (file path) anchors
+  identity; `span` fields may shift but do not change locator identity.
+- **Symbol vs span identity**: When a symbol name is available (named function, class, method),
+  symbol identity (`module` + `symbol.kind` + `symbol.name`) is preferred over span identity.
+  Span identity is the fallback only when no symbol name is available (anonymous functions,
+  default exports, inline expressions).
+- **Repository and project in monorepos**: `repository` identifies the VCS root (repo-root-relative).
+  `project` identifies the package/module boundary within that root (e.g., a workspace package
+  name or the single root package). In single-package repos, `project` equals the root package
+  identifier.
+- **Deterministic fallback naming**: Anonymous or default-export cases use deterministic
+  fallback names: `<anonymous@module:startLine>` for anonymous functions/classes,
+  `<default@module>` for default exports without a local name. These fallback names are stable
+  as long as the span does not move.
 
 **New Types**:
 - `kernel/.../target/locator/CanonicalLocator.java` -- top-level locator record
@@ -224,6 +253,28 @@ No integration with Target or check pipeline in this phase.
 - Target consumes EvidenceBundle and maps it deterministically into BEAR checks/findings
 - These are draft types -- compile and unit-test, but do not wire into any command path yet
 
+**Capability Flags**:
+
+Each `AnalyzerProvider` must declare its capabilities via explicit boolean flags so BEAR can
+query what evidence types an analyzer honestly provides:
+
+- `supportsImports` -- analyzer can extract import edges
+- `supportsDependencies` -- analyzer can extract dependency edges
+- `supportsOwnership` -- analyzer can extract ownership facts
+- `supportsSymbols` -- analyzer can extract symbol-level locators
+- `supportsSpans` -- analyzer can extract span-level locators
+- `supportsReferences` -- analyzer can extract cross-boundary reference edges
+
+Capability flags are declared at registration time and must not change between calls.
+
+BEAR uses these flags to:
+- Skip evidence bundle fields the analyzer cannot populate (avoid false absence signals)
+- Select the most capable analyzer when multiple analyzers support the same target
+- Provide accurate diagnostic messages when required evidence is unavailable
+
+This is essential for Python AST work (which supports imports/symbols/spans but not
+dependencies from source alone) and for future finer-grained analyzer scopes.
+
 **New Types**:
 - `kernel/.../target/analyzer/AnalyzerProvider.java` -- interface
 - `kernel/.../target/analyzer/AnalyzerId.java` -- value type
@@ -241,6 +292,43 @@ No integration with Target or check pipeline in this phase.
 - AC-A5.3: All evidence edge types (`ImportEdge`, `DependencyEdge`, `OwnershipFact`) compile
 - AC-A5.4: No existing code paths are modified -- these are additive draft types only
 - AC-A5.5: A simple unit test can construct an `EvidenceBundle` and read back its contents
+
+## Evidence-to-Finding Mapping
+
+This section defines the canonical mapping from analyzer evidence types to BEAR governance
+findings. All targets must follow these semantics to prevent targets from inventing different
+finding interpretations.
+
+| Evidence Pattern | Finding Type | Exit Code | Locator |
+|---|---|---|---|
+| Import edge crosses ownership boundary (source in block A, target in block B or unowned) | `BOUNDARY_BYPASS` | `6` | Importing file at import statement span |
+| Import edge targets a covered built-in module and governing block does not declare the effect | `UNDECLARED_REACH` | `6` | Import statement span |
+| Dynamic loader/eval pattern detected (`importlib.import_module()`, `import()`, `eval()`, `exec()`) | `BOUNDARY_BYPASS` (PARTIAL confidence) | `6` | Call site span |
+| Manifest/lockfile dependency addition detected in `pr-check` | `BOUNDARY_EXPANDING` | `5` | Manifest file at changed line span |
+
+**Detailed semantics**:
+
+- **Import edges + ownership facts -> containment finding**: When an `ImportEdge` crosses an
+  `OwnershipFact` boundary (source module owned by block A imports a target module owned by
+  block B or unowned), the finding is `BOUNDARY_BYPASS` (exit `6`). The locator is the
+  importing file at the import statement span.
+
+- **Covered built-ins -> undeclared reach finding**: When an `ImportEdge` targets a module on
+  the covered-built-in list and the governing block does not declare the corresponding effect
+  in `effects.allow`, the finding is `UNDECLARED_REACH` (exit `6`). The locator is the import
+  statement.
+
+- **Dynamic loader patterns -> bypass finding**: When the analyzer detects a dynamic
+  import/load/eval pattern (e.g., `importlib.import_module()`, `import()`, `eval()`,
+  `exec()`), the finding is `BOUNDARY_BYPASS` with a `PARTIAL` confidence qualifier. The
+  locator is the call site.
+
+- **Manifest/lockfile deltas -> boundary-expanding finding**: When `pr-check` detects
+  dependency additions in manifest or lockfile, the finding is `BOUNDARY_EXPANDING` (exit `5`).
+  The locator is the manifest file at the changed line span.
+
+Targets may produce additional target-specific findings, but these four mappings are the shared
+semantic foundation that all targets must implement consistently.
 
 ## Python Forward Compatibility
 
