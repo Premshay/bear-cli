@@ -50,6 +50,31 @@ BEAR's governance model rests on three properties:
 For JVM, all three properties are strongly enforceable. For non-JVM targets, the honest answer
 is that property strength varies by target and must be stated without overclaiming.
 
+## Cross-Target Architecture Gap to Address Before New Targets
+
+The current docs describe expansion mostly as adding more `Target` implementations. That is
+necessary, but not sufficient for long-term robustness once BEAR needs function/symbol-level
+evidence, richer dependency edges, and optional graph-backed analysis.
+
+Recommendation:
+- keep `Target` responsible for target lifecycle concerns:
+  - detection
+  - generated artifact layout
+  - governed roots
+  - project verification execution
+  - mapping target findings to BEAR governance lanes
+- add a second seam (`AnalyzerProvider` / `EvidenceProvider`) responsible for evidence extraction:
+  - import and dependency edges
+  - symbol ownership
+  - locator-level evidence (`file/module/symbol/span`)
+  - optional call/reference graph where available
+
+Why this is the right split:
+- BEAR remains the deterministic governance engine
+- ecosystem analyzers remain modular and replaceable
+- simple/native analyzers can ship first, richer analyzers can follow without core rewrites
+- future graph-backed evidence can be integrated without coupling BEAR to one analysis stack early
+
 ---
 
 ## Target: .NET / C#
@@ -281,17 +306,18 @@ The honest React first slice (if pursued) is:
 JVM (done) → Node backend → .NET backend → Python backend → React frontend (last)
 ```
 
-Rationale:
-1. **Node first**: target seam already built; most complete implementation plan exists; TypeScript
-   static module system is the closest non-JVM approximation to Java import-boundary enforcement;
-   same backend governance thesis
-2. **.NET second**: stronger static project/package structure than Node; `PackageReference` model
-   maps well to block-level governance; likely supports stronger containment story than Node if
-   done correctly; good proof that BEAR is a multi-language governance layer, not a JVM tool
-3. **Python third**: viable but weaker due to dynamic import system; three-layer solution closes
-   the key gaps honestly; requires a phased implementation plan to be written first
-4. **React last**: different product direction; weakest containment; requires explicit product
-   decision to pursue
+Rationale with architecture gating:
+1. **Architecture gate first**: finalize shared locator model, target/profile separation, and
+   analyzer/evidence seam before landing additional targets
+2. **Node first implementation**: target seam already built; most complete implementation plan
+   exists; TypeScript static module system is the closest non-JVM approximation to Java
+   import-boundary enforcement
+3. **.NET second implementation**: stronger static project/package structure than Node;
+   `PackageReference` model maps well to governance and strengthens the non-JVM backend proof
+4. **Python third implementation**: viable but weaker due to dynamic import and native-extension
+   gaps; should stay narrow and honest
+5. **React last implementation**: different product direction; weakest containment; requires
+   explicit product decision and feature-boundary-first governance profile
 
 ### Shared architecture decisions (all three targets)
 
@@ -304,6 +330,24 @@ All three targets must:
 - map all findings to the existing exit codes and `CODE/PATH/REMEDIATION` envelope
 - leave IR v1 schema unchanged — no `target:` field, no per-target IR additions
 - preserve JVM behavior byte-identical throughout; all non-JVM work lands behind the seam
+- separate target identity from governance profile identity:
+  - target examples: `node`, `python`, `react`
+  - profile examples: `backend-service`, `service`, `feature-ui`
+  - selection model: `target=<runtime/toolchain>`, `profile=<governance-shape>`
+
+### Canonical locator/scope model (cross-target requirement)
+
+Before deeper multi-target evidence work, define one canonical locator model shared by all
+findings:
+- repository
+- package/project
+- module/file
+- symbol (function/class/component)
+- block/span
+
+Every finding should carry:
+- stable human-readable `PATH=...` for CLI and CI output
+- structured locator payload internally for deterministic merging and future analyzer integration
 
 ---
 
