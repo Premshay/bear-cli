@@ -266,8 +266,10 @@ Gap:
   power surfaces, giving governed code indirect reach that BEAR's source-file scan cannot see
 
 Static `site-packages` scan (partial coverage, honest bounds):
-- when a virtual environment is present (`.venv/lib/pythonX.Y/site-packages/`), BEAR can run a
-  one-pass static scan of the `.py` files belonging to each installed package
+- when a virtual environment is present (for example `.venv/lib/pythonX.Y/site-packages/` on
+  POSIX or `.venv/Lib/site-packages/` on Windows), BEAR locates the environment's configured
+  `purelib`/`platlib` `site-packages` paths rather than assuming a single hard-coded layout, and
+  runs a one-pass static scan of the `.py` files belonging to each installed package
 - the scan applies the same covered power-surface rules used for governed roots:
   `socket`, `http`, `urllib`, `subprocess`, `multiprocessing`, `os.system`/`os.popen` patterns
 - the output is a **dependency power-surface report**: a list of installed packages that directly
@@ -410,7 +412,7 @@ enforcement guarantees the language and tooling cannot provide.
 | Imports from sibling blocks or nongoverned repo code | `ENFORCED` | Fail as boundary bypass. |
 | Third-party package imports from governed roots | `ENFORCED` | Fail as boundary bypass; no first-slice third-party package usage inside governed roots. |
 | Covered built-in imports (`socket`, `http`, `urllib`, `subprocess`, `multiprocessing`) | `ENFORCED` | Fail as undeclared reach. |
-| `os.system`/`os.popen`/`os.exec*` patterns in governed roots | `PARTIAL` | BEAR can flag direct call-site patterns; not all `os` usage is banneable. |
+| `os.system`/`os.popen`/`os.exec*` patterns in governed roots | `PARTIAL` | BEAR can flag direct call-site patterns; not all `os` usage is bannable. |
 | Repo-level dependency graph deltas (`pyproject.toml`, lock file) | `ENFORCED` | `pr-check` surfaces them as reviewable boundary expansion. |
 | Dynamic import (`importlib.import_module`, `__import__`, `sys.path` mutation) in governed roots | `PARTIAL` | BEAR can block direct usage in governed files, but not all runtime indirection outside that scope. |
 | Installed-package power-surface scan (`site-packages` pure-Python source scan) | `PARTIAL` | BEAR surfaces which installed packages directly or transitively (up to depth limit) reach covered power surfaces; native extension files are `NOT_COVERABLE`. |
