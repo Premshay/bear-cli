@@ -68,7 +68,8 @@ public final class TargetRegistry {
                         "TARGET_PIN_INVALID",
                         bearDir.resolve("target.id").toString(),
                         "Pin file specifies '" + pinnedId.value() + "' but no target is registered for it. "
-                            + "Remove or correct .bear/target.id."
+                            + "Remove or correct .bear/target.id.",
+                        2
                     );
                 }
                 return target;
@@ -78,6 +79,7 @@ public final class TargetRegistry {
                 "TARGET_PIN_INVALID",
                 bearDir.resolve("target.id").toString(),
                 e.getMessage(),
+                2,
                 e
             );
         } catch (java.io.UncheckedIOException e) {
@@ -90,20 +92,16 @@ public final class TargetRegistry {
             );
         }
 
-        // Step 2: If no detectors, resolve only in unambiguous configurations
+        // Step 2: If no detectors, resolve only if exactly one target is registered
         if (detectors.isEmpty()) {
             if (targets.size() == 1) {
                 return targets.values().iterator().next();
             }
-            Target jvmFallback = targets.get(TargetId.JVM);
-            if (jvmFallback != null) {
-                return jvmFallback;
-            }
             throw new TargetResolutionException(
                 "TARGET_NOT_DETECTED",
                 projectRoot.toString(),
-                "No target detectors are configured and automatic resolution is ambiguous. "
-                    + "Either register exactly one target, or add detectors or a .bear/target.id pin file."
+                "No target detectors are configured and multiple targets are registered. "
+                    + "Either register exactly one target, add detectors, or add a .bear/target.id pin file."
             );
         }
 
@@ -133,15 +131,14 @@ public final class TargetRegistry {
             }
         }
 
-        // Step 5: Filter out SUPPORTED results blocked by same-ecosystem-family UNSUPPORTED.
-        // Use ecosystem family instead of TargetId equality so that Node/React can share a family.
+        // Step 5: Filter out SUPPORTED results blocked by same-target UNSUPPORTED.
+        // Currently ecosystem family == TargetId. If ecosystem families diverge from
+        // target IDs in the future, add a TargetId.ecosystemFamily() mapping here.
         List<DetectedTarget> unblocked = new ArrayList<>();
         for (DetectedTarget sup : supported) {
             boolean blocked = false;
-            String supFamily = sup.targetId() != null ? sup.targetId().ecosystemFamily() : null;
             for (DetectedTarget unsup : unsupported) {
-                String unsupFamily = unsup.targetId() != null ? unsup.targetId().ecosystemFamily() : null;
-                if (supFamily != null && supFamily.equals(unsupFamily)) {
+                if (unsup.targetId() != null && unsup.targetId() == sup.targetId()) {
                     blocked = true;
                     break;
                 }
@@ -156,18 +153,10 @@ public final class TargetRegistry {
             // Check if any SUPPORTED results were blocked by same-ecosystem UNSUPPORTED
             if (!supported.isEmpty()) {
                 // Find the UNSUPPORTED result that blocked the SUPPORTED one
-                DetectedTarget blocker = null;
-                for (DetectedTarget sup : supported) {
-                    String supFamily = sup.targetId() != null ? sup.targetId().ecosystemFamily() : null;
-                    for (DetectedTarget unsup : unsupported) {
-                        String unsupFamily = unsup.targetId() != null ? unsup.targetId().ecosystemFamily() : null;
-                        if (supFamily != null && supFamily.equals(unsupFamily)) {
-                            blocker = unsup;
-                            break;
-                        }
-                    }
-                    if (blocker != null) break;
-                }
+                DetectedTarget blocker = unsupported.stream()
+                    .filter(u -> supported.stream().anyMatch(s -> u.targetId() == s.targetId()))
+                    .findFirst()
+                    .orElse(null);
                 String reason = blocker != null ? blocker.reason() : "unsupported project shape";
                 throw new TargetResolutionException(
                     "TARGET_UNSUPPORTED",

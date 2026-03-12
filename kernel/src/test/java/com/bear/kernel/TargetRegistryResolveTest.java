@@ -86,6 +86,7 @@ class TargetRegistryResolveTest {
             () -> registry.resolve(tempDir)
         );
         assertEquals("TARGET_PIN_INVALID", ex.code());
+        assertEquals(2, ex.exitCode());
     }
 
     @Test

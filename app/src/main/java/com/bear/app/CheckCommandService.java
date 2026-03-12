@@ -930,8 +930,8 @@ final class CheckCommandService {
             return checkFailure(
                 e.exitCode(),
                 List.of(e.code() + ": " + e.path()),
+                "TARGET_RESOLUTION",
                 e.code(),
-                e.exitCode(),
                 e.path(),
                 e.remediation(),
                 e.code() + ": " + e.path()

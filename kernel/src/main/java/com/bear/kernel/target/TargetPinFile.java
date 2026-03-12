@@ -21,7 +21,9 @@ public class TargetPinFile {
             // Allow an optional single trailing newline for POSIX-friendly files,
             // but otherwise require the content to be exactly the target token.
             String value;
-            if (content.endsWith("\n")) {
+            if (content.endsWith("\r\n")) {
+                value = content.substring(0, content.length() - 2);
+            } else if (content.endsWith("\n")) {
                 value = content.substring(0, content.length() - 1);
             } else {
                 value = content;
