@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Tasks A2 + A4: Refactor TargetRegistry.resolve() to use detection pipeline, and create GovernanceProfile with Target/Profile separation. A2 depends on A1 (TargetDetector, DetectedTarget, TargetPinFile, JvmTargetDetector). A4 depends on A1 (TargetId). Both modify existing files.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1 - Create GovernanceProfile.java at kernel/src/main/java/com/bear/kernel/target/GovernanceProfile.java as a record with fields: TargetId target, String profileId. Factory method: static GovernanceProfile of(TargetId target, String profileId). Override toString() to return 'target.value()/profileId' format (e.g. 'jvm/backend-service'). Document known future profiles as comments: jvm/backend-service, node/backend-service, python/service, python/service-relaxed, react/feature-ui.",
     "Step 2 - Add default method defaultProfile() to Target.java interface at kernel/src/main/java/com/bear/kernel/target/Target.java: 'default GovernanceProfile defaultProfile() { return GovernanceProfile.of(targetId(), \"default\"); }'. This is a default method so JvmTarget and any other implementations continue to compile without changes initially.",
@@ -31,5 +31,5 @@
     "Compile GovernanceProfileTest.java and TargetRegistryResolveTest.java"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 5 source files (GovernanceProfile.java, TargetResolutionException.java, Target.java, TargetRegistry.java, JvmTarget.java) compile cleanly with javac 17. TargetRegistry required a stub JvmTarget class for isolated compilation since the real JvmTarget transitively depends on SnakeYAML (unavailable in INTEGRATIONS_ONLY). Test files have expected JUnit 5 import errors only -- all project type references resolve correctly. Existing TargetRegistryTest.java backward compatibility preserved via single-arg constructor with empty detectors falling back to JVM target."
 }
