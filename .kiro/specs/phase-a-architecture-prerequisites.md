@@ -17,7 +17,7 @@ Source documents:
 These constraints are frozen and apply to every phase:
 
 1. **IR v1 is the boundary source of truth.** No `target:` field, no per-target IR additions.
-2. **Exit code registry is frozen.** `0`, `2`, `4`, `5`, `6`, `64`, `74` only.
+2. **Exit code registry is frozen.** `0`, `2`, `3`, `4`, `5`, `6`, `7`, `64`, `70`, `74`.
 3. **CODE/PATH/REMEDIATION envelope is frozen.** Last three stderr lines always conform.
 4. **JVM behavior must remain byte-identical.** Non-JVM work arrives behind the Target seam.
 5. **No runtime policy engine additions.** BEAR is a static deterministic governance layer.
@@ -301,16 +301,16 @@ finding interpretations.
 
 | Evidence Pattern | Finding Type | Exit Code | Locator |
 |---|---|---|---|
-| Import edge crosses ownership boundary (source in block A, target in block B or unowned) | `BOUNDARY_BYPASS` | `6` | Importing file at import statement span |
+| Import edge crosses ownership boundary (source in block A, target in block B or unowned) | `BOUNDARY_BYPASS` | `7` | Importing file at import statement span |
 | Import edge targets a covered built-in module and governing block does not declare the effect | `UNDECLARED_REACH` | `6` | Import statement span |
-| Dynamic loader/eval pattern detected (`importlib.import_module()`, `import()`, `eval()`, `exec()`) | `BOUNDARY_BYPASS` (PARTIAL confidence) | `6` | Call site span |
+| Dynamic loader/eval pattern detected (`importlib.import_module()`, `import()`, `eval()`, `exec()`) | `BOUNDARY_BYPASS` (PARTIAL confidence) | `7` | Call site span |
 | Manifest/lockfile dependency addition detected in `pr-check` | `BOUNDARY_EXPANDING` | `5` | Manifest file at changed line span |
 
 **Detailed semantics**:
 
 - **Import edges + ownership facts -> containment finding**: When an `ImportEdge` crosses an
   `OwnershipFact` boundary (source module owned by block A imports a target module owned by
-  block B or unowned), the finding is `BOUNDARY_BYPASS` (exit `6`). The locator is the
+  block B or unowned), the finding is `BOUNDARY_BYPASS` (exit `7`). The locator is the
   importing file at the import statement span.
 
 - **Covered built-ins -> undeclared reach finding**: When an `ImportEdge` targets a module on

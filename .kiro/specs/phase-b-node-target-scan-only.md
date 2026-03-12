@@ -17,7 +17,7 @@ Source documents:
 ## Anchoring Constraints
 
 1. **IR v1 is the boundary source of truth.** No `target:` field, no per-target IR additions.
-2. **Exit code registry is frozen.** `0`, `2`, `4`, `5`, `6`, `64`, `74` only.
+2. **Exit code registry is frozen.** `0`, `2`, `3`, `4`, `5`, `6`, `7`, `64`, `70`, `74`.
 3. **CODE/PATH/REMEDIATION envelope is frozen.** Last three stderr lines always conform.
 4. **JVM behavior must remain byte-identical.** Non-JVM work arrives behind the Target seam.
 5. **No runtime policy engine additions.**
@@ -181,7 +181,7 @@ in governed TypeScript source files. This is the primary containment mechanism f
 **Scanning Rules**:
 - Scan literal `import` and `export ... from` specifiers in governed `.ts` files
 - Resolve relative specifiers lexically against the importing file's location
-- **Fail** (exit `6`, `CODE=BOUNDARY_BYPASS`) when:
+- **Fail** (exit `7`, `CODE=BOUNDARY_BYPASS`) when:
   - Resolved target escapes the block root
   - Resolved target reaches a sibling block root
   - Resolved target reaches nongoverned repo source
@@ -230,9 +230,9 @@ keeps each concern testable in isolation and prevents coupling as Node analysis 
 **Acceptance Criteria**:
 - AC-B5.1: Clean import within same block passes
 - AC-B5.2: Import from `_shared` passes
-- AC-B5.3: Relative import escaping block root fails with exit `6`, `CODE=BOUNDARY_BYPASS`
-- AC-B5.4: Import reaching sibling block fails with exit `6`, `CODE=BOUNDARY_BYPASS`
-- AC-B5.5: Bare package import from governed root fails with exit `6`, `CODE=BOUNDARY_BYPASS`
+- AC-B5.3: Relative import escaping block root fails with exit `7`, `CODE=BOUNDARY_BYPASS`
+- AC-B5.4: Import reaching sibling block fails with exit `7`, `CODE=BOUNDARY_BYPASS`
+- AC-B5.5: Bare package import from governed root fails with exit `7`, `CODE=BOUNDARY_BYPASS`
 - AC-B5.6: `#` alias import fails with `CODE=BOUNDARY_BYPASS`
 - AC-B5.7: Import of BEAR-generated companion passes
 - AC-B5.8: Findings include repo-relative path and import specifier in the locator

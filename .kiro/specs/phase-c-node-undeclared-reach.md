@@ -16,7 +16,7 @@ Source documents:
 ## Anchoring Constraints
 
 1. **IR v1 is the boundary source of truth.** No per-target IR additions.
-2. **Exit code registry is frozen.** `0`, `2`, `4`, `5`, `6`, `64`, `74` only.
+2. **Exit code registry is frozen.** `0`, `2`, `3`, `4`, `5`, `6`, `7`, `64`, `70`, `74`.
 3. **CODE/PATH/REMEDIATION envelope is frozen.**
 4. **JVM behavior must remain byte-identical.**
 5. **No runtime policy engine additions.**
@@ -79,7 +79,7 @@ in governed TypeScript source files as boundary bypass vectors.
 - `module.createRequire(...)` or `createRequire(...)` call
 
 **Failure Envelope**:
-- Exit `6`, `CODE=BOUNDARY_BYPASS`
+- Exit `7`, `CODE=BOUNDARY_BYPASS`
 - Status: `PARTIAL` (BEAR detects direct call-site patterns but cannot trace loader hooks or
   preloaded resolver hooks outside governed roots)
 

@@ -16,7 +16,7 @@ Source documents:
 ## Anchoring Constraints
 
 1. **IR v1 is the boundary source of truth.** No per-target IR additions.
-2. **Exit code registry is frozen.** `0`, `2`, `4`, `5`, `6`, `64`, `74` only.
+2. **Exit code registry is frozen.** `0`, `2`, `3`, `4`, `5`, `6`, `7`, `64`, `70`, `74`.
 3. **CODE/PATH/REMEDIATION envelope is frozen.**
 4. **JVM behavior must remain byte-identical.**
 5. **No runtime policy engine additions.**
