@@ -131,7 +131,7 @@ interface Target {
 `TargetDetector` contract:
 ```
 interface TargetDetector {
-  detect(projectRoot): DetectedTarget { targetId, confidence, reason }
+  detect(projectRoot): DetectedTarget { targetId, status, reason }
 }
 ```
 
@@ -147,8 +147,9 @@ Detectors **must not** silently "best guess" — resolution is deterministic:
   listing recognized ecosystems and required project signals
 - multiple `SUPPORTED` results without a `.bear/target.id` pin → fail `exit 64`,
   `CODE=TARGET_AMBIGUOUS`, with remediation instructing the user to add a pin file
-- any `UNSUPPORTED` result blocks resolution even if another detector returns `SUPPORTED`,
-  unless `.bear/target.id` pin explicitly overrides
+- an `UNSUPPORTED` result blocks resolution only when it shares the same ecosystem family
+  as a `SUPPORTED` result (e.g., a Node UNSUPPORTED blocks a Node SUPPORTED, but does not
+  block a JVM SUPPORTED); `.bear/target.id` pin overrides all detection
 
 **`.bear/target.id` pin semantics:**
 - file content: exactly one of `jvm`, `node`, `python`, `react` (no whitespace, no comments)
@@ -236,7 +237,7 @@ Normalization rules:
 
 ### Detection
 
-`NodeTargetDetector` returns `HIGH` confidence when all of the following are present at
+`NodeTargetDetector` returns `SUPPORTED` when all of the following are present at
 `projectRoot`:
 - `package.json` with `"type": "module"` and `"packageManager": "pnpm@..."` field
 - `pnpm-lock.yaml`
@@ -342,7 +343,7 @@ REMEDIATION=Remove impl.allowedDeps for node target, or switch to JVM target.
 
 ### Detection
 
-`PythonTargetDetector` returns `HIGH` confidence when all of the following are present at
+`PythonTargetDetector` returns `SUPPORTED` when all of the following are present at
 `projectRoot`:
 - `pyproject.toml` with a `[build-system]` table using a PEP 517-compatible backend
 - `uv.lock` or `poetry.lock`
@@ -536,7 +537,7 @@ non-JVM backend target (Node or .NET) is proven.
 
 ### Detection
 
-`ReactTargetDetector` returns `HIGH` confidence when all of the following are present:
+`ReactTargetDetector` returns `SUPPORTED` when all of the following are present:
 - `package.json` with `"type": "module"`, pinned `pnpm` packageManager, and `react`/`react-dom` in
   `dependencies`
 - `pnpm-lock.yaml`
