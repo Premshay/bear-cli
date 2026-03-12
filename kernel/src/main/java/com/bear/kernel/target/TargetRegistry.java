@@ -3,6 +3,7 @@ package com.bear.kernel.target;
 import com.bear.kernel.target.jvm.JvmTarget;
 import com.bear.kernel.target.jvm.JvmTargetDetector;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,11 @@ public final class TargetRegistry {
      */
     public Target resolve(Path projectRoot) {
         Objects.requireNonNull(projectRoot, "projectRoot");
+
+        // Normalize: if a file path was passed (e.g., an IR file), use its parent directory.
+        if (Files.isRegularFile(projectRoot)) {
+            projectRoot = projectRoot.getParent();
+        }
 
         // Step 1: Check for pin file
         Path bearDir = projectRoot.resolve(".bear");

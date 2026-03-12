@@ -14,7 +14,7 @@ public class TargetPinFile {
             return Optional.empty();
         }
         try {
-            String content = Files.readString(pinFile);
+            String content = Files.readString(pinFile, java.nio.charset.StandardCharsets.UTF_8);
             String trimmed = content.trim();
             if (trimmed.isEmpty()) {
                 throw new IllegalArgumentException("target.id file is empty or contains only whitespace");
