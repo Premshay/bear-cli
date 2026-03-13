@@ -46,33 +46,33 @@ public class NodeImportSpecifierExtractor {
         List<ImportSpecifier> specifiers = new ArrayList<>();
 
         // Extract named imports: import { x } from "path"
-        extractPattern(content, IMPORT_NAMED, specifiers, "named");
+        extractPattern(source, content, IMPORT_NAMED, specifiers, "named");
 
         // Extract namespace imports: import * as x from "path"
-        extractPattern(content, IMPORT_NAMESPACE, specifiers, "namespace");
+        extractPattern(source, content, IMPORT_NAMESPACE, specifiers, "namespace");
 
         // Extract default imports: import x from "path"
-        extractPattern(content, IMPORT_DEFAULT, specifiers, "default");
+        extractPattern(source, content, IMPORT_DEFAULT, specifiers, "default");
 
         // Extract side-effect imports: import "path"
-        extractPattern(content, IMPORT_SIDE_EFFECT, specifiers, "side-effect");
+        extractPattern(source, content, IMPORT_SIDE_EFFECT, specifiers, "side-effect");
 
         // Extract named exports: export { x } from "path"
-        extractPattern(content, EXPORT_NAMED, specifiers, "export-named");
+        extractPattern(source, content, EXPORT_NAMED, specifiers, "export-named");
 
         // Extract export * from "path"
-        extractPattern(content, EXPORT_ALL, specifiers, "export-all");
+        extractPattern(source, content, EXPORT_ALL, specifiers, "export-all");
 
         return specifiers;
     }
 
-    private void extractPattern(String content, Pattern pattern, List<ImportSpecifier> specifiers, String kind) {
+    private void extractPattern(String source, String content, Pattern pattern, List<ImportSpecifier> specifiers, String kind) {
         Matcher matcher = pattern.matcher(content);
         while (matcher.find()) {
             int lineNumber = getLineNumber(content, matcher.start());
             int columnNumber = getColumnNumber(content, matcher.start());
             String specifier = matcher.group(matcher.groupCount());
-            specifiers.add(new ImportSpecifier(specifier, lineNumber, columnNumber, kind));
+            specifiers.add(new ImportSpecifier(source, specifier, lineNumber, columnNumber, kind));
         }
     }
 
@@ -100,6 +100,6 @@ public class NodeImportSpecifierExtractor {
     /**
      * Record representing an import/export specifier with location information.
      */
-    public record ImportSpecifier(String specifier, int lineNumber, int columnNumber, String kind) {
+    public record ImportSpecifier(String source, String specifier, int lineNumber, int columnNumber, String kind) {
     }
 }
