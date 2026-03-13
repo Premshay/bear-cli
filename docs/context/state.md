@@ -6,29 +6,26 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-08
+2026-03-13
 
 ## Current Focus
 
-The packaged downstream CI integration is complete and stable, and `main` now also includes the completed JVM-only target-adaptation prep slice plus the follow-on seam cleanup that makes `com.bear.kernel.target` genuinely generic while keeping JVM implementation code under `com.bear.kernel.target.jvm`. The planning workflow now uses minimap under `roadmap/` as the only live planning surface. With the target seam and package ownership cleaned up, the next active product-value feature is broader boundary-escape coverage.
+The `feature/multi-target-expansion` branch implements Phase A (architecture prerequisites A1–A5), Phase B (Node scan-only), and Phase P (Python scan-only) and is open as PR #9 targeting `main`. Before PR #9 can be merged, one committed merge-conflict in `TargetPinFile.java` must be resolved (see Session Notes). PRs #2 and #3 (Phase A prerequisites) are obsolete and should be closed.
 
 ## Next Concrete Task
 
-1. Start `roadmap/features/p3-broader-boundary-escape-coverage.md` as the next execution slice.
-2. Keep the shipped target-seam and CI contracts stable while future multi-target work stays parked behind the prep seam.
-3. Keep `roadmap/board.md`, `roadmap/scope.md`, and minimap item files as the canonical live planning source.
+1. **Close PR #2** (`copilot/implement-phase-a` → `copilot/analyze-code-base`): obsolete — base branch is stale and Phase A is already in `feature/multi-target-expansion`.
+2. **Close PR #3** (`copilot/implement-phase-a` → `feature/multi-target-expansion`): obsolete — `feature/multi-target-expansion` already contains all Phase A work (A1–A5); PR #3 would conflict and add nothing new.
+3. **Fix `TargetPinFile.java` conflict in `feature/multi-target-expansion`**: commit `d3a4fcb65b` (merged via PR #5) left unresolved conflict markers in the file. Resolve by keeping the sequential-strip approach from commit `40bd18f` (strip `\n`, then `\r`), which is the more general and concise fix.
+4. After fixing the conflict, re-run `./gradlew :kernel:test :app:test` to verify PR #9 is green before merging to `main`.
 
 ## Session Notes
 
+- **PR #2 / PR #3 relevance check (2026-03-13)**: Both PRs propose merging branch `copilot/implement-phase-a` (head `841583af`) which branches from `feature/multi-target-expansion` at commit `e5ea94dd97`. The `feature/multi-target-expansion` branch continued independently from that point and now contains Phase A (A1–A5), Phase B (Node), and Phase P (Python) — all of Phase A's content is already present. Neither PR needs to be merged.
+- **Critical bug in `feature/multi-target-expansion`**: `kernel/src/main/java/com/bear/kernel/target/TargetPinFile.java` was committed with Git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) still in the source. This happened when PR #5 (`fix/copilot-review-fixes`) was merged and a TargetPinFile comment fix from commit `40bd18f` conflicted with earlier CRLF handling. The file will not compile in its current state.
 - Completed `P3` target-adaptable CLI preparation as a JVM-only slice: app command orchestration now routes through a kernel-owned `Target` seam via `TargetRegistry`, with no Node behavior, no `.bear/target.id`, and no CLI surface changes.
 - Followed with target-seam package cleanup: generic ownership stays in `com.bear.kernel.target`, JVM-only renderers/scanners and `JvmTarget` live under `com.bear.kernel.target.jvm`, and `Target.java` no longer imports JVM package types.
 - Kept runtime behavior unchanged during the split: target-owned manifest, findings, and project-verification DTOs now sit in the generic package, `TargetRegistry` still resolves `JvmTarget`, and app orchestration consumes only generic seam types.
 - Adopted minimap as the canonical live planning workflow under `roadmap/`; completed roadmap history now lives in minimap item files and `roadmap/board.md`.
 - Removed the redundant `docs/context/backlog` layer by migrating detailed specs into the corresponding minimap item files under `roadmap/features/*.md` and `roadmap/ideas/*.md`.
-- Consolidated the remaining broad future themes into minimap as `roadmap/ideas/future-idea-families.md`, so `docs/context` no longer carries a parallel future-planning surface.
-- Imported the parked Node discovery work into minimap and kept the recommendation intentionally narrow: do not pursue Node unless the product explicitly accepts the `node-ts-pnpm-single-package-v1` profile.
-- Added parked .NET discovery docs as a stronger-fit second-target candidate, focused on a narrow C# SDK-style profile with deterministic `dotnet` verification and project/package governance.
-- Archived or removed stale process docs that no longer earn their keep in a public repo, including the old simulation, grading, checkpoint, and duplicate board docs.
-- Tightened README and public docs wording so the intended agent loop is explicit: boundary changes update IR first, BEAR compiles constraints, then implementation happens inside those constraints.
-- Verification: ./gradlew.bat --no-daemon :kernel:test, ./gradlew.bat --no-daemon :app:test, ./gradlew.bat --no-daemon :app:test :kernel:test, ./gradlew.bat --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest, ./gradlew.bat :app:compileJava :app:compileTestJava :kernel:compileJava :kernel:compileTestJava.
 
