@@ -18,6 +18,7 @@ import signal
 import argparse
 import subprocess
 from pathlib import Path
+import shutil
 
 AGENT_DIR = Path(".agent")
 PID_FILE = AGENT_DIR / "preview.pid"
@@ -71,6 +72,21 @@ def start_server(port=3000):
     
     print(f"🚀 Starting preview on port {port}...")
     
+    # Resolve npm executable for cross-platform compatibility (npm vs npm.cmd on Windows)
+    npm_executable = None
+    if cmd and cmd[0] == "npm":
+        npm_executable = shutil.which("npm")
+        if not npm_executable:
+            print("❌ Unable to find 'npm' executable on PATH. Please ensure Node.js and npm are installed.")
+            sys.exit(1)
+
+        # On Windows, npm is typically a .cmd script, which must be invoked via cmd.exe when shell=False.
+        if sys.platform == "win32" and npm_executable.lower().endswith(".cmd"):
+            # Prepend 'cmd.exe /c' so the command interpreter runs npm.cmd correctly.
+            cmd = ["cmd.exe", "/c"] + cmd
+            # Use cmd.exe as the executable to avoid passing a .cmd file directly.
+            npm_executable = shutil.which("cmd.exe") or "cmd.exe"
+    
     with open(LOG_FILE, "w") as log:
         process = subprocess.Popen(
             cmd,
@@ -78,7 +94,7 @@ def start_server(port=3000):
             stdout=log,
             stderr=log,
             env=env,
-            shell=True # Required for npm on windows often, or consistent path handling
+            executable=npm_executable
         )
     
     PID_FILE.write_text(str(process.pid))

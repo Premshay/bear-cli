@@ -1,15 +1,18 @@
 package com.bear.kernel.target.node;
 
 import com.bear.kernel.target.DetectedTarget;
-import com.bear.kernel.target.DetectionStatus;
 import com.bear.kernel.target.TargetDetector;
 import com.bear.kernel.target.TargetId;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 
 public class NodeTargetDetector implements TargetDetector {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public DetectedTarget detect(Path projectRoot) {
@@ -19,13 +22,15 @@ public class NodeTargetDetector implements TargetDetector {
             return DetectedTarget.none();
         }
 
-        // Parse package.json to check type and packageManager
+        // Parse package.json (strict JSON) to check type and packageManager
         try {
-            String content = Files.readString(packageJson);
-            if (!content.contains("\"type\": \"module\"")) {
+            JsonNode pkg = OBJECT_MAPPER.readTree(packageJson.toFile());
+            JsonNode typeNode = pkg.get("type");
+            if (typeNode == null || !"module".equals(typeNode.asText())) {
                 return DetectedTarget.none();
             }
-            if (!content.contains("\"packageManager\": \"pnpm")) {
+            JsonNode pmNode = pkg.get("packageManager");
+            if (pmNode == null || !pmNode.asText().startsWith("pnpm")) {
                 return DetectedTarget.none();
             }
         } catch (Exception e) {
