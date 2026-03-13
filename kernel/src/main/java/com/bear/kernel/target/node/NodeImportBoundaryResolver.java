@@ -1,6 +1,7 @@
 package com.bear.kernel.target.node;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.Set;
 
 public class NodeImportBoundaryResolver {
@@ -80,7 +81,40 @@ public class NodeImportBoundaryResolver {
         if (parentDir == null) {
             parentDir = Path.of(".");
         }
-        return parentDir.resolve(specifier).normalize();
+        Path base = parentDir.resolve(specifier).normalize();
+
+        // If the base path already points to a regular file, use it directly.
+        if (Files.exists(base) && Files.isRegularFile(base)) {
+            return base;
+        }
+
+        // Probe common TypeScript/JavaScript resolution variants, e.g. "./foo" ->
+        // "./foo.ts", "./foo.tsx", "./foo/index.ts", etc.
+        String[] extensions = new String[] {
+            ".ts", ".tsx", ".mts", ".cts",
+            ".js", ".jsx", ".mjs", ".cjs"
+        };
+
+        // Try same path with known extensions: "./foo" -> "./foo.ts", "./foo.js", ...
+        for (String ext : extensions) {
+            Path candidate = base.resolveSibling(base.getFileName().toString() + ext);
+            if (Files.exists(candidate) && Files.isRegularFile(candidate)) {
+                return candidate;
+            }
+        }
+
+        // If "base" is a directory, try "index" files inside it: "./foo/index.ts", etc.
+        if (Files.exists(base) && Files.isDirectory(base)) {
+            for (String ext : extensions) {
+                Path candidate = base.resolve("index" + ext);
+                if (Files.exists(candidate) && Files.isRegularFile(candidate)) {
+                    return candidate;
+                }
+            }
+        }
+
+        // Fallback to the normalized base path if no concrete file variant is found.
+        return base;
     }
 
     private Path findGovernedRoot(Path file, Set<Path> governedRoots) {
