@@ -80,10 +80,13 @@ public class NodeImportContainmentScanner {
                     stream.filter(Files::isRegularFile)
                         .filter(path -> path.toString().endsWith(".ts"))
                         .filter(path -> !path.toString().endsWith(".test.ts"))
+                        .filter(path -> !path.toString().endsWith(".spec.ts"))
                         .forEach(files::add);
                 }
             }
         }
+
+        files.sort(Comparator.comparing(Path::toString));
 
         return files;
     }
