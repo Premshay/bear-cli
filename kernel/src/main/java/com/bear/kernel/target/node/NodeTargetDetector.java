@@ -8,6 +8,7 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -24,7 +25,7 @@ public class NodeTargetDetector implements TargetDetector {
 
         // Parse package.json to check type and packageManager
         try {
-            String content = Files.readString(packageJson);
+            String content = Files.readString(packageJson, StandardCharsets.UTF_8);
             LoaderOptions loaderOptions = new LoaderOptions();
             loaderOptions.setAllowDuplicateKeys(false);
             Yaml yaml = new Yaml(new SafeConstructor(loaderOptions));
