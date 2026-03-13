@@ -6,6 +6,7 @@ import com.bear.kernel.target.TargetId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -24,6 +25,14 @@ public class NodeTargetDetector implements TargetDetector {
 
         // Parse package.json (strict JSON) to check type and packageManager
         try {
+            String content = Files.readString(packageJson, StandardCharsets.UTF_8);
+            LoaderOptions loaderOptions = new LoaderOptions();
+            loaderOptions.setAllowDuplicateKeys(false);
+            Yaml yaml = new Yaml(new SafeConstructor(loaderOptions));
+            Object parsed = yaml.load(content);
+            if (!(parsed instanceof Map)) {
+                return DetectedTarget.none();
+            }
             @SuppressWarnings("unchecked")
             Map<String, Object> pkg = OBJECT_MAPPER.readValue(packageJson.toFile(), Map.class);
             Object typeVal = pkg.get("type");
