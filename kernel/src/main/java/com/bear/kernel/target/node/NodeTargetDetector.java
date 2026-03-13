@@ -26,6 +26,7 @@ public class NodeTargetDetector implements TargetDetector {
         try {
             String content = Files.readString(packageJson);
             LoaderOptions loaderOptions = new LoaderOptions();
+            loaderOptions.setAllowDuplicateKeys(false);
             Yaml yaml = new Yaml(new SafeConstructor(loaderOptions));
             Object parsed = yaml.load(content);
             if (!(parsed instanceof Map)) {
