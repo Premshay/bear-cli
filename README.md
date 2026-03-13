@@ -177,6 +177,17 @@ The demo currently showcases three PR outcomes:
 
 - JVM/Java target in Preview.
 - Primary containment enforcement path is Java plus Gradle wrapper when `impl.allowedDeps` is declared.
+- Node/TypeScript target in Preview (scan-only). Import containment scanning for `pnpm` + TypeScript ESM projects.
+
+Experimental targets (scan-only, no full enforcement):
+- Python (`python-pyproject-single-package-v1`) — detection, artifact generation, AST-based import containment scanning
+
+Future targets (not yet started):
+- .NET/C# (`dotnet-csharp-sdk-single-project-v1`) — see `roadmap/ideas/future-dotnet-containment-profile.md`
+- React/TypeScript frontend (`react-ts-vite-pnpm-single-package-v1`) — see `roadmap/ideas/future-react-containment-profile.md`
+
+The CLI has a deterministic `Target` seam. New targets extend through that seam without changing
+the core governance contracts.
 
 This project uses [Minimap](https://github.com/rore/minimap) for repo-local roadmap and feature planning.
 
