@@ -10,7 +10,7 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-Bugfix: app-module test target detection failures after multi-target expansion — complete. All 451 app tests pass (0 failures), kernel tests green. Test-infrastructure-only fix: added `pinJvmTarget(Path)` helper + `.bear/target.id` pin files to BearCliTest and BearCliAgentModeTest. Spec at `.kiro/specs/bugfix-app-test-target-detection/` with prominent maintainer review flags for PR.
+Bugfix: app-module test target detection failures after multi-target expansion — complete. All 451 app tests pass (0 failures), kernel tests green. Test-infrastructure-only fix: added `TestTargetPins.pinJvm(Path)` helper + `.bear/target.id` pin files to BearCliTest and BearCliAgentModeTest. Spec at `.kiro/specs/bugfix-app-test-target-detection/` with prominent maintainer review flags for PR.
 
 ## Next Concrete Task
 
@@ -18,5 +18,5 @@ Merge PR stack (P2 #11 then hardening #12, or merge #12 directly and close #11).
 
 ## Session Notes
 
-- **App test target detection bugfix complete**: 176 test failures from multi-target `TargetRegistry` introduction fixed. Added `pinJvmTarget(Path)` to BearCliTest (167 methods + multi-block fixtures + sub-project roots) and BearCliAgentModeTest (16 methods + repo subdirs). Exit 64 (`TARGET_NOT_DETECTED`) confirmed correct per frozen exit-code contract. Bugfix spec has ⚠️ maintainer review flags for eventual PR. Throwaway scripts cleaned up.
+- **App test target detection bugfix complete**: 176 test failures from multi-target `TargetRegistry` introduction fixed. Added `TestTargetPins.pinJvm(Path)` to BearCliTest (167 methods + multi-block fixtures + sub-project roots) and BearCliAgentModeTest (16 methods + repo subdirs). Exit 64 (`TARGET_NOT_DETECTED`) confirmed correct per frozen exit-code contract. Bugfix spec has ⚠️ maintainer review flags for eventual PR. Throwaway scripts cleaned up.
 - **Copilot review fixes applied** (commit 1f158ab): UTF-8 charset for getBytes/InputStreamReader in 3 Python scanners, interrupt restore in PythonProjectVerificationRunner.isToolAvailable, containment guard bug in CheckCommandService. TypeScript import path issue deferred to Node Phase B.
