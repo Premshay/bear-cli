@@ -1,13 +1,13 @@
 # Tasks: App Test JVM Target Pin Fix
 
-## Task 1: Add pinJvmTarget to BearCliTest
-- [x] 1.1 Add `pinJvmTarget(Path)` static helper method to BearCliTest
+## Task 1: Wire BearCliTest to shared JVM target pin helper
+- [x] 1.1 Use `TestTargetPins.pinJvm(Path)` as the shared pin helper from BearCliTest
 - [x] 1.2 Add pin calls to all failing test methods (use automation script)
 - [x] 1.3 Add pin calls to `createMultiBlockFixture` for all 3 project roots
 - [x] 1.4 Run BearCliTest — target 0 failures
 
-## Task 2: Add pinJvmTarget to BearCliAgentModeTest
-- [x] 2.1 Add `pinJvmTarget(Path)` static helper method
+## Task 2: Wire BearCliAgentModeTest to shared JVM target pin helper
+- [x] 2.1 Use `TestTargetPins.pinJvm(Path)` as the shared pin helper from BearCliAgentModeTest
 - [x] 2.2 Add pin calls to all 16 failing test methods (including repo subdirs)
 - [x] 2.3 Run BearCliAgentModeTest — target 0 failures
 
