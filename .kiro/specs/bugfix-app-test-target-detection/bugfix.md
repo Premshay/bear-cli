@@ -1,7 +1,9 @@
 # Bugfix: App Test Failures After Multi-Target TargetRegistry Introduction
 
-> **⚠️ MAINTAINER REVIEW FLAG**: This bugfix is test-infrastructure-only.
-> No production code is changed. No frozen contracts are affected.
+> **⚠️ MAINTAINER REVIEW FLAG**: This bugfix is test-infrastructure-focused.
+> The primary changes are to test infrastructure (no app/src/main/ changes).
+> Kernel diffs in this PR are merge conflict-marker cleanups only — they
+> contain no new logic. No frozen contracts are affected.
 > The root cause is that multi-target `TargetRegistry` removed the implicit
 > JVM-only default, and existing app tests use bare `@TempDir` directories
 > with no target identity. See "Maintainer Notes" at the bottom.
@@ -27,7 +29,8 @@ or a `.bear/target.id` pin file. Bare temp dirs match no detector → exit 64.
   - `BearCliAgentModeTest`: 14 failures
   - `SingleFileIndexInferenceTest`: 5 failures (already fixed in working tree)
   - `TargetSeamParityTest`: 2 failures (already fixed in working tree)
-- **Zero production code changes**
+- **Zero app production code changes** (`app/src/main/` is untouched)
+- **Kernel diffs are conflict-marker cleanups only** — no new production logic introduced
 - **Zero frozen contract changes** (exit codes, output shapes, command forms unchanged)
 - Exit 64 for `TARGET_NOT_DETECTED` is semantically correct per `exit-codes.md`
   (it IS a usage error — the test didn't declare a target)
@@ -55,7 +58,7 @@ Implementation approach:
 
 - [ ] AC-1: All app-module tests pass (0 failures out of ~451)
 - [ ] AC-2: All kernel tests still pass (0 regressions)
-- [ ] AC-3: No production code changes
+- [ ] AC-3: No production code changes in `app/src/main/`; kernel diffs are merge conflict-marker cleanups only (no new logic)
 - [ ] AC-4: No frozen contract violations
 
 ## Related: TypeScript Import Path (Separate Issue)
