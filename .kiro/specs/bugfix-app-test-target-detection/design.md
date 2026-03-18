@@ -48,12 +48,14 @@ final class TestTargetPins {
 ### TargetSeamParityTest (2 failures) — already fixed
 - Pin added before `executeCompile` calls
 
-## No Production Changes
+## Production Code Scope
 
-This design intentionally makes zero changes to:
+This design makes zero changes to:
 - `app/src/main/java/` (command pipeline)
 - Exit code semantics
 - Output line shapes
 
-Note: kernel file diffs in this PR are merge conflict resolutions inherited
-from the base branch, not new production changes.
+The kernel file diffs included in this PR are merge conflict-marker resolutions
+(removing `<<<<<<<`, `=======`, `>>>>>>>` markers) inherited from the base branch,
+not intentional new production logic. They are included because leaving them would
+prevent compilation.
