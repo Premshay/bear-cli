@@ -18,15 +18,15 @@ public class TargetPinFile {
             if (content.isEmpty()) {
                 throw new IllegalArgumentException("target.id file is empty");
             }
-            // Allow an optional single trailing newline for POSIX-friendly files,
-            // but otherwise require the content to be exactly the target token.
-            // Normalize line endings: strip trailing \n, then strip trailing \r if present.
-            String value = content;
-            if (value.endsWith("\n")) {
-                value = value.substring(0, value.length() - 1);
-            }
-            if (value.endsWith("\r")) {
-                value = value.substring(0, value.length() - 1);
+            // Allow an optional single trailing newline (LF or CRLF) for editors and tools
+            // that append a trailing newline, but otherwise require the content to be exactly the target token.
+            String value;
+            if (content.endsWith("\r\n")) {
+                value = content.substring(0, content.length() - 2);
+            } else if (content.endsWith("\n")) {
+                value = content.substring(0, content.length() - 1);
+            } else {
+                value = content;
             }
             if (value.isEmpty()) {
                 throw new IllegalArgumentException("target.id file does not contain a target id");
