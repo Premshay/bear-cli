@@ -24,36 +24,40 @@ public class PythonImportBoundaryResolver {
 
     // Python 3.12+ standard library modules (common subset)
     // Full list: https://docs.python.org/3/py-modindex.html
+    // Updated: removed 21 modules deprecated/removed in Python 3.12–3.13
+    //   (aifc, audioop, cgi, cgitb, chunk, crypt, distutils, imghdr, imp,
+    //    mailcap, msilib, nis, nntplib, ossaudiodev, pipes, sndhdr, spwd,
+    //    sunau, telnetlib, uu, xdrlib)
     private static final Set<String> STDLIB_MODULES = Set.of(
         // Built-in modules
-        "abc", "aifc", "argparse", "array", "ast", "asynchat", "asyncio", "asyncore",
-        "atexit", "audioop", "base64", "bdb", "binascii", "bisect", "builtins",
-        "bz2", "calendar", "cgi", "cgitb", "chunk", "cmath", "cmd", "code", "codecs",
+        "abc", "argparse", "array", "ast", "asynchat", "asyncio", "asyncore",
+        "atexit", "base64", "bdb", "binascii", "bisect", "builtins",
+        "bz2", "calendar", "cmath", "cmd", "code", "codecs",
         "codeop", "collections", "colorsys", "compileall", "concurrent", "configparser",
-        "contextlib", "contextvars", "copy", "copyreg", "crypt", "csv", "ctypes",
+        "contextlib", "contextvars", "copy", "copyreg", "csv", "ctypes",
         "curses", "dataclasses", "datetime", "dbm", "decimal", "difflib", "dis",
-        "distutils", "doctest", "email", "encodings", "enum", "errno", "faulthandler",
+        "doctest", "email", "encodings", "enum", "errno", "faulthandler",
         "fcntl", "filecmp", "fileinput", "fnmatch", "fractions", "ftplib", "functools",
         "gc", "getopt", "getpass", "gettext", "glob", "graphlib", "grp", "gzip",
-        "hashlib", "heapq", "hmac", "html", "http", "idlelib", "imaplib", "imghdr",
-        "imp", "importlib", "inspect", "io", "ipaddress", "itertools", "json",
+        "hashlib", "heapq", "hmac", "html", "http", "idlelib", "imaplib",
+        "importlib", "inspect", "io", "ipaddress", "itertools", "json",
         "keyword", "lib2to3", "linecache", "locale", "logging", "lzma", "mailbox",
-        "mailcap", "marshal", "math", "mimetypes", "mmap", "modulefinder", "msilib",
-        "msvcrt", "multiprocessing", "netrc", "nis", "nntplib", "numbers", "operator",
-        "optparse", "os", "ossaudiodev", "pathlib", "pdb", "pickle", "pickletools",
-        "pipes", "pkgutil", "platform", "plistlib", "poplib", "posix", "posixpath",
+        "marshal", "math", "mimetypes", "mmap", "modulefinder",
+        "msvcrt", "multiprocessing", "netrc", "numbers", "operator",
+        "optparse", "os", "pathlib", "pdb", "pickle", "pickletools",
+        "pkgutil", "platform", "plistlib", "poplib", "posix", "posixpath",
         "pprint", "profile", "pstats", "pty", "pwd", "py_compile", "pyclbr", "pydoc",
         "queue", "quopri", "random", "re", "readline", "reprlib", "resource", "rlcompleter",
         "runpy", "sched", "secrets", "select", "selectors", "shelve", "shlex", "shutil",
-        "signal", "site", "smtpd", "smtplib", "sndhdr", "socket", "socketserver",
-        "spwd", "sqlite3", "ssl", "stat", "statistics", "string", "stringprep",
-        "struct", "subprocess", "sunau", "symtable", "sys", "sysconfig", "syslog",
-        "tabnanny", "tarfile", "telnetlib", "tempfile", "termios", "test", "textwrap",
+        "signal", "site", "smtpd", "smtplib", "socket", "socketserver",
+        "sqlite3", "ssl", "stat", "statistics", "string", "stringprep",
+        "struct", "subprocess", "symtable", "sys", "sysconfig", "syslog",
+        "tabnanny", "tarfile", "tempfile", "termios", "test", "textwrap",
         "threading", "time", "timeit", "tkinter", "token", "tokenize", "tomllib",
         "trace", "traceback", "tracemalloc", "tty", "turtle", "turtledemo", "types",
-        "typing", "typing_extensions", "unicodedata", "unittest", "urllib", "uu",
+        "typing", "typing_extensions", "unicodedata", "unittest", "urllib",
         "uuid", "venv", "warnings", "wave", "weakref", "webbrowser", "winreg",
-        "winsound", "wsgiref", "xdrlib", "xml", "xmlrpc", "zipapp", "zipfile",
+        "winsound", "wsgiref", "xml", "xmlrpc", "zipapp", "zipfile",
         "zipimport", "zlib", "zoneinfo"
     );
 

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -207,5 +208,118 @@ class PythonImportBoundaryResolverTest {
         BoundaryDecision decision = resolver.resolve(importingFile, ".", true, governedRoots, projectRoot);
 
         assertTrue(decision.pass());
+    }
+
+    // ========== Deprecated stdlib modules now classified as third-party ==========
+
+    @Test
+    void distutilsImport_nowThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "distutils", false, governedRoots, projectRoot);
+
+        assertTrue(decision.isFail());
+        assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
+    }
+
+    @Test
+    void impImport_nowThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "imp", false, governedRoots, projectRoot);
+
+        assertTrue(decision.isFail());
+        assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
+    }
+
+    @Test
+    void allRemovedModules_nowThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        // All 21 modules removed in Python 3.12/3.13
+        List<String> removedModules = List.of(
+            "aifc", "audioop", "cgi", "cgitb", "chunk", "crypt", "distutils",
+            "imghdr", "imp", "mailcap", "msilib", "nis", "nntplib", "ossaudiodev",
+            "pipes", "sndhdr", "spwd", "sunau", "telnetlib", "uu", "xdrlib"
+        );
+
+        for (String module : removedModules) {
+            BoundaryDecision decision = resolver.resolve(importingFile, module, false, governedRoots, projectRoot);
+            assertTrue(decision.isFail(),
+                "Removed module '" + module + "' should be classified as third-party");
+            assertEquals("THIRD_PARTY_IMPORT", decision.failureReason(),
+                "Removed module '" + module + "' should fail with THIRD_PARTY_IMPORT");
+        }
+    }
+
+    @Test
+    void removedModuleSubmodule_nowThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        // Submodule of removed module
+        BoundaryDecision decision = resolver.resolve(importingFile, "distutils.core", false, governedRoots, projectRoot);
+
+        assertTrue(decision.isFail());
+        assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
+    }
+
+    // ========== New stdlib modules remain classified correctly ==========
+
+    @Test
+    void tomlibImport_stillStdlib() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "tomllib", false, governedRoots, projectRoot);
+
+        assertTrue(decision.pass(), "tomllib should remain classified as stdlib");
+    }
+
+    @Test
+    void zoneinfoImport_stillStdlib() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "zoneinfo", false, governedRoots, projectRoot);
+
+        assertTrue(decision.pass(), "zoneinfo should remain classified as stdlib");
+    }
+
+    // ========== Core stdlib modules still allowed (regression guard) ==========
+
+    @Test
+    void coreStdlibModules_stillAllowed() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        // Spot-check core stdlib modules that should never be removed
+        List<String> coreModules = List.of(
+            "os", "sys", "json", "pathlib", "typing", "collections",
+            "datetime", "hashlib", "logging", "subprocess", "unittest"
+        );
+
+        for (String module : coreModules) {
+            BoundaryDecision decision = resolver.resolve(importingFile, module, false, governedRoots, projectRoot);
+            assertTrue(decision.pass(),
+                "Core stdlib module '" + module + "' should still be allowed");
+        }
     }
 }

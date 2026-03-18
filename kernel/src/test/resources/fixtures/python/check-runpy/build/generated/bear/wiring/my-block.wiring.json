@@ -1,0 +1,16 @@
+{
+  "schemaVersion":"v3",
+  "blockKey":"my-block",
+  "entrypointFqcn":"my-block",
+  "logicInterfaceFqcn":"MyBlockLogic",
+  "implFqcn":"MyBlockImpl",
+  "implSourcePath":"src/blocks/my-block/impl/my_block_impl.py",
+  "blockRootSourceDir":"src/blocks/my-block",
+  "governedSourceRoots":["src/blocks/my-block","src/main/java/blocks/_shared"],
+  "requiredEffectPorts":[],
+  "constructorPortParams":[],
+  "logicRequiredPorts":[],
+  "wrapperOwnedSemanticPorts":[],
+  "wrapperOwnedSemanticChecks":[],
+  "blockPortBindings":[]
+}

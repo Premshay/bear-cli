@@ -10,13 +10,12 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-Phase P2 (Python Target — Full Check Pipeline) implementation complete. All 13 tasks done, full kernel test suite green.
+Python MVP Hardening spec complete. All 9 tasks done on `feature/python-mvp-hardening` branch. Full kernel suite green (5442 tests).
 
 ## Next Concrete Task
 
-Begin Phase C (Node Target — Runtime Execution) spec creation, or advance P3 milestone items per `roadmap/board.md`.
+Commit and push `feature/python-mvp-hardening` branch. Open PR to `Premshay/bear-cli`. Then begin Phase C (Node Target — Runtime Execution) spec creation, or advance P3 milestone items per `roadmap/board.md`.
 
 ## Session Notes
 
-- **Phase P2 complete**: All 13 spec tasks implemented — TargetManifestParsers moved to shared package, TargetRegistry silent JVM fallback fixed, PythonTarget check methods wired, undeclared reach scanner, dynamic execution scanner, dynamic import enforcer, project verification runner, integration test fixtures. 16 correctness properties validated. Full kernel suite green (JVM, Node, Python targets).
-- **Phase P complete**: Branch ready for PR. Full suite green: 381 kernel + 446 app tests.
+- **Python MVP Hardening complete**: runpy.run_module/run_path detection added to PythonDynamicExecutionScanner, 21 deprecated stdlib modules removed from PythonImportBoundaryResolver, integration test fixture and test for runpy, `docs/context/python-known-gaps.md` created documenting 6 known bypass patterns with threat model justification. 5442 kernel tests green, zero regressions.

@@ -130,15 +130,15 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Correction received: "don't duplicate content between .agent/ and .kiro/steering/ — reference instead"
 - Correction received: intelligent-routing skill should be kept (relevant to Kiro's subagent routing)
 
-### 2026-03-18 — Phase P2 Python Checking Complete
-- Completed all 13 tasks for Phase P2 (Python full check pipeline)
-- Key pattern: embedded Python scripts via ProcessBuilder work well for AST analysis
-- Key pattern: `TYPE_CHECKING` block exclusion is critical for Python static analysis tools
-- Key pattern: test file exclusion (`test_*.py`, `*_test.py`) prevents false positives
-- Key insight: shared `TargetManifestParsers` enables cross-target wiring manifest parsing
-- Key insight: `TargetRegistry` silent fallback removal improves error clarity
-- Verified: 16 correctness properties pass with 100+ iterations each
-- Verified: zero regressions in JVM, Node, and Phase P tests
+### 2026-03-18 — Python MVP Hardening Complete
+- Completed all 9 tasks for Python MVP Hardening spec on `feature/python-mvp-hardening` branch
+- Added runpy.run_module/run_path detection to PythonDynamicExecutionScanner (ast.Attribute check)
+- Removed 21 deprecated stdlib modules from PythonImportBoundaryResolver (Python 3.12/3.13 removals)
+- Created integration test fixture `check-runpy` and integration test in PythonCheckIntegrationTest
+- Created `docs/context/python-known-gaps.md` documenting 6 known bypass patterns with threat model
+- Full kernel suite green: 5442 tests, zero regressions across JVM, Node, Python targets
+- Key pattern: context transfer across sessions works well — picked up mid-task and completed cleanly
+- Verified: all 5 property tests (H1-H4, H7) pass with 110 iterations each
 
 ---
 

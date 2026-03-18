@@ -17,9 +17,11 @@ import java.util.*;
  * - eval(...)
  * - exec(...)
  * - compile(...)
+ * - runpy.run_module(...)
+ * - runpy.run_path(...)
  * 
  * Excludes calls inside `if TYPE_CHECKING:` blocks and test files.
- * Findings map to CODE=BOUNDARY_BYPASS, exit code 7.
+ * Findings map to CODE=REFLECTION_DISPATCH_FORBIDDEN, exit code 6.
  */
 public class PythonDynamicExecutionScanner {
 
@@ -29,6 +31,7 @@ import sys
 import json
 
 ESCAPE_HATCHES = {'eval', 'exec', 'compile'}
+RUNPY_METHODS = {'run_module', 'run_path'}
 
 def collect_type_checking_lines(tree):
     \"\"\"Collect line ranges inside `if TYPE_CHECKING:` blocks.\"\"\"
@@ -69,6 +72,12 @@ def scan(source):
             # Detect direct calls to eval, exec, compile
             if isinstance(node.func, ast.Name) and node.func.id in ESCAPE_HATCHES:
                 findings.append({'surface': node.func.id, 'line': node.lineno})
+            # Detect runpy.run_module(...) and runpy.run_path(...)
+            elif (isinstance(node.func, ast.Attribute) and
+                  node.func.attr in RUNPY_METHODS and
+                  isinstance(node.func.value, ast.Name) and
+                  node.func.value.id == 'runpy'):
+                findings.append({'surface': 'runpy.' + node.func.attr, 'line': node.lineno})
     
     return findings
 

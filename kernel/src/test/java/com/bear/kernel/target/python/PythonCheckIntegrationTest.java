@@ -173,6 +173,32 @@ class PythonCheckIntegrationTest {
         assertTrue(content.contains("import socket"), "Service should contain socket import");
     }
 
+    // ========== Runpy Detection Tests (Exit Code 6, CODE=REFLECTION_DISPATCH_FORBIDDEN) ==========
+
+    @Test
+    void checkRunpy_runModule_producesFindings() throws Exception {
+        Path fixture = getFixturePath("check-runpy");
+        List<WiringManifest> manifests = loadWiringManifests(fixture);
+
+        List<UndeclaredReachFinding> findings = target.scanForbiddenReflectionDispatch(fixture, manifests);
+
+        assertFalse(findings.isEmpty(), "Should detect runpy.run_module as forbidden reflection dispatch");
+        assertTrue(findings.stream().anyMatch(f -> f.surface().contains("runpy.run_module")),
+            "Should have finding with surface containing 'runpy.run_module'");
+    }
+
+    @Test
+    void checkRunpyFixture_hasRequiredFiles() throws Exception {
+        Path fixture = getFixturePath("check-runpy");
+
+        assertTrue(Files.exists(fixture.resolve("pyproject.toml")));
+        assertTrue(Files.exists(fixture.resolve("uv.lock")));
+        assertTrue(Files.exists(fixture.resolve("src/blocks/my-block/impl/service.py")));
+        assertTrue(Files.exists(fixture.resolve("build/generated/bear/wiring/my-block.wiring.json")));
+        String content = Files.readString(fixture.resolve("src/blocks/my-block/impl/service.py"));
+        assertTrue(content.contains("runpy.run_module"), "Service should contain runpy.run_module call");
+    }
+
     // ========== Clean Fixture Tests (Exit Code 0) ==========
 
     @Test

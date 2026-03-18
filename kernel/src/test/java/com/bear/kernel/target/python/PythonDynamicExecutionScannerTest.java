@@ -394,6 +394,151 @@ class PythonDynamicExecutionScannerTest {
         assertTrue(findings.isEmpty(), "method call obj.eval() should not produce findings");
     }
 
+    // ========== runpy.run_module() detection ==========
+
+    @Test
+    void detectsRunpyRunModule(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            import runpy
+            result = runpy.run_module("some_module")
+            """);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertEquals(1, findings.size());
+        assertEquals("runpy.run_module", findings.get(0).surface());
+    }
+
+    // ========== runpy.run_path() detection ==========
+
+    @Test
+    void detectsRunpyRunPath(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            import runpy
+            result = runpy.run_path("/path/to/script.py")
+            """);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertEquals(1, findings.size());
+        assertEquals("runpy.run_path", findings.get(0).surface());
+    }
+
+    // ========== runpy both methods in same file ==========
+
+    @Test
+    void detectsBothRunpyMethods(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            import runpy
+            result1 = runpy.run_module("mod")
+            result2 = runpy.run_path("/path/to/script.py")
+            """);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertEquals(2, findings.size());
+        assertEquals("runpy.run_module", findings.get(0).surface());
+        assertEquals("runpy.run_path", findings.get(1).surface());
+    }
+
+    // ========== runpy in TYPE_CHECKING → no finding ==========
+
+    @Test
+    void runpyInTypeCheckingExcluded(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            from typing import TYPE_CHECKING
+            import runpy
+            
+            if TYPE_CHECKING:
+                result = runpy.run_module("some_module")
+                result2 = runpy.run_path("/path/to/script.py")
+            
+            def my_function():
+                pass
+            """);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertTrue(findings.isEmpty(), "runpy calls inside TYPE_CHECKING blocks should be excluded");
+    }
+
+    // ========== runpy in test files → no finding ==========
+
+    @Test
+    void runpyInTestFilesExcluded(@TempDir Path tempDir) throws IOException {
+        Path blockRoot = Files.createDirectories(tempDir.resolve("src/blocks/my-block"));
+        Files.writeString(blockRoot.resolve("__init__.py"), "");
+        Files.writeString(blockRoot.resolve("test_runner.py"),
+            "import runpy\nresult = runpy.run_module('some_module')\n");
+        Files.writeString(blockRoot.resolve("service.py"), "# clean\n");
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertTrue(findings.isEmpty(), "runpy calls in test_*.py files should be excluded");
+    }
+
+    // ========== runpy mixed with eval/exec → sorted correctly ==========
+
+    @Test
+    void runpyMixedWithEvalExecSorted(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            import runpy
+            result = eval("1 + 1")
+            runpy.run_path("/path/to/script.py")
+            exec("x = 1")
+            runpy.run_module("mod")
+            """);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertEquals(4, findings.size());
+        // All same path, so sorted by surface: eval, exec, runpy.run_module, runpy.run_path
+        assertEquals("eval", findings.get(0).surface());
+        assertEquals("exec", findings.get(1).surface());
+        assertEquals("runpy.run_module", findings.get(2).surface());
+        assertEquals("runpy.run_path", findings.get(3).surface());
+    }
+
+    // ========== runpy attribute access without call → no finding ==========
+
+    @Test
+    void runpyAttributeAccessWithoutCallNoFinding(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            import runpy
+            func = runpy.run_module
+            """);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertTrue(findings.isEmpty(), "runpy attribute access without call should not produce findings");
+    }
+
+    // ========== non-runpy attribute call → no finding ==========
+
+    @Test
+    void nonRunpyAttributeCallNoFinding(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            class MyRunner:
+                def run_module(self, name):
+                    pass
+            
+            runner = MyRunner()
+            runner.run_module("test")
+            """);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+
+        assertTrue(findings.isEmpty(), "run_module on non-runpy object should not produce findings");
+    }
+
     // ========== Helper methods ==========
 
     private void setupGovernedBlock(Path tempDir, String blockKey, String content) throws IOException {

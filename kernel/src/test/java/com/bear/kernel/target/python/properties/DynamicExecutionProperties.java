@@ -198,7 +198,120 @@ class DynamicExecutionProperties {
         }
     }
 
+    // ========== Property H1: runpy.run_module detection ==========
+    // Any governed file with runpy.run_module(...) call → at least one finding with surface "runpy.run_module"
+
+    static Stream<Integer> propertyH1Iterations() {
+        return IntStream.range(0, 110).boxed();
+    }
+
+    @ParameterizedTest(name = "Property H1 - iteration {0}: runpy.run_module detected")
+    @MethodSource("propertyH1Iterations")
+    void propertyH1_runpyRunModuleDetected(int iteration, @TempDir Path tempDir) throws IOException {
+        String code = generateRunpyCode("run_module", iteration);
+        setupGovernedBlock(tempDir, "block-" + iteration, code);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("block-" + iteration)));
+
+        assertTrue(findings.stream().anyMatch(f -> f.surface().equals("runpy.run_module")),
+            "runpy.run_module() should produce finding with surface 'runpy.run_module'");
+    }
+
+    // ========== Property H2: runpy.run_path detection ==========
+
+    @ParameterizedTest(name = "Property H2 - iteration {0}: runpy.run_path detected")
+    @MethodSource("propertyH1Iterations")
+    void propertyH2_runpyRunPathDetected(int iteration, @TempDir Path tempDir) throws IOException {
+        String code = generateRunpyCode("run_path", iteration);
+        setupGovernedBlock(tempDir, "block-" + iteration, code);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("block-" + iteration)));
+
+        assertTrue(findings.stream().anyMatch(f -> f.surface().equals("runpy.run_path")),
+            "runpy.run_path() should produce finding with surface 'runpy.run_path'");
+    }
+
+    // ========== Property H3: runpy in TYPE_CHECKING excluded ==========
+
+    @ParameterizedTest(name = "Property H3 - iteration {0}: runpy in TYPE_CHECKING excluded")
+    @MethodSource("propertyH1Iterations")
+    void propertyH3_runpyInTypeCheckingExcluded(int iteration, @TempDir Path tempDir) throws IOException {
+        String method = (iteration % 2 == 0) ? "run_module" : "run_path";
+        String arg = (method.equals("run_module")) ? "\"some_module\"" : "\"/path/to/script.py\"";
+        String code = String.format("""
+            from typing import TYPE_CHECKING
+            import runpy
+            
+            if TYPE_CHECKING:
+                result = runpy.%s(%s)
+            
+            def my_function():
+                pass
+            """, method, arg);
+
+        setupGovernedBlock(tempDir, "block-" + iteration, code);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("block-" + iteration)));
+
+        assertTrue(findings.isEmpty(),
+            "runpy." + method + "() inside TYPE_CHECKING should produce no findings");
+    }
+
+    // ========== Property H4: runpy in test files excluded ==========
+
+    @ParameterizedTest(name = "Property H4 - iteration {0}: runpy in test files excluded")
+    @MethodSource("propertyH1Iterations")
+    void propertyH4_runpyInTestFilesExcluded(int iteration, @TempDir Path tempDir) throws IOException {
+        String method = (iteration % 2 == 0) ? "run_module" : "run_path";
+        String arg = (method.equals("run_module")) ? "\"some_module\"" : "\"/path/to/script.py\"";
+
+        String blockKey = "block-" + iteration;
+        Path blockRoot = Files.createDirectories(tempDir.resolve("src/blocks/" + blockKey));
+        Files.writeString(blockRoot.resolve("__init__.py"), "");
+
+        String testFileName = (iteration % 2 == 0) ? "test_runner.py" : "runner_test.py";
+        Files.writeString(blockRoot.resolve(testFileName),
+            String.format("import runpy\nresult = runpy.%s(%s)\n", method, arg));
+        Files.writeString(blockRoot.resolve("service.py"), "# clean\n");
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest(blockKey)));
+
+        assertTrue(findings.isEmpty(),
+            "runpy." + method + "() in test file should produce no findings");
+    }
+
+    // ========== Property H7: Existing eval/exec/compile detection unaffected (regression guard) ==========
+
+    @ParameterizedTest(name = "Property H7 - iteration {0}: existing escape hatches still detected")
+    @MethodSource("propertyH1Iterations")
+    void propertyH7_existingEscapeHatchesStillDetected(int iteration, @TempDir Path tempDir) throws IOException {
+        String escapeHatch = ESCAPE_HATCHES.get(iteration % ESCAPE_HATCHES.size());
+        String code = generateEscapeHatchCode(escapeHatch, iteration);
+        setupGovernedBlock(tempDir, "block-" + iteration, code);
+
+        List<UndeclaredReachFinding> findings = PythonDynamicExecutionScanner.scan(
+            tempDir, List.of(makeManifest("block-" + iteration)));
+
+        assertTrue(findings.stream().anyMatch(f -> f.surface().equals(escapeHatch)),
+            "Existing escape hatch '" + escapeHatch + "' should still be detected after runpy addition");
+    }
+
     // ========== Helper methods ==========
+
+    private String generateRunpyCode(String method, int seed) {
+        String arg = (method.equals("run_module"))
+            ? "\"module_" + seed + "\""
+            : "\"/path/to/script_" + seed + ".py\"";
+        return switch (seed % 3) {
+            case 0 -> String.format("import runpy\nresult = runpy.%s(%s)\n", method, arg);
+            case 1 -> String.format("import runpy\nrunpy.%s(%s)\n", method, arg);
+            default -> String.format("import runpy\noutput = runpy.%s(%s)\n", method, arg);
+        };
+    }
 
     private String generateEscapeHatchCode(String escapeHatch, int seed) {
         // Generate different code patterns based on seed
