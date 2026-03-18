@@ -165,8 +165,12 @@ if __name__ == '__main__':
 
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                // Python script failed - treat as no findings (could be syntax error)
-                return List.of();
+                // Fail closed: non-zero exit means the scanner couldn't run properly.
+                // SyntaxError in the *scanned* source is already handled inside the Python
+                // script (returns []), so a non-zero exit here indicates an environment or
+                // script-level failure that must not silently suppress findings.
+                throw new IOException("Python AST undeclared-reach scanner exited with code " + exitCode
+                    + "; output: " + output);
             }
 
             return parseFindings(output.toString());

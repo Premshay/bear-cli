@@ -87,7 +87,7 @@ class WiringManifestParsingProperties {
             "{ \"key\": \"value\", }",             // Trailing comma
             "{ 'key': 'value' }",                  // Single quotes
             "{\n\"key\"\n:\n\"value\"\n",          // Unclosed brace
-            "{ \"key\": \"val\\ue\" }",            // Invalid escape
+            "{ \"key\": \"val" + "\\ue\" }",            // Invalid escape
             "<!-- not json -->",                   // XML-like
             "<json>not</json>",                    // XML
             "function() {}",                       // JavaScript

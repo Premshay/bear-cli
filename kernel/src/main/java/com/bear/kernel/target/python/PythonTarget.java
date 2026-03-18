@@ -118,7 +118,12 @@ public class PythonTarget implements Target {
     @Override
     public List<UndeclaredReachFinding> scanUndeclaredReach(Path projectRoot) throws IOException, PolicyValidationException {
         // Discover wiring manifests from project root
-        List<WiringManifest> wiringManifests = discoverWiringManifests(projectRoot);
+        List<WiringManifest> wiringManifests;
+        try {
+            wiringManifests = discoverWiringManifests(projectRoot);
+        } catch (ManifestParseException e) {
+            throw new IOException("Invalid wiring manifest in " + projectRoot + ": " + e.getMessage(), e);
+        }
         return PythonUndeclaredReachScanner.scan(projectRoot, wiringManifests);
     }
 
@@ -142,8 +147,9 @@ public class PythonTarget implements Target {
 
     /**
      * Discovers wiring manifests from the project root by scanning build/generated/bear/wiring/.
+     * Propagates parse failures as checked exceptions so callers can map them to structured errors.
      */
-    private List<WiringManifest> discoverWiringManifests(Path projectRoot) throws IOException {
+    private List<WiringManifest> discoverWiringManifests(Path projectRoot) throws IOException, ManifestParseException {
         Path wiringDir = projectRoot.resolve("build/generated/bear/wiring");
         List<WiringManifest> manifests = new ArrayList<>();
         
@@ -151,19 +157,15 @@ public class PythonTarget implements Target {
             return manifests;
         }
         
+        List<Path> wiringFiles;
         try (var stream = Files.list(wiringDir)) {
-            stream.filter(p -> p.toString().endsWith(".wiring.json"))
-                  .forEach(p -> {
-                      try {
-                          manifests.add(parseWiringManifest(p));
-                      } catch (IOException e) {
-                          throw new java.io.UncheckedIOException("Failed to parse wiring manifest: " + p, e);
-                      } catch (ManifestParseException e) {
-                          throw new RuntimeException("Invalid wiring manifest: " + p + " — " + e.getMessage(), e);
-                      }
-                  });
-        } catch (java.io.UncheckedIOException e) {
-            throw e.getCause();
+            wiringFiles = stream.filter(p -> p.toString().endsWith(".wiring.json"))
+                                .sorted()
+                                .toList();
+        }
+        
+        for (Path p : wiringFiles) {
+            manifests.add(parseWiringManifest(p));
         }
         
         return manifests;

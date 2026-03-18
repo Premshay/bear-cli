@@ -301,6 +301,21 @@ class PythonImportBoundaryResolverTest {
         assertTrue(decision.pass(), "zoneinfo should remain classified as stdlib");
     }
 
+    // ========== typing_extensions is third-party, not stdlib ==========
+
+    @Test
+    void typingExtensionsImport_isThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "typing_extensions", false, governedRoots, projectRoot);
+
+        assertTrue(decision.isFail(), "typing_extensions is a third-party backport, not stdlib");
+        assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
+    }
+
     // ========== Core stdlib modules still allowed (regression guard) ==========
 
     @Test

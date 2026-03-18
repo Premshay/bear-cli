@@ -55,7 +55,7 @@ public class PythonImportBoundaryResolver {
         "tabnanny", "tarfile", "tempfile", "termios", "test", "textwrap",
         "threading", "time", "timeit", "tkinter", "token", "tokenize", "tomllib",
         "trace", "traceback", "tracemalloc", "tty", "turtle", "turtledemo", "types",
-        "typing", "typing_extensions", "unicodedata", "unittest", "urllib",
+        "typing", "unicodedata", "unittest", "urllib",
         "uuid", "venv", "warnings", "wave", "weakref", "webbrowser", "winreg",
         "winsound", "wsgiref", "xml", "xmlrpc", "zipapp", "zipfile",
         "zipimport", "zlib", "zoneinfo"
