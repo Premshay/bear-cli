@@ -151,12 +151,12 @@ if __name__ == '__main__':
             Process process = pb.start();
 
             // Write source to stdin
-            process.getOutputStream().write(content.getBytes());
+            process.getOutputStream().write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             process.getOutputStream().close();
 
             // Read JSON output
             StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line);

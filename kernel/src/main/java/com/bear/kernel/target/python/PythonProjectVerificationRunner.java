@@ -114,6 +114,9 @@ public final class PythonProjectVerificationRunner {
             }
             return process.exitValue() == 0;
         } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             return false;
         }
     }

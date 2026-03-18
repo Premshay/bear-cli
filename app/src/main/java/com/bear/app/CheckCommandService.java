@@ -260,7 +260,7 @@ final class CheckCommandService {
                 : target.considerContainmentSurfaces(normalized, projectRoot);
 
             // Guard: impl.allowedDeps is unsupported for targets that don't consider containment surfaces
-            if (!target.considerContainmentSurfaces(normalized, projectRoot)
+            if (!considerContainmentSurfaces
                     && normalized.block().impl() != null
                     && normalized.block().impl().allowedDeps() != null
                     && !normalized.block().impl().allowedDeps().isEmpty()) {
