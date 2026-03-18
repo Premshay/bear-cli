@@ -18,7 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BearCliAgentModeTest {
     @Test
-    void checkAgentModeWritesJsonOnlyToStdoutOnDeterministicFailure(@TempDir Path tempDir) {
+    void checkAgentModeWritesJsonOnlyToStdoutOnDeterministicFailure(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult run = runCli(new String[] {
             "check",
             "missing-file.bear.yaml",
@@ -44,7 +45,8 @@ class BearCliAgentModeTest {
     }
 
     @Test
-    void checkAgentModePreservesCollectAllInRerunCommand(@TempDir Path tempDir) {
+    void checkAgentModePreservesCollectAllInRerunCommand(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult run = runCli(new String[] {
             "check",
             "missing-file.bear.yaml",
@@ -70,7 +72,8 @@ class BearCliAgentModeTest {
     }
 
     @Test
-    void checkAllAgentModeMissingIndexEmitsJsonWithDeterministicNextAction(@TempDir Path tempDir) {
+    void checkAllAgentModeMissingIndexEmitsJsonWithDeterministicNextAction(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult run = runCli(new String[] {
             "check",
             "--all",
@@ -106,7 +109,8 @@ class BearCliAgentModeTest {
     }
 
     @Test
-    void prCheckAllAgentModeMissingIndexEmitsJsonWithDeterministicNextAction(@TempDir Path tempDir) {
+    void prCheckAllAgentModeMissingIndexEmitsJsonWithDeterministicNextAction(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult run = runCli(new String[] {
             "pr-check",
             "--all",
@@ -143,6 +147,7 @@ class BearCliAgentModeTest {
     }
     @Test
     void checkAgentModeEmitsProjectTestLockReasonKey(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode());
         writeWorkingWithdrawImpl(tempDir);
@@ -189,6 +194,7 @@ class BearCliAgentModeTest {
 
     @Test
     void prCheckAgentModeWritesJsonOnlyToStdoutOutsideGitRepo(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
         Path ir = tempDir.resolve("withdraw.bear.yaml");
         Files.copy(fixture, ir);
@@ -213,7 +219,9 @@ class BearCliAgentModeTest {
 
     @Test
     void prCheckAgentModeEmitsMergeBaseFailedReasonKey(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         Files.createDirectories(ir.getParent());
         Files.writeString(
@@ -253,6 +261,7 @@ class BearCliAgentModeTest {
 
     @Test
     void checkAgentModeEmitsProjectTestBootstrapReasonKey(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode());
         writeWorkingWithdrawImpl(tempDir);
@@ -297,6 +306,7 @@ class BearCliAgentModeTest {
 
     @Test
     void checkAgentModeEmitsContainmentMetadataMismatchReasonKey(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode());
         writeWorkingWithdrawImpl(tempDir);
@@ -345,6 +355,7 @@ class BearCliAgentModeTest {
 
     @Test
     void checkAgentModeEmitsContainmentMetadataMismatchReasonKeyWhenGenericFailureContainsContainmentSignals(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode());
         writeWorkingWithdrawImpl(tempDir);
@@ -380,8 +391,10 @@ class BearCliAgentModeTest {
 
     @Test
     void checkAllAgentModeEmitsContainmentMetadataMismatchReasonKeyForCompileFailure(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = tempDir.resolve("repo");
         Files.createDirectories(repo);
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         writeAllowedDepFixture(ir);
         writeBlockIndex(repo, """
@@ -420,8 +433,10 @@ class BearCliAgentModeTest {
 
     @Test
     void checkAllAgentModeEmitsContainmentMetadataMismatchReasonKeyForGenericFailure(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = tempDir.resolve("repo");
         Files.createDirectories(repo);
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         writeAllowedDepFixture(ir);
         writeBlockIndex(repo, """
@@ -458,6 +473,7 @@ class BearCliAgentModeTest {
     }
     @Test
     void checkAgentModeKeepsGenericCompileFailureWhenContainmentSignalsAreAbsent(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode());
         writeWorkingWithdrawImpl(tempDir);
@@ -492,6 +508,7 @@ class BearCliAgentModeTest {
 
     @Test
     void checkAgentModeKeepsGenericCompileFailureWhenOnlyImplClasspathShapeAppears(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode());
         writeWorkingWithdrawImpl(tempDir);
@@ -525,7 +542,8 @@ class BearCliAgentModeTest {
     }
 
     @Test
-    void prCheckAgentModeEmitsReadHeadFailedReasonKey(@TempDir Path tempDir) {
+    void prCheckAgentModeEmitsReadHeadFailedReasonKey(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult run = runCli(new String[] {
             "pr-check",
             "bear-ir/missing.bear.yaml",
@@ -555,6 +573,7 @@ class BearCliAgentModeTest {
 
     @Test
     void documentedExactInfraReasonKeysAreReachableFromOriginSites(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         java.util.Set<String> observed = new java.util.HashSet<>();
 
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
@@ -602,6 +621,7 @@ class BearCliAgentModeTest {
         }).stdout()));
 
         Path repo = initGitRepo(tempDir.resolve("repo-keys"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         Files.createDirectories(ir.getParent());
         Files.writeString(ir, Files.readString(fixture, StandardCharsets.UTF_8), StandardCharsets.UTF_8);
@@ -758,6 +778,12 @@ class BearCliAgentModeTest {
 
     private record CliRunResult(int exitCode, String stdout, String stderr) {
     }
+    private static void pinJvmTarget(Path projectRoot) throws Exception {
+        Path bearDir = projectRoot.resolve(".bear");
+        Files.createDirectories(bearDir);
+        Files.writeString(bearDir.resolve("target.id"), "jvm\n", StandardCharsets.UTF_8);
+    }
+
 }
 
 

@@ -6,19 +6,17 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-13
+2026-03-18
 
 ## Current Focus
 
-Phase P (Python Target — Scan Only) complete. App test failures fixed. Branch ready for PR.
+Bugfix: app-module test target detection failures after multi-target expansion — complete. All 451 app tests pass (0 failures), kernel tests green. Test-infrastructure-only fix: added `pinJvmTarget(Path)` helper + `.bear/target.id` pin files to BearCliTest and BearCliAgentModeTest. Spec at `.kiro/specs/bugfix-app-test-target-detection/` with prominent maintainer review flags for PR.
 
 ## Next Concrete Task
 
-1. Commit all changes, push to `feature/multi-target-expansion`, create PR.
-2. After merge, update `roadmap/board.md` to reflect Phase P complete.
+Merge PR stack (P2 #11 then hardening #12, or merge #12 directly and close #11). Then begin Phase C (Node Target — Runtime Execution) spec creation, or advance P3 milestone items per `roadmap/board.md`.
 
 ## Session Notes
 
-- **App test failures fixed**: `TargetRegistry` JVM fallback added (all-NONE detectors → JVM when registered); `JvmTargetDetector` extended to detect `gradlew`/`gradlew.bat`; compilation fixes (`e.exitCode()` → `e.code()`) in `BearCli.java` and `CheckCommandService.java`; `UNSUPPORTED_TARGET` constant added to `CliCodes.java`; app test fixtures updated with `build.gradle` creation; `TargetRegistryResolveTest` renamed to match new fallback behavior. Full suite green: 381 kernel + 446 app tests.
-- **Phase P implementation complete**: All 11 tasks finished. 11 source files, 8 unit test files, 6 property test files, 9 fixture projects, 18 integration tests. Full kernel+app test suite passing with zero JVM/Node regressions.
-- **Phase P spec complete**: `requirements.md`, `design.md`, `tasks.md` written. 33 correctness properties defined. AST-first Python analysis strategy.
+- **App test target detection bugfix complete**: 176 test failures from multi-target `TargetRegistry` introduction fixed. Added `pinJvmTarget(Path)` to BearCliTest (167 methods + multi-block fixtures + sub-project roots) and BearCliAgentModeTest (16 methods + repo subdirs). Exit 64 (`TARGET_NOT_DETECTED`) confirmed correct per frozen exit-code contract. Bugfix spec has ⚠️ maintainer review flags for eventual PR. Throwaway scripts cleaned up.
+- **Copilot review fixes applied** (commit 1f158ab): UTF-8 charset for getBytes/InputStreamReader in 3 Python scanners, interrupt restore in PythonProjectVerificationRunner.isToolAvailable, containment guard bug in CheckCommandService. TypeScript import path issue deferred to Node Phase B.

@@ -1,0 +1,3 @@
+specType: bugfix
+workflowType: requirements-first
+featureName: bugfix-app-test-target-detection

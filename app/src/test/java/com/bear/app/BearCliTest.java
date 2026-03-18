@@ -80,7 +80,8 @@ class BearCliTest {
     }
 
     @Test
-    void compileMissingIrReturnsIoExitCode(@TempDir Path tempDir) {
+    void compileMissingIrReturnsIoExitCode(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
         int exitCode = BearCli.run(
@@ -102,6 +103,7 @@ class BearCliTest {
 
     @Test
     void compileFixtureGeneratesArtifactsAndPreservesExistingImpl(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -145,7 +147,8 @@ class BearCliTest {
     }
 
     @Test
-    void fixMissingIrReturnsIoExitCode(@TempDir Path tempDir) {
+    void fixMissingIrReturnsIoExitCode(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult run = runCli(new String[] { "fix", "missing.yaml", "--project", tempDir.toString() });
         assertEquals(74, run.exitCode);
         assertTrue(run.stderr.startsWith("io: IO_ERROR:"));
@@ -159,6 +162,7 @@ class BearCliTest {
 
     @Test
     void fixInvalidIrReturnsValidationExitCode(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path invalid = tempDir.resolve("invalid.bear.yaml");
         Files.writeString(invalid, ""
             + "version: v1\n"
@@ -185,6 +189,7 @@ class BearCliTest {
 
     @Test
     void fixRegeneratesArtifactsAndPreservesExistingImpl(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -208,6 +213,7 @@ class BearCliTest {
 
     @Test
     void fixDeterministicRerunIsByteIdentical(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -234,7 +240,8 @@ class BearCliTest {
     }
 
     @Test
-    void checkMissingIrReturnsIoExitCode(@TempDir Path tempDir) {
+    void checkMissingIrReturnsIoExitCode(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult run = runCli(new String[] { "check", "missing.yaml", "--project", tempDir.toString() });
         assertEquals(74, run.exitCode);
         assertTrue(run.stderr.startsWith("io: IO_ERROR:"));
@@ -248,6 +255,7 @@ class BearCliTest {
 
     @Test
     void checkInvalidIrReturnsValidationExitCode(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path invalid = tempDir.resolve("invalid.bear.yaml");
         Files.writeString(invalid, ""
             + "version: v1\n"
@@ -274,6 +282,7 @@ class BearCliTest {
 
     @Test
     void checkMissingBaselineIsDriftError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -291,6 +300,7 @@ class BearCliTest {
 
     @Test
     void checkEmptyBaselineIsDriftError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         Path emptyBaseline = tempDir.resolve("build/generated/bear");
@@ -310,6 +320,7 @@ class BearCliTest {
 
     @Test
     void checkPassesWithNoDriftAndDoesNotMutateBaseline(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -341,6 +352,7 @@ class BearCliTest {
         Path relativeProjectRoot = Path.of("build/tmp/check-relative-project-" + System.nanoTime());
         Path absoluteProjectRoot = relativeProjectRoot.toAbsolutePath().normalize();
         Files.createDirectories(absoluteProjectRoot);
+        pinJvmTarget(absoluteProjectRoot);
         try {
             CliRunResult compile = runCli(new String[] { "compile", fixture.toString(), "--project", relativeProjectRoot.toString() });
             assertEquals(0, compile.exitCode);
@@ -362,6 +374,7 @@ class BearCliTest {
 
     @Test
     void checkReportsAddedRemovedChangedInDeterministicOrderAndDoesNotMutate(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -400,6 +413,7 @@ class BearCliTest {
 
     @Test
     void checkWiringDriftUsesCanonicalPathWithoutDuplicates(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -424,6 +438,7 @@ class BearCliTest {
 
     @Test
     void checkLegacyRuntimePathPresenceFailsDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -449,6 +464,7 @@ class BearCliTest {
 
     @Test
     void checkMissingCanonicalRuntimeFailsDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -471,6 +487,7 @@ class BearCliTest {
 
     @Test
     void checkCanonicalRuntimeOnlyPasses(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -488,6 +505,7 @@ class BearCliTest {
 
     @Test
     void checkEmitsCapabilityAddedBoundarySignalAndDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -512,6 +530,7 @@ class BearCliTest {
 
     @Test
     void checkEmitsCapabilityOpAddedBoundarySignalAndDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -536,6 +555,7 @@ class BearCliTest {
 
     @Test
     void checkEmitsInvariantRelaxedBoundarySignalAndDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -560,6 +580,7 @@ class BearCliTest {
 
     @Test
     void checkBoundarySignalOrderingIsTypeThenKey(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -590,6 +611,7 @@ class BearCliTest {
 
     @Test
     void checkWarnsWhenBaselineManifestMissing(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -610,6 +632,7 @@ class BearCliTest {
 
     @Test
     void checkWarnsWhenBaselineManifestInvalid(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -630,6 +653,7 @@ class BearCliTest {
 
     @Test
     void checkWarnsOnBaselineStampMismatch(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -653,6 +677,7 @@ class BearCliTest {
 
     @Test
     void checkFailsInternalWhenCandidateManifestMissingOrInvalid(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -691,6 +716,7 @@ class BearCliTest {
 
     @Test
     void checkMissingProjectWrapperReturnsIoError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -711,6 +737,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsWithoutWrapperFailsUnsupportedTarget(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
 
@@ -731,6 +758,7 @@ class BearCliTest {
 
     @Test
     void checkAllAllowedDepsWithoutWrapperMatchesSingleCheckUnsupportedTarget(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path ir = specDir.resolve("withdraw-allowedDeps.bear.yaml");
@@ -774,6 +802,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsMissingMarkerFailsDeterministically(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
 
@@ -800,6 +829,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsDoesNotRunMarkerVerificationWhenProjectTestsFail(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -826,6 +856,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsStaleMarkerFailsDeterministically(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
 
@@ -855,6 +886,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsMissingContainmentRequiredIsDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -879,6 +911,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsPreflightFailureSkipsProjectTestExecution(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -906,6 +939,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsMalformedContainmentRequiredIsDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -934,6 +968,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsAggregateBlocksMismatchFailsDeterministically(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -963,6 +998,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsMissingPerBlockMarkerFailsDeterministically(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -992,6 +1028,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsStalePerBlockMarkerFailsDeterministically(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1023,6 +1060,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsPerBlockMarkerUsesFirstSortedRequiredBlock(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1063,6 +1101,7 @@ class BearCliTest {
 
     @Test
     void checkAllowedDepsWithFreshMarkerPasses(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
 
@@ -1091,6 +1130,7 @@ class BearCliTest {
 
     @Test
     void checkContainmentInScopeFromSharedPolicyOnlyRequiresMarkers(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1119,6 +1159,7 @@ class BearCliTest {
 
     @Test
     void checkContainmentInScopeFromSharedSourcesOnlyRequiresMarkers(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1139,6 +1180,7 @@ class BearCliTest {
 
     @Test
     void checkDoesNotActivateContainmentForEmptySharedDirWithoutPolicy(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1156,6 +1198,7 @@ class BearCliTest {
 
     @Test
     void checkWithoutContainmentScopeDoesNotPreflightContainmentEntrypoint(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1174,6 +1217,7 @@ class BearCliTest {
 
     @Test
     void checkSharedPolicyInvalidFailsValidation(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1208,6 +1252,7 @@ class BearCliTest {
 
     @Test
     void checkSharedDepsViolationFromProjectTestsUsesSharedPolicyRemediation(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path ir = tempDir.resolve("withdraw-allowedDeps.bear.yaml");
         Files.writeString(ir, fixtureIrWithAllowedDep("com.fasterxml.jackson.core:jackson-databind", "2.17.2"));
         assertEquals(0, runCli(new String[] { "compile", ir.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1234,6 +1279,7 @@ class BearCliTest {
 
     @Test
     void checkEmitsContainmentSkipInfoWhenSelectionHasNoAllowedDepsAndRequirementIsNonEmpty(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1243,6 +1289,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("service");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "alpha");
@@ -1266,6 +1313,7 @@ class BearCliTest {
 
     @Test
     void checkAllEnforcesContainmentWhenSelectedBlocksIncludeAllowedDeps(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path betaIr = specDir.resolve("beta.bear.yaml");
@@ -1277,6 +1325,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "beta");
         writeProjectWrapper(
@@ -1309,6 +1358,7 @@ class BearCliTest {
 
     @Test
     void checkAllRunsCompileAndTestInvocationPerContainmentEnabledRoot(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1322,6 +1372,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "alpha");
@@ -1366,6 +1417,7 @@ class BearCliTest {
 
     @Test
     void checkAllContainmentPreflightRunsOncePerRootBeforeSingleTestInvocation(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1379,6 +1431,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "alpha");
@@ -1431,6 +1484,7 @@ class BearCliTest {
 
     @Test
     void checkAllEnforcesContainmentWhenSharedPolicyExistsWithoutAllowedDeps(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1438,6 +1492,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "alpha");
         writeProjectWrapper(
@@ -1470,6 +1525,7 @@ class BearCliTest {
 
     @Test
     void checkAllEnforcesContainmentWhenSharedSourcesExistWithoutAllowedDeps(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1477,6 +1533,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "alpha");
         writeProjectWrapper(
@@ -1504,6 +1561,7 @@ class BearCliTest {
 
     @Test
     void checkAllMapsSharedDepsViolationToContainmentLane(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1511,6 +1569,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         writeSharedPolicy(
             projectRoot,
             ""
@@ -1547,6 +1606,7 @@ class BearCliTest {
 
     @Test
     void checkAllMapsContainmentCompileFailureToContainmentLane(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path irDir = tempDir.resolve("bear-ir");
         Files.createDirectories(irDir);
         Path alphaIr = irDir.resolve("alpha.bear.yaml");
@@ -1554,6 +1614,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "alpha");
         writeProjectWrapper(
@@ -1579,6 +1640,7 @@ class BearCliTest {
 
     @Test
     void checkAllMapsContainmentGenericFailureToContainmentLane(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path irDir = tempDir.resolve("bear-ir");
         Files.createDirectories(irDir);
         Path alphaIr = irDir.resolve("alpha.bear.yaml");
@@ -1586,6 +1648,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("services/shared");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         writeWorkingBlockImpl(projectRoot, "alpha");
         writeProjectWrapper(
@@ -1610,6 +1673,7 @@ class BearCliTest {
     }
     @Test
     void checkOmitsContainmentSkipInfoWhenContainmentRequiredMissing(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1619,6 +1683,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("service");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         Files.deleteIfExists(projectRoot.resolve("build/generated/bear/config/containment-required.json"));
@@ -1639,6 +1704,7 @@ class BearCliTest {
 
     @Test
     void checkOmitsContainmentSkipInfoWhenContainmentRequiredMalformed(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -1648,6 +1714,7 @@ class BearCliTest {
 
         Path projectRoot = tempDir.resolve("service");
         Files.createDirectories(projectRoot);
+        pinJvmTarget(projectRoot);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", projectRoot.toString() }).exitCode);
         Files.writeString(
@@ -1672,6 +1739,7 @@ class BearCliTest {
 
     @Test
     void checkOmitsContainmentSkipInfoWhenContainmentRequiredIsEmpty(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path alphaIr = tempDir.resolve("alpha.bear.yaml");
         Files.writeString(alphaIr, fixtureIrForBlockName("alpha"), StandardCharsets.UTF_8);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1692,6 +1760,7 @@ class BearCliTest {
 
     @Test
     void checkWithoutAllowedDepsKeepsImplOnNormalCompilePath(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1747,6 +1816,7 @@ class BearCliTest {
 
     @Test
     void checkRunsProjectTestsAndPasses(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -1767,6 +1837,7 @@ class BearCliTest {
 
     @Test
     void checkSetsGradleUserHomeByDefault(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1792,6 +1863,7 @@ class BearCliTest {
 
     @Test
     void checkProjectTestGradleLockReturnsIoError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1827,6 +1899,7 @@ class BearCliTest {
 
     @Test
     void checkProjectTestGradleBootstrapFailureReturnsIoError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1862,6 +1935,7 @@ class BearCliTest {
 
     @Test
     void checkProjectTestFailureReturnsExit4AndTail(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -1892,6 +1966,7 @@ class BearCliTest {
 
     @Test
     void checkProjectTestTimeoutReturnsExit4(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -1935,6 +2010,7 @@ class BearCliTest {
 
     @Test
     void checkDriftShortCircuitsAndDoesNotRunProjectTests(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
 
@@ -1965,6 +2041,7 @@ class BearCliTest {
 
     @Test
     void checkUndeclaredReachReturnsExit6AndSkipsProjectTests(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -1996,6 +2073,7 @@ class BearCliTest {
 
     @Test
     void checkReflectionDispatchForbiddenReturnsDedicatedCodeAndSkipsProjectTests(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2027,6 +2105,7 @@ class BearCliTest {
 
     @Test
     void checkReflectionDispatchForbiddenDetectsNoTargetTokenAliasCase(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2053,6 +2132,7 @@ class BearCliTest {
     }
     @Test
     void checkUndeclaredReachDetectsCoveredHttpSurfaces(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2082,6 +2162,7 @@ class BearCliTest {
 
     @Test
     void checkUndeclaredReachSkipsExcludedPaths(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2108,6 +2189,7 @@ class BearCliTest {
 
     @Test
     void checkUndeclaredReachOrderingIsDeterministic(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2133,6 +2215,7 @@ class BearCliTest {
 
     @Test
     void checkDefaultModeIgnoresHygieneSeedPaths(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2150,6 +2233,7 @@ class BearCliTest {
 
     @Test
     void checkStrictHygieneFailsOnUnexpectedSeedPath(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2174,6 +2258,7 @@ class BearCliTest {
 
     @Test
     void checkStrictHygieneRespectsAllowlist(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2194,6 +2279,7 @@ class BearCliTest {
 
     @Test
     void checkStrictHygieneNeverFlagsBearGradleUserHome(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2211,6 +2297,7 @@ class BearCliTest {
 
     @Test
     void checkInvalidPolicyAllowlistReturnsPolicyInvalid(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2237,6 +2324,7 @@ class BearCliTest {
 
     @Test
     void checkDriftTakesPrecedenceOverUndeclaredReach(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2262,6 +2350,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassDirectImplUsageFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2296,6 +2385,7 @@ class BearCliTest {
     }
     @Test
     void checkCollectAllBoundaryBypassFindingsAreDeterministicallyOrdered(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2345,6 +2435,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassReflectionClassloadingFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2375,6 +2466,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassReflectionClassloadingAllowlistPasses(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2406,6 +2498,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassGovernedServiceBindingFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2436,6 +2529,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassGovernedModuleBindingFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2469,6 +2563,7 @@ class BearCliTest {
 
     @Test
     void checkAllowsWrapperOfDefaultWiringPath(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2502,6 +2597,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassImplContainmentFailsForExternalResolvedCall(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2549,6 +2645,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassImplPurityViolationFailsForStaticMutableState(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2591,6 +2688,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassImplStateDependencyFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2641,6 +2739,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassScopedImportPolicyFailsForSharedPure(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2676,6 +2775,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassSharedPureNewInitializerFailsWhenNotAllowlisted(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2712,6 +2812,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassIgnoresImplTextInCommentsAndStrings(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2741,6 +2842,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassNullPortWiringTopLevelFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2777,6 +2879,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassNullPortNestedExpressionDoesNotFail(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2807,6 +2910,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassGeneratedPortImplOutsideGovernedRootsFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2842,6 +2946,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassGeneratedPortImplInsideBlockRootPasses(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2869,6 +2974,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassGeneratedPortImplInsideSharedRootPasses(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2897,6 +3003,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassFailsWhenMarkerIsUsedOutsideShared(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2935,6 +3042,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassEffectsMissingRequiredPortUsageFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -2969,6 +3077,7 @@ class BearCliTest {
 
     @Test
     void checkAllBoundaryBypassFailsOnSharedMultiBlockPortImplementerWithoutMarker(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = tempDir.resolve("repo");
         Path specDir = repo.resolve("spec");
         Files.createDirectories(specDir);
@@ -2979,6 +3088,7 @@ class BearCliTest {
 
         Path serviceRoot = repo.resolve("service");
         Files.createDirectories(serviceRoot);
+        pinJvmTarget(serviceRoot);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", serviceRoot.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", serviceRoot.toString() }).exitCode);
         writeWorkingBlockImpl(serviceRoot, "alpha");
@@ -3026,6 +3136,7 @@ class BearCliTest {
 
     @Test
     void checkBoundaryBypassEffectsHelperPassThroughAndSuppression(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -3102,6 +3213,7 @@ class BearCliTest {
 
     @Test
     void checkBlockedMarkerIsAdvisoryAndSuccessfulCheckClears(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -3129,7 +3241,8 @@ class BearCliTest {
     }
 
     @Test
-    void unblockIsIdempotentWhenMarkerIsMissing(@TempDir Path tempDir) {
+    void unblockIsIdempotentWhenMarkerIsMissing(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         CliRunResult unblock = runCli(new String[] { "unblock", "--project", tempDir.toString() });
         assertEquals(0, unblock.exitCode);
         assertEquals("unblock: OK\n", normalizeLf(unblock.stdout));
@@ -3138,6 +3251,7 @@ class BearCliTest {
 
     @Test
     void unblockRetriesAndSucceedsAfterTransientDeleteFailure(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path marker = tempDir.resolve("build/bear/check.blocked.marker");
         Files.createDirectories(marker.getParent());
         Files.writeString(marker, "reason=LOCK\ndetail=x\n", StandardCharsets.UTF_8);
@@ -3157,6 +3271,7 @@ class BearCliTest {
 
     @Test
     void unblockReturnsDeterministicUnblockLockedEnvelopeWhenDeleteFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path marker = tempDir.resolve("build/bear/check.blocked.marker");
         Files.createDirectories(marker.getParent());
         Files.writeString(marker, "reason=LOCK\ndetail=x\n", StandardCharsets.UTF_8);
@@ -3184,6 +3299,7 @@ class BearCliTest {
 
     @Test
     void checkAllBlockedMarkerIsAdvisoryAndRunCanProceed(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         Path marker = alphaRoot.resolve("build/bear/check.blocked.marker");
@@ -3200,6 +3316,7 @@ class BearCliTest {
 
     @Test
     void checkAllPassesInCanonicalOrder(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         CliRunResult run = runCli(new String[] { "check", "--all", "--project", fixture.repoRoot().toString() });
 
@@ -3217,6 +3334,7 @@ class BearCliTest {
 
     @Test
     void checkAllAttachesContainmentSkipInfoToFirstPassingBlockOnlyAndIsDeterministic(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path specDir = tempDir.resolve("spec");
         Files.createDirectories(specDir);
         Path alphaIr = specDir.resolve("alpha.bear.yaml");
@@ -3226,6 +3344,7 @@ class BearCliTest {
 
         Path sharedRoot = tempDir.resolve("services/shared");
         Files.createDirectories(sharedRoot);
+        pinJvmTarget(sharedRoot);
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", sharedRoot.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", gammaIr.toString(), "--project", sharedRoot.toString() }).exitCode);
         Path required = sharedRoot.resolve("build/generated/bear/config/containment-required.json");
@@ -3274,6 +3393,7 @@ class BearCliTest {
 
     @Test
     void checkAllBoundaryBypassImplContainmentFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         Path external = alphaRoot.resolve("src/main/java/com/example/domain/WalletDomain.java");
@@ -3314,6 +3434,7 @@ class BearCliTest {
 
     @Test
     void checkAllManifestInvalidWhenBlockRootSourceDirMissing(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaWiring = fixture.projectRoots().get(0).resolve("build/generated/bear/wiring/alpha.wiring.json");
         String content = Files.readString(alphaWiring, StandardCharsets.UTF_8);
@@ -3335,6 +3456,7 @@ class BearCliTest {
 
     @Test
     void checkAllDefaultContinueAllEvaluatesRemainingBlocks(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         deleteGeneratedBaseline(fixture.projectRoots().get(1));
 
@@ -3353,6 +3475,7 @@ class BearCliTest {
 
     @Test
     void checkAllBlockDetailIncludesCanonicalWiringPathForWiringDrift(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path betaWiring = fixture.projectRoots().get(1).resolve("build/generated/bear/wiring/beta.wiring.json");
         Files.writeString(betaWiring, Files.readString(betaWiring, StandardCharsets.UTF_8) + "\n", StandardCharsets.UTF_8);
@@ -3386,6 +3509,7 @@ class BearCliTest {
 
     @Test
     void checkAllFailFastMarksRemainingAsSkip(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         deleteGeneratedBaseline(fixture.projectRoots().get(0));
 
@@ -3402,6 +3526,7 @@ class BearCliTest {
 
     @Test
     void checkAllUnknownOnlyNameIsUsageError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         CliRunResult run = runCli(new String[] {
             "check", "--all", "--project", fixture.repoRoot().toString(), "--only", "not-a-block"
@@ -3418,6 +3543,7 @@ class BearCliTest {
 
     @Test
     void checkAllDisabledBlockRenderedAsSkip(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         writeBlockIndex(fixture.repoRoot(), ""
             + "version: v1\n"
@@ -3438,6 +3564,7 @@ class BearCliTest {
 
     @Test
     void checkAllStrictOrphansFailsOnRepoMarker(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/surfaces/orphan.surface.json");
         Files.createDirectories(orphan.getParent());
@@ -3458,6 +3585,7 @@ class BearCliTest {
 
     @Test
     void checkAllDefaultManagedRootGuardFailsOnUnexpectedManagedMarker(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path orphan = fixture.repoRoot().resolve("services/alpha/build/generated/bear/surfaces/orphan.surface.json");
         Files.createDirectories(orphan.getParent());
@@ -3472,6 +3600,7 @@ class BearCliTest {
 
     @Test
     void checkAllOnlyWithStrictStillUsesRepoWideOrphanScan(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path orphan = fixture.repoRoot().resolve("z/build/generated/bear/surfaces/orphan.surface.json");
         Files.createDirectories(orphan.getParent());
@@ -3486,6 +3615,7 @@ class BearCliTest {
 
     @Test
     void checkAllStrictHygieneFailsOnRepoSeedPath(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Files.createDirectories(fixture.repoRoot().resolve(".g"));
 
@@ -3504,6 +3634,7 @@ class BearCliTest {
 
     @Test
     void checkAllStrictHygieneAllowlistPasses(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Files.createDirectories(fixture.repoRoot().resolve(".g"));
         Path allowlist = fixture.repoRoot().resolve("bear-policy/hygiene-allowlist.txt");
@@ -3518,6 +3649,7 @@ class BearCliTest {
 
     @Test
     void checkAllReflectionDispatchForbiddenFailsBeforeRootTests(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         Path alphaImpl = alphaRoot.resolve("src/main/java/blocks/alpha/impl/AlphaImpl.java");
@@ -3544,6 +3676,7 @@ class BearCliTest {
     }
     @Test
     void checkAllClassifiesGradleLockAsIoError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         writeProjectWrapper(
@@ -3578,6 +3711,7 @@ class BearCliTest {
 
     @Test
     void checkAllClassifiesGradleBootstrapAsIoError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         writeProjectWrapper(
@@ -3613,6 +3747,7 @@ class BearCliTest {
 
     @Test
     void checkAllClassifiesInvariantViolationAsExit4(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         String marker = "BEAR_INVARIANT_VIOLATION|block=alpha|kind=non_negative|field=balance|observed=-1|rule=non_negative";
@@ -3638,6 +3773,7 @@ class BearCliTest {
 
     @Test
     void checkPreservesRootCauseWhenBlockedMarkerWriteFails(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -3668,6 +3804,7 @@ class BearCliTest {
 
     @Test
     void checkAllIncludesRootProjectFailureLineAndTailInDetail(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaRoot = fixture.projectRoots().get(0);
         writeProjectWrapper(
@@ -3696,6 +3833,7 @@ class BearCliTest {
 
     @Test
     void compileAllPassesInCanonicalOrder(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         CliRunResult run = runCli(new String[] { "compile", "--all", "--project", fixture.repoRoot().toString() });
 
@@ -3713,6 +3851,7 @@ class BearCliTest {
 
     @Test
     void compileAllUnknownOnlyNameIsUsageError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         CliRunResult run = runCli(new String[] {
             "compile", "--all", "--project", fixture.repoRoot().toString(), "--only", "not-a-block"
@@ -3729,6 +3868,7 @@ class BearCliTest {
 
     @Test
     void compileAllOnlyFiltersSelectedBlocks(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         CliRunResult run = runCli(new String[] {
             "compile", "--all", "--project", fixture.repoRoot().toString(), "--only", "alpha,beta"
@@ -3743,6 +3883,7 @@ class BearCliTest {
 
     @Test
     void compileAllFailFastMarksRemainingAsSkip(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
         Files.writeString(alphaIr, "version: v1\nblock:\n  name: alpha\n");
@@ -3760,6 +3901,7 @@ class BearCliTest {
 
     @Test
     void compileAllStrictOrphansFailsOnRepoMarker(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/surfaces/orphan.surface.json");
         Files.createDirectories(orphan.getParent());
@@ -3780,6 +3922,7 @@ class BearCliTest {
 
     @Test
     void fixAllPassesInCanonicalOrder(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         CliRunResult run = runCli(new String[] { "fix", "--all", "--project", fixture.repoRoot().toString() });
 
@@ -3797,6 +3940,7 @@ class BearCliTest {
 
     @Test
     void fixAllUnknownOnlyNameIsUsageError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         CliRunResult run = runCli(new String[] {
             "fix", "--all", "--project", fixture.repoRoot().toString(), "--only", "not-a-block"
@@ -3813,6 +3957,7 @@ class BearCliTest {
 
     @Test
     void fixAllDisabledBlockRenderedAsSkip(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         writeBlockIndex(fixture.repoRoot(), ""
             + "version: v1\n"
@@ -3833,6 +3978,7 @@ class BearCliTest {
 
     @Test
     void fixAllFailFastMarksRemainingAsSkip(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
         Files.writeString(alphaIr, "version: v1\nblock:\n  name: alpha\n");
@@ -3850,6 +3996,7 @@ class BearCliTest {
 
     @Test
     void fixAllStrictOrphansFailsOnRepoMarker(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path orphan = fixture.repoRoot().resolve("orphan-root/build/generated/bear/surfaces/orphan.surface.json");
         Files.createDirectories(orphan.getParent());
@@ -3870,6 +4017,7 @@ class BearCliTest {
 
     @Test
     void fixAllAggregatedFailureUsesRepoFooter(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         MultiBlockFixture fixture = createMultiBlockFixture(tempDir);
         Path alphaIr = fixture.repoRoot().resolve("spec/alpha.bear.yaml");
         Files.writeString(alphaIr, "version: v1\nblock:\n  name: alpha\n");
@@ -3886,7 +4034,9 @@ class BearCliTest {
 
     @Test
     void prCheckAllProducesMixedClassifications(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path servicesA = repo.resolve("services/a");
         Path servicesB = repo.resolve("services/b");
         Files.createDirectories(servicesA);
@@ -3963,7 +4113,9 @@ class BearCliTest {
 
     @Test
     void prCheckRejectsAbsoluteIrPath(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         Files.createDirectories(ir.getParent());
         Files.writeString(ir, Files.readString(TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml")));
@@ -3984,7 +4136,9 @@ class BearCliTest {
 
     @Test
     void prCheckMissingBaseRefReturnsIo(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         gitCommitAll(repo, "add ir");
 
@@ -4003,7 +4157,9 @@ class BearCliTest {
 
     @Test
     void prCheckMissingHeadIrReturnsIo(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Files.writeString(repo.resolve("README.md"), "x\n", StandardCharsets.UTF_8);
         gitCommitAll(repo, "base");
 
@@ -4022,7 +4178,9 @@ class BearCliTest {
 
     @Test
     void prCheckNoDeltaReturnsOk(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         gitCommitAll(repo, "add ir");
 
@@ -4036,7 +4194,9 @@ class BearCliTest {
 
     @Test
     void prCheckFailsWhenGeneratedPortImplLivesOutsideGovernedRoots(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         Files.createDirectories(repo.resolve("src/main/java/com/acme"));
         Files.writeString(
@@ -4066,7 +4226,9 @@ class BearCliTest {
 
     @Test
     void prCheckAllowsGeneratedPortImplInsideSharedGovernedRoot(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         Files.createDirectories(repo.resolve("src/main/java/blocks/_shared"));
         Files.writeString(
@@ -4088,7 +4250,9 @@ class BearCliTest {
 
     @Test
     void prCheckPrintsGovernanceSignalWhenMultiBlockPortImplIsAllowedByMarker(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         Files.createDirectories(repo.resolve("src/main/java/blocks/_shared"));
         Files.writeString(
@@ -4117,7 +4281,9 @@ class BearCliTest {
 
     @Test
     void prCheckFailsWhenMarkerIsUsedOutsideSharedForGeneratedPortImplementer(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         Files.createDirectories(repo.resolve("src/main/java/blocks/withdraw/adapters"));
         Files.writeString(
@@ -4149,7 +4315,9 @@ class BearCliTest {
 
     @Test
     void prCheckUsesFixedTempLayoutWithWiringOnlyOutputs(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         gitCommitAll(repo, "add ir");
 
@@ -4188,7 +4356,9 @@ class BearCliTest {
 
     @Test
     void prCheckAllPrintsAggregatedGovernanceSignalsBeforeSummaryOnSuccess(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
         writeBlockIndex(repo, ""
             + "version: v1\n"
@@ -4223,7 +4393,9 @@ class BearCliTest {
 
     @Test
     void prCheckTreatsMissingBaseIrAsBoundaryExpansion(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Files.writeString(repo.resolve("README.md"), "base\n", StandardCharsets.UTF_8);
         gitCommitAll(repo, "base");
 
@@ -4248,7 +4420,9 @@ class BearCliTest {
 
     @Test
     void prCheckEnvelopeAnomalyBecomesInternalError(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Files.writeString(repo.resolve("README.md"), "base\n", StandardCharsets.UTF_8);
         gitCommitAll(repo, "base");
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
@@ -4279,7 +4453,9 @@ class BearCliTest {
 
     @Test
     void prCheckAllEnvelopeAnomalySurfacesAsInternalFailure(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Files.writeString(repo.resolve("README.md"), "base\n", StandardCharsets.UTF_8);
         gitCommitAll(repo, "base");
         writeFixtureIr(repo.resolve("bear-ir/withdraw.bear.yaml"));
@@ -4315,7 +4491,9 @@ class BearCliTest {
 
     @Test
     void prCheckOrdinaryOpsDeltaReturnsZero(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         String base = fixtureIrContent();
         Files.createDirectories(ir.getParent());
@@ -4345,7 +4523,9 @@ class BearCliTest {
 
     @Test
     void prCheckOrderingIsDeterministic(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         String base = fixtureIrContent();
         Files.createDirectories(ir.getParent());
@@ -4415,7 +4595,9 @@ class BearCliTest {
 
     @Test
     void prCheckIdempotencyAddEmitsOnlyTopLevelDelta(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         String fixture = fixtureIrContent();
         String base = fixture.replace(
@@ -4458,7 +4640,8 @@ class BearCliTest {
     }
 
     @Test
-    void compileInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) {
+    void compileInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         String key = "bear.cli.test.failInternal.compile";
         String previous = System.getProperty(key);
         try {
@@ -4478,7 +4661,8 @@ class BearCliTest {
     }
 
     @Test
-    void checkInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) {
+    void checkInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         String key = "bear.cli.test.failInternal.check";
         String previous = System.getProperty(key);
         try {
@@ -4498,7 +4682,8 @@ class BearCliTest {
     }
 
     @Test
-    void fixInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) {
+    void fixInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         String key = "bear.cli.test.failInternal.fix";
         String previous = System.getProperty(key);
         try {
@@ -4519,6 +4704,7 @@ class BearCliTest {
 
     @Test
     void prCheckInjectedInternalFailureIsEnveloped(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path project = tempDir.resolve("project");
         Path ir = project.resolve("bear-ir/withdraw.bear.yaml");
         writeFixtureIr(ir);
@@ -4559,6 +4745,9 @@ class BearCliTest {
         Files.createDirectories(alphaProject);
         Files.createDirectories(betaProject);
         Files.createDirectories(gammaProject);
+        pinJvmTarget(alphaProject);
+        pinJvmTarget(betaProject);
+        pinJvmTarget(gammaProject);
 
         assertEquals(0, runCli(new String[] { "compile", alphaIr.toString(), "--project", alphaProject.toString() }).exitCode);
         assertEquals(0, runCli(new String[] { "compile", betaIr.toString(), "--project", betaProject.toString() }).exitCode);
@@ -4824,7 +5013,9 @@ class BearCliTest {
 
     @Test
     void prCheckAllowedDepDeltaClassification(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         String base = fixtureIrContent();
         Files.createDirectories(ir.getParent());
@@ -4869,7 +5060,9 @@ class BearCliTest {
 
     @Test
     void prCheckSharedPolicyDeltaClassification(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         Files.createDirectories(ir.getParent());
         Files.writeString(ir, fixtureIrContent(), StandardCharsets.UTF_8);
@@ -4931,7 +5124,9 @@ class BearCliTest {
 
     @Test
     void prCheckSharedPolicyInvalidReturnsPolicyInvalid(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         Files.createDirectories(ir.getParent());
         Files.writeString(ir, fixtureIrContent(), StandardCharsets.UTF_8);
@@ -4961,7 +5156,9 @@ class BearCliTest {
 
     @Test
     void prCheckAllPrintsRepoDeltaForSharedPolicyBeforeSummary(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         writeFixtureIr(ir);
         writeBlockIndex(repo, ""
@@ -4997,7 +5194,9 @@ class BearCliTest {
     }
     @Test
     void prCheckAllRepoDeltaLinesAreLexicallySorted(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        pinJvmTarget(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         writeFixtureIr(ir);
         writeBlockIndex(repo, ""
@@ -5038,6 +5237,7 @@ class BearCliTest {
 
     @Test
     void checkFailsValidationOnWiringSemanticPortOverlap(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -5064,6 +5264,7 @@ class BearCliTest {
 
     @Test
     void checkFailsManifestInvalidWhenGovernedBindingFieldsMissing(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -5087,6 +5288,7 @@ class BearCliTest {
 
     @Test
     void checkFailsManifestInvalidWhenBlockRootSourceDirMissing(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -5110,6 +5312,7 @@ class BearCliTest {
 
     @Test
     void checkFailsManifestInvalidWhenGovernedSourceRootsMissing(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -5133,6 +5336,7 @@ class BearCliTest {
 
     @Test
     void checkFailsManifestInvalidWhenWiringSchemaNotV3(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -5156,6 +5360,7 @@ class BearCliTest {
 
     @Test
     void checkFailsValidationWhenSemanticChecksTargetIsUnsupported(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -5180,6 +5385,7 @@ class BearCliTest {
 
     @Test
     void checkClassifiesInvariantMarkerAsInvariantViolation(@TempDir Path tempDir) throws Exception {
+        pinJvmTarget(tempDir);
         Path repoRoot = TestRepoPaths.repoRoot();
         Path fixture = repoRoot.resolve("bear-ir/fixtures/withdraw.bear.yaml");
         assertEquals(0, runCli(new String[] { "compile", fixture.toString(), "--project", tempDir.toString() }).exitCode);
@@ -5371,4 +5577,10 @@ class BearCliTest {
 
     private record MultiBlockFixture(Path repoRoot, List<Path> projectRoots) {
     }
+    private static void pinJvmTarget(Path projectRoot) throws Exception {
+        Path bearDir = projectRoot.resolve(".bear");
+        Files.createDirectories(bearDir);
+        Files.writeString(bearDir.resolve("target.id"), "jvm\n", StandardCharsets.UTF_8);
+    }
+
 }
