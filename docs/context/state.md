@@ -18,5 +18,6 @@ Monitor PR #12 and #13 for further review comments. Once both merge, advance Pha
 
 ## Session Notes
 
-- **PR #13 Copilot review fixes** (23eb8e3): Narrowed `TestTargetPins.pinJvm` to `throws IOException`, updated spec docs (bugfix.md, design.md, tasks.md) to reference shared utility instead of per-class helpers, clarified kernel diffs are merge conflict resolutions. App tests green (451 pass).
-- **PR #13 prior review fixes** (945b975): Extracted shared `TestTargetPins.pinJvm()` utility, resolved inherited merge conflict markers in 4 kernel files. 451 app tests + kernel tests green.
+- **PR #12 round 5-6 review fixes** (9b29a9f): Removed `asynchat`, `asyncore`, `smtpd` from STDLIB_MODULES (removed in Python 3.12). Added 3 dedicated regression tests + updated allRemovedModules list to 24. `typing_extensions` already absent. ~30 remaining inline comments verified as stale duplicates. Kernel tests green.
+- **PR #12 round-4 review fixes** (e3ab39d): Fixed TYPE_CHECKING orelse exclusion bug in 3 Python scanners, added `.sorted()` to NodeTarget drift path collection, updated PythonDynamicImportEnforcer Javadoc and python-known-gaps.md. Kernel tests green.
+- **PR #13 review fixes** (945b975, prior session): Extracted shared `TestTargetPins.pinJvm()` utility, resolved inherited merge conflict markers in 4 kernel files. 451 app tests + kernel tests green.

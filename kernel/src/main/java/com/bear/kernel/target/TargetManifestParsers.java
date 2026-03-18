@@ -1,6 +1,5 @@
-package com.bear.kernel.target.jvm;
+package com.bear.kernel.target;
 
-import com.bear.kernel.target.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -11,13 +10,13 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class TargetManifestParsers {
+public final class TargetManifestParsers {
     private static final String SHARED_GOVERNED_ROOT = "src/main/java/blocks/_shared";
 
     private TargetManifestParsers() {
     }
 
-    static WiringManifest parseWiringManifest(Path path) throws IOException, ManifestParseException {
+    public static WiringManifest parseWiringManifest(Path path) throws IOException, ManifestParseException {
         String json = Files.readString(path, StandardCharsets.UTF_8).trim();
         if (!json.startsWith("{") || !json.endsWith("}")) {
             throw new ManifestParseException("MALFORMED_JSON");
@@ -68,7 +67,7 @@ final class TargetManifestParsers {
         );
     }
 
-    static String extractRequiredString(String json, String key) throws ManifestParseException {
+    public static String extractRequiredString(String json, String key) throws ManifestParseException {
         Matcher m = Pattern.compile("\"" + Pattern.quote(key) + "\":\"((?:\\\\.|[^\\\\\"])*)\"").matcher(json);
         if (!m.find()) {
             throw new ManifestParseException("MISSING_KEY_" + key);
@@ -76,7 +75,7 @@ final class TargetManifestParsers {
         return jsonUnescape(m.group(1));
     }
 
-    static String extractRequiredArrayPayload(String json, String key) throws ManifestParseException {
+    public static String extractRequiredArrayPayload(String json, String key) throws ManifestParseException {
         int keyIdx = json.indexOf("\"" + key + "\":[");
         if (keyIdx < 0) {
             throw new ManifestParseException("MISSING_KEY_" + key);
@@ -100,7 +99,7 @@ final class TargetManifestParsers {
         throw new ManifestParseException("MALFORMED_ARRAY_" + key);
     }
 
-    static String jsonUnescape(String raw) {
+    public static String jsonUnescape(String raw) {
         return raw
             .replace("\\\"", "\"")
             .replace("\\\\", "\\")

@@ -41,7 +41,7 @@ public class NodeImportContainmentScanner {
             dynamicDetector.detectDynamicImports(content);
         }
 
-        // Sort findings by file path only (line numbers not available in current finding model)
+        // Sort findings by file path
         findings.sort(Comparator.comparing(
             (BoundaryBypassFinding f) -> f.path(),
             Comparator.naturalOrder()
