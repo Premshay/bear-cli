@@ -22,6 +22,7 @@ class TargetSeamParityTest {
     @Test
     void explicitJvmCheckMatchesRegistryRoutedCheck(@TempDir Path tempDir) throws Exception {
         Path fixture = TestRepoPaths.repoRoot().resolve("bear-ir/fixtures/withdraw.bear.yaml");
+        TestTargetPins.pinJvm(tempDir);
 
         CompileResult compileResult = BearCli.executeCompile(fixture, tempDir, null, null);
         assertEquals(0, compileResult.exitCode());
@@ -64,6 +65,7 @@ new JvmTarget()
     @Test
     void explicitJvmPrCheckMatchesRegistryRoutedPrCheck(@TempDir Path tempDir) throws Exception {
         Path repo = initGitRepo(tempDir.resolve("repo"));
+        TestTargetPins.pinJvm(repo);
         Path ir = repo.resolve("bear-ir/withdraw.bear.yaml");
         Files.createDirectories(ir.getParent());
         Files.writeString(ir, fixtureIrContent(), StandardCharsets.UTF_8);

@@ -6,19 +6,17 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-13
+2026-03-19
 
 ## Current Focus
 
-Phase P (Python Target — Scan Only) complete. App test failures fixed. Branch ready for PR.
+PR #12 (Python MVP Hardening) and PR #13 (App Test Target Detection) both pushed and under review on `feature/multi-target-expansion`.
 
 ## Next Concrete Task
 
-1. Commit all changes, push to `feature/multi-target-expansion`, create PR.
-2. After merge, update `roadmap/board.md` to reflect Phase P complete.
+Monitor PR #12 and #13 for further review comments. Once both merge, advance Phase C (Node Target — Runtime Execution) or P3 milestone items per `roadmap/board.md`.
 
 ## Session Notes
 
-- **App test failures fixed**: `TargetRegistry` JVM fallback added (all-NONE detectors → JVM when registered); `JvmTargetDetector` extended to detect `gradlew`/`gradlew.bat`; compilation fixes (`e.exitCode()` → `e.code()`) in `BearCli.java` and `CheckCommandService.java`; `UNSUPPORTED_TARGET` constant added to `CliCodes.java`; app test fixtures updated with `build.gradle` creation; `TargetRegistryResolveTest` renamed to match new fallback behavior. Full suite green: 381 kernel + 446 app tests.
-- **Phase P implementation complete**: All 11 tasks finished. 11 source files, 8 unit test files, 6 property test files, 9 fixture projects, 18 integration tests. Full kernel+app test suite passing with zero JVM/Node regressions.
-- **Phase P spec complete**: `requirements.md`, `design.md`, `tasks.md` written. 33 correctness properties defined. AST-first Python analysis strategy.
+- **PR #13 Copilot review fixes** (23eb8e3): Narrowed `TestTargetPins.pinJvm` to `throws IOException`, updated spec docs (bugfix.md, design.md, tasks.md) to reference shared utility instead of per-class helpers, clarified kernel diffs are merge conflict resolutions. App tests green (451 pass).
+- **PR #13 prior review fixes** (945b975): Extracted shared `TestTargetPins.pinJvm()` utility, resolved inherited merge conflict markers in 4 kernel files. 451 app tests + kernel tests green.
