@@ -38,7 +38,7 @@ public class TypeScriptManifestGenerator {
         for (BearIr.Operation op : ir.block().operations()) {
             String opName = op.name();
             String wrapperName = blockName + "_" + opName;
-            String wrapperPath = blockKey + "/" + blockName + "_" + opName + ".ts";
+            String wrapperPath = blockKey + "/" + blockName + "Wrapper.ts";
             wrapperList.add("    { \"operation\": \"" + opName + "\", \"wrapperClass\": \"" + wrapperName + "\", \"wrapperPath\": \"" + wrapperPath + "\" }");
         }
         sb.append(String.join(",\n", wrapperList));
