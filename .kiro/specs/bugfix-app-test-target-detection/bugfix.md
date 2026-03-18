@@ -46,10 +46,10 @@ Add `.bear/target.id` pin files (content: `jvm`) to all test temp directories
 before invoking compile/fix/check/pr-check. This is the canonical multi-target
 pattern documented in `TargetRegistry`'s own remediation message.
 
-Implementation approach per test class:
-1. Add a `pinJvmTarget(Path projectRoot)` static helper method
-2. Call it after `@TempDir` creation, before first CLI invocation
-3. For multi-block fixtures (`createMultiBlockFixture`), pin each project root
+Implementation approach:
+1. Add a shared `TestTargetPins.pinJvm(Path projectRoot)` helper utility
+2. Call `TestTargetPins.pinJvm` after `@TempDir` creation, before first CLI invocation
+3. For multi-block fixtures (`createMultiBlockFixture`), call `TestTargetPins.pinJvm` for each project root
 
 ## Acceptance Criteria
 
