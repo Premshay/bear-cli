@@ -10,14 +10,13 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-PR #12 (Python MVP Hardening) and PR #13 (App Test Target Detection) both pushed and under review on `feature/multi-target-expansion`.
+PR #13 and PR #12 both merged to `feature/multi-target-expansion`. Python MVP hardening and app test target detection complete. Ready to advance next phase.
 
 ## Next Concrete Task
 
-Monitor PR #12 and #13 for further review comments. Once both merge, advance Phase C (Node Target — Runtime Execution) or P3 milestone items per `roadmap/board.md`.
+Advance Phase C (Node Target — Runtime Execution) or P3 milestone items per `roadmap/board.md`.
 
 ## Session Notes
 
-- **PR #12 round 5-6 review fixes** (9b29a9f): Removed `asynchat`, `asyncore`, `smtpd` from STDLIB_MODULES (removed in Python 3.12). Added 3 dedicated regression tests + updated allRemovedModules list to 24. `typing_extensions` already absent. ~30 remaining inline comments verified as stale duplicates. Kernel tests green.
-- **PR #12 round-4 review fixes** (e3ab39d): Fixed TYPE_CHECKING orelse exclusion bug in 3 Python scanners, added `.sorted()` to NodeTarget drift path collection, updated PythonDynamicImportEnforcer Javadoc and python-known-gaps.md. Kernel tests green.
-- **PR #13 review fixes** (945b975, prior session): Extracted shared `TestTargetPins.pinJvm()` utility, resolved inherited merge conflict markers in 4 kernel files. 451 app tests + kernel tests green.
+- **PR #13 merged** (6349b50): App test JVM target pin fix — `TestTargetPins.pinJvm(Path)` shared helper, IOException narrowing, spec doc updates. Squash-merged to `feature/multi-target-expansion`.
+- **PR #12 merged** (367f976): Python MVP hardening — runpy detection, stdlib cleanup (Python 3.12+), TYPE_CHECKING orelse fix, fail-closed scanners, known-gaps doc. All 7 Copilot review rounds addressed. Rebased onto post-PR#13 base, squash-merged to `feature/multi-target-expansion`.
