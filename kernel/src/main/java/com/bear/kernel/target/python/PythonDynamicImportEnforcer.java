@@ -18,6 +18,8 @@ import java.util.*;
  * - sys.path.append(...)
  * - sys.path.insert(...)
  * - sys.path = [...] (assignment)
+ *
+ * Note: sys.path.extend() is NOT currently detected (accepted gap).
  * 
  * Excludes patterns inside `if TYPE_CHECKING:` blocks and test files.
  * Findings map to CODE=REFLECTION_DISPATCH_FORBIDDEN, exit code 6.

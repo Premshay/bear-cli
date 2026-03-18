@@ -39,10 +39,11 @@ public class PythonDynamicImportDetector {
                         is_type_checking = True
                     
                     if is_type_checking:
-                        # Collect all lines in the body of this if block
-                        for body_node in ast.walk(node):
-                            if hasattr(body_node, 'lineno'):
-                                type_checking_lines.add(body_node.lineno)
+                        # Collect lines in the if-body only (not orelse which is runtime code)
+                        for body_stmt in node.body:
+                            for body_node in ast.walk(body_stmt):
+                                if hasattr(body_node, 'lineno'):
+                                    type_checking_lines.add(body_node.lineno)
             return type_checking_lines
         
         def detect_dynamic_imports(source_code):

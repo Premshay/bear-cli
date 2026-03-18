@@ -22,7 +22,7 @@ on direct call patterns and do not attempt full data-flow analysis.
 | `runpy.run_path(...)` | `PythonDynamicExecutionScanner` | `runpy.run_path` |
 | `importlib.import_module(...)` | `PythonDynamicImportEnforcer` | `importlib.import_module` |
 | `__import__(...)` | `PythonDynamicImportEnforcer` | `__import__` |
-| `sys.path.append/insert(...)`, `sys.path = [...]` | `PythonDynamicImportEnforcer` | `sys.path` |
+| `sys.path.append/insert(...)`, `sys.path = [...]` | `PythonDynamicImportEnforcer` | `sys.path` (append/insert/assignment only) |
 | Undeclared stdlib reach (socket, subprocess, etc.) | `PythonUndeclaredReachScanner` | module name |
 | Third-party imports in governed code | `PythonImportContainmentScanner` | import path |
 

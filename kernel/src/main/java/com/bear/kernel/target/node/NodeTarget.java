@@ -241,7 +241,9 @@ public class NodeTarget implements Target {
         if (Files.isDirectory(typesDir)) {
             try (var stream = Files.walk(typesDir)) {
                 stream.filter(Files::isRegularFile)
-                    .forEach(p -> paths.add(projectRoot.relativize(p).toString().replace('\\', '/')));
+                    .map(p -> projectRoot.relativize(p).toString().replace('\\', '/'))
+                    .sorted()
+                    .forEach(paths::add);
             }
         }
 
