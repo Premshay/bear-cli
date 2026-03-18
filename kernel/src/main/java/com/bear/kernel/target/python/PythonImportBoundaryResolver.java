@@ -24,13 +24,14 @@ public class PythonImportBoundaryResolver {
 
     // Python 3.12+ standard library modules (common subset)
     // Full list: https://docs.python.org/3/py-modindex.html
-    // Updated: removed 21 modules deprecated/removed in Python 3.12–3.13
-    //   (aifc, audioop, cgi, cgitb, chunk, crypt, distutils, imghdr, imp,
-    //    mailcap, msilib, nis, nntplib, ossaudiodev, pipes, sndhdr, spwd,
-    //    sunau, telnetlib, uu, xdrlib)
+    // Updated: removed 24 modules deprecated/removed in Python 3.12–3.13
+    //   (aifc, asynchat, asyncore, audioop, cgi, cgitb, chunk, crypt,
+    //    distutils, imghdr, imp, mailcap, msilib, nis, nntplib,
+    //    ossaudiodev, pipes, smtpd, sndhdr, spwd, sunau, telnetlib,
+    //    uu, xdrlib)
     private static final Set<String> STDLIB_MODULES = Set.of(
         // Built-in modules
-        "abc", "argparse", "array", "ast", "asynchat", "asyncio", "asyncore",
+        "abc", "argparse", "array", "ast", "asyncio",
         "atexit", "base64", "bdb", "binascii", "bisect", "builtins",
         "bz2", "calendar", "cmath", "cmd", "code", "codecs",
         "codeop", "collections", "colorsys", "compileall", "concurrent", "configparser",
@@ -49,7 +50,7 @@ public class PythonImportBoundaryResolver {
         "pprint", "profile", "pstats", "pty", "pwd", "py_compile", "pyclbr", "pydoc",
         "queue", "quopri", "random", "re", "readline", "reprlib", "resource", "rlcompleter",
         "runpy", "sched", "secrets", "select", "selectors", "shelve", "shlex", "shutil",
-        "signal", "site", "smtpd", "smtplib", "socket", "socketserver",
+        "signal", "site", "smtplib", "socket", "socketserver",
         "sqlite3", "ssl", "stat", "statistics", "string", "stringprep",
         "struct", "subprocess", "symtable", "sys", "sysconfig", "syslog",
         "tabnanny", "tarfile", "tempfile", "termios", "test", "textwrap",

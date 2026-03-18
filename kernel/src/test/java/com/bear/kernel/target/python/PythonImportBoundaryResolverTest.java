@@ -245,11 +245,12 @@ class PythonImportBoundaryResolverTest {
         Path importingFile = blockRoot.resolve("service.py");
         Set<Path> governedRoots = Set.of(blockRoot);
 
-        // All 21 modules removed in Python 3.12/3.13
+        // All 24 modules removed in Python 3.12/3.13
         List<String> removedModules = List.of(
-            "aifc", "audioop", "cgi", "cgitb", "chunk", "crypt", "distutils",
-            "imghdr", "imp", "mailcap", "msilib", "nis", "nntplib", "ossaudiodev",
-            "pipes", "sndhdr", "spwd", "sunau", "telnetlib", "uu", "xdrlib"
+            "aifc", "asynchat", "asyncore", "audioop", "cgi", "cgitb", "chunk",
+            "crypt", "distutils", "imghdr", "imp", "mailcap", "msilib", "nis",
+            "nntplib", "ossaudiodev", "pipes", "smtpd", "sndhdr", "spwd",
+            "sunau", "telnetlib", "uu", "xdrlib"
         );
 
         for (String module : removedModules) {
@@ -272,6 +273,45 @@ class PythonImportBoundaryResolverTest {
         BoundaryDecision decision = resolver.resolve(importingFile, "distutils.core", false, governedRoots, projectRoot);
 
         assertTrue(decision.isFail());
+        assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
+    }
+
+    @Test
+    void asynchatImport_nowThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "asynchat", false, governedRoots, projectRoot);
+
+        assertTrue(decision.isFail(), "asynchat was removed in Python 3.12");
+        assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
+    }
+
+    @Test
+    void asyncoreImport_nowThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "asyncore", false, governedRoots, projectRoot);
+
+        assertTrue(decision.isFail(), "asyncore was removed in Python 3.12");
+        assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
+    }
+
+    @Test
+    void smtpdImport_nowThirdParty() {
+        Path projectRoot = tempDir;
+        Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
+        Path importingFile = blockRoot.resolve("service.py");
+        Set<Path> governedRoots = Set.of(blockRoot);
+
+        BoundaryDecision decision = resolver.resolve(importingFile, "smtpd", false, governedRoots, projectRoot);
+
+        assertTrue(decision.isFail(), "smtpd was removed in Python 3.12");
         assertEquals("THIRD_PARTY_IMPORT", decision.failureReason());
     }
 
