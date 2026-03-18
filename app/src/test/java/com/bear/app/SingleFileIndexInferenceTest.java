@@ -93,9 +93,7 @@ class SingleFileIndexInferenceTest {
         Files.createDirectories(irDir);
 
         // Pin JVM target so TargetRegistry can resolve in bare temp dirs
-        Path bearDir = repoRoot.resolve(".bear");
-        Files.createDirectories(bearDir);
-        Files.writeString(bearDir.resolve("target.id"), "jvm\n", StandardCharsets.UTF_8);
+        TestTargetPins.pinJvm(repoRoot);
 
         Path accountIr = irDir.resolve("account.bear.yaml");
         Path transactionLogIr = irDir.resolve("transaction-log.bear.yaml");
