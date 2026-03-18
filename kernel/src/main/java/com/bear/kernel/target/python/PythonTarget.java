@@ -156,10 +156,14 @@ public class PythonTarget implements Target {
                   .forEach(p -> {
                       try {
                           manifests.add(parseWiringManifest(p));
-                      } catch (IOException | ManifestParseException e) {
-                          // Skip invalid manifests - they'll be caught by drift gate
+                      } catch (IOException e) {
+                          throw new java.io.UncheckedIOException("Failed to parse wiring manifest: " + p, e);
+                      } catch (ManifestParseException e) {
+                          throw new RuntimeException("Invalid wiring manifest: " + p + " — " + e.getMessage(), e);
                       }
                   });
+        } catch (java.io.UncheckedIOException e) {
+            throw e.getCause();
         }
         
         return manifests;

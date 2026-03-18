@@ -56,7 +56,7 @@ class PythonCheckIntegrationTest {
             "Should have finding with surface 'os.system'");
     }
 
-    // ========== Dynamic Execution Tests (Exit Code 7, CODE=BOUNDARY_BYPASS) ==========
+    // ========== Dynamic Execution Tests (Exit Code 6, CODE=REFLECTION_DISPATCH_FORBIDDEN) ==========
 
     @Test
     void checkDynamicExec_evalCall_producesFindings() throws Exception {
@@ -70,7 +70,7 @@ class PythonCheckIntegrationTest {
             "Should have finding with surface 'eval'");
     }
 
-    // ========== Dynamic Import Tests (Exit Code 7, CODE=BOUNDARY_BYPASS) ==========
+    // ========== Dynamic Import Tests (Exit Code 6, CODE=REFLECTION_DISPATCH_FORBIDDEN) ==========
 
     @Test
     void checkDynamicImport_importlibImportModule_producesFindings() throws Exception {

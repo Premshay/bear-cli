@@ -48,11 +48,12 @@ public class NodeTarget implements Target {
         // Generate wiring.json
         manifestGenerator.generateWiringManifest(ir, wiringDir, blockKey);
 
-        // Create user impl skeleton if absent
+        // Create user impl skeleton if absent (check both PascalCase and legacy kebab-case names)
         Path implDir = projectRoot.resolve("src/blocks/" + blockKeyKebab + "/impl");
         String blockName = TypeScriptLexicalSupport.deriveBlockName(blockKey);
         Path implFile = implDir.resolve(blockName + "Impl.ts");
-        if (!java.nio.file.Files.exists(implFile)) {
+        Path legacyImplFile = implDir.resolve(blockKey + "Impl.ts");
+        if (!java.nio.file.Files.exists(implFile) && !java.nio.file.Files.exists(legacyImplFile)) {
             generator.generateUserImplSkeleton(ir, implDir, blockKey);
         }
     }

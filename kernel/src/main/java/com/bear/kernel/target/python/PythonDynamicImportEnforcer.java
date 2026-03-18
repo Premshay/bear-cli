@@ -17,10 +17,10 @@ import java.util.*;
  * - __import__(...)
  * - sys.path.append(...)
  * - sys.path.insert(...)
- * - sys.path = [...]
+ * - sys.path = [...] (assignment)
  * 
  * Excludes patterns inside `if TYPE_CHECKING:` blocks and test files.
- * Findings map to CODE=BOUNDARY_BYPASS, exit code 7.
+ * Findings map to CODE=REFLECTION_DISPATCH_FORBIDDEN, exit code 6.
  */
 public class PythonDynamicImportEnforcer {
 

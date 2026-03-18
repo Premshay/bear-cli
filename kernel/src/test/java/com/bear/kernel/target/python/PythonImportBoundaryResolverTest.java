@@ -278,7 +278,7 @@ class PythonImportBoundaryResolverTest {
     // ========== New stdlib modules remain classified correctly ==========
 
     @Test
-    void tomlibImport_stillStdlib() {
+    void tomllibImport_stillStdlib() {
         Path projectRoot = tempDir;
         Path blockRoot = projectRoot.resolve("src/blocks/user-auth");
         Path importingFile = blockRoot.resolve("service.py");
