@@ -2,6 +2,7 @@ package com.bear.app;
 
 import com.bear.kernel.target.TargetId;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,7 +22,7 @@ final class TestTargetPins {
      * Writes a {@code .bear/target.id} file containing {@code "jvm\n"} under
      * the given project root, creating the {@code .bear/} directory if needed.
      */
-    static void pinJvm(Path projectRoot) throws Exception {
+    static void pinJvm(Path projectRoot) throws IOException {
         Path bearDir = projectRoot.resolve(".bear");
         Files.createDirectories(bearDir);
         Files.writeString(bearDir.resolve("target.id"),

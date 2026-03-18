@@ -47,7 +47,7 @@ before invoking compile/fix/check/pr-check. This is the canonical multi-target
 pattern documented in `TargetRegistry`'s own remediation message.
 
 Implementation approach:
-1. Add a shared `TestTargetPins.pinJvm(Path projectRoot)` helper utility
+1. Use a shared `TestTargetPins.pinJvm(Path projectRoot)` utility
 2. Call `TestTargetPins.pinJvm` after `@TempDir` creation, before first CLI invocation
 3. For multi-block fixtures (`createMultiBlockFixture`), call `TestTargetPins.pinJvm` for each project root
 
@@ -83,9 +83,9 @@ caller hasn't told BEAR what target to use. The previous behavior (implicit JVM
 default) was a pre-multi-target simplification, not a contract guarantee.
 
 **What to verify**:
-1. The `pinJvmTarget` helper creates `.bear/target.id` with content `jvm\n`
+1. `TestTargetPins.pinJvm` creates `.bear/target.id` with content `jvm\n`
 2. Pin calls are placed before the first compile/fix/check/pr-check invocation
-3. No production code in `app/src/main/` or `kernel/` is modified
+3. No production code in `app/src/main/` is modified (kernel diffs are merge conflict resolutions only)
 4. Full test suite passes: `./gradlew :app:test :kernel:test`
 
 **Separate issue to track**: TypeScript import path in
