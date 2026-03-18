@@ -6,16 +6,18 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-18
+2026-03-19
 
 ## Current Focus
 
-Python MVP Hardening spec complete. All 9 tasks done on `feature/python-mvp-hardening` branch. Full kernel suite green (5442 tests).
+PR #12 (Python MVP Hardening) and PR #13 (App Test Target Detection) both pushed and under review on `feature/multi-target-expansion`.
 
 ## Next Concrete Task
 
-Commit and push `feature/python-mvp-hardening` branch. Open PR to `Premshay/bear-cli`. Then begin Phase C (Node Target — Runtime Execution) spec creation, or advance P3 milestone items per `roadmap/board.md`.
+Monitor PR #12 and #13 for further review comments. Once both merge, advance Phase C (Node Target — Runtime Execution) or P3 milestone items per `roadmap/board.md`.
 
 ## Session Notes
 
-- **Python MVP Hardening complete**: runpy.run_module/run_path detection added to PythonDynamicExecutionScanner, 21 deprecated stdlib modules removed from PythonImportBoundaryResolver, integration test fixture and test for runpy, `docs/context/python-known-gaps.md` created documenting 6 known bypass patterns with threat model justification. 5442 kernel tests green, zero regressions.
+- **PR #12 round 5-6 review fixes** (9b29a9f): Removed `asynchat`, `asyncore`, `smtpd` from STDLIB_MODULES (removed in Python 3.12). Added 3 dedicated regression tests + updated allRemovedModules list to 24. `typing_extensions` already absent. ~30 remaining inline comments verified as stale duplicates. Kernel tests green.
+- **PR #12 round-4 review fixes** (e3ab39d): Fixed TYPE_CHECKING orelse exclusion bug in 3 Python scanners, added `.sorted()` to NodeTarget drift path collection, updated PythonDynamicImportEnforcer Javadoc and python-known-gaps.md. Kernel tests green.
+- **PR #13 review fixes** (945b975, prior session): Extracted shared `TestTargetPins.pinJvm()` utility, resolved inherited merge conflict markers in 4 kernel files. 451 app tests + kernel tests green.
