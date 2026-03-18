@@ -12,15 +12,21 @@ import java.util.*;
 
 /**
  * Scans governed Python source files for undeclared reach violations.
- * 
+ *
  * Detects direct usage of covered power-surface modules:
- * - socket, http, http.client, http.server, urllib, urllib.request
- * - subprocess, multiprocessing
- * 
- * Also detects os.system/popen/exec* call-site patterns and direct function imports
- * (from os import system/popen/exec*).
- * 
- * Excludes imports inside `if TYPE_CHECKING:` blocks and test files.
+ * - Network: socket, http, http.client, http.server, urllib, urllib.request
+ * - Process: subprocess, multiprocessing
+ * - Database: sqlite3, dbm, dbm.gnu, dbm.ndbm, dbm.dumb
+ * - Filesystem: pathlib, shutil, tempfile, glob, fnmatch
+ * - Messaging: smtplib, smtpd, ftplib, imaplib, poplib, nntplib, telnetlib
+ *
+ * Also detects:
+ * - os.system/popen/exec* call-site patterns and direct function imports
+ *   (from os import system/popen/exec*)
+ * - open(...) built-in call-site (surface: "open")
+ * - io.open(...) call-site (surface: "io.open")
+ *
+ * Excludes imports inside {@code if TYPE_CHECKING:} blocks and test files.
  */
 public class PythonUndeclaredReachScanner {
 
@@ -30,8 +36,16 @@ import sys
 import json
 
 COVERED_MODULES = {
+    # Network / HTTP
     'socket', 'http', 'http.client', 'http.server',
-    'urllib', 'urllib.request', 'subprocess', 'multiprocessing'
+    'urllib', 'urllib.request', 'subprocess', 'multiprocessing',
+    # Database
+    'sqlite3', 'dbm', 'dbm.gnu', 'dbm.ndbm', 'dbm.dumb',
+    # Filesystem
+    'pathlib', 'shutil', 'tempfile', 'glob', 'fnmatch',
+    # Messaging
+    'smtplib', 'smtpd', 'ftplib', 'imaplib',
+    'poplib', 'nntplib', 'telnetlib',
 }
 
 OS_EXEC_ATTRS = {
@@ -98,6 +112,15 @@ def scan(source):
                 node.func.value.id == 'os' and
                 node.func.attr in OS_EXEC_ATTRS):
                 findings.append({'surface': 'os.' + node.func.attr, 'line': node.lineno})
+            # open(...) built-in call-site
+            elif (isinstance(node.func, ast.Name) and node.func.id == 'open'):
+                findings.append({'surface': 'open', 'line': node.lineno})
+            # io.open(...) call-site
+            elif (isinstance(node.func, ast.Attribute) and
+                  node.func.attr == 'open' and
+                  isinstance(node.func.value, ast.Name) and
+                  node.func.value.id == 'io'):
+                findings.append({'surface': 'io.open', 'line': node.lineno})
     
     return findings
 

@@ -130,6 +130,25 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Correction received: "don't duplicate content between .agent/ and .kiro/steering/ — reference instead"
 - Correction received: intelligent-routing skill should be kept (relevant to Kiro's subagent routing)
 
+### 2026-03-19 — P3 Boundary Escape Coverage Implemented
+- Extended `PythonUndeclaredReachScanner` with 15 new modules across database/filesystem/messaging groups + `open`/`io.open` call-site detection
+- Fixed pre-existing test regression: `cleanProjectNoFindings` used `from pathlib import Path` which now triggers a finding — updated fixture to use `import re` instead
+- Closed app-layer Python seam parity gap: `pinPython` in `TestTargetPins`, `PythonSeamParityTest` (2 tests), `PythonAllowedDepsGuardTest` (5 tests)
+- Echo-safe IR constraint discovered in practice: `effects.allow: []` requires output names to mirror input names — updated Python IR fixture accordingly
+- Full suite green: zero regressions across all modules
+- Key pattern confirmed: when extending `COVERED_MODULES`, always audit existing test fixtures for newly-covered module names (pathlib was in a "clean" fixture)
+- Key pattern confirmed: Python IR fixtures must be echo-safe (output name:type mirrors input) when `effects.allow: []` — same constraint as JVM/Node
+
+### 2026-03-19 — P3 Boundary Escape Coverage Spec Created
+- Created full spec under `.kiro/specs/p3-boundary-escape-coverage/` (requirements, design, tasks)
+- Sprint scope: extend `PythonUndeclaredReachScanner` with database/filesystem/messaging surfaces + `open`/`io.open` call-site detection; close app-layer Python seam parity gap (`pinPython`, `PythonSeamParityTest`, `PythonAllowedDepsGuardTest`)
+- `p3-maven-allowed-deps-containment` explicitly kept in Later Queue (medium priority, optional expansion)
+- Roadmap updated: `p3-broader-boundary-escape-coverage` moved to Active in `roadmap/board.md`
+- Key correction received: tasks must include explicit `Read:` context file references per sub-task, not just at the top level
+- Key correction received: session-end skill (partner_model + state.md update) must be a named task in the task list, not just implied by the final state-update task
+- Pattern confirmed: user expects tasks.md to be self-contained enough that an agent can execute each task without re-reading the full spec — context files per task are mandatory
+- Pattern confirmed: "documentation to update" must be explicit tasks, not afterthoughts
+
 ### 2026-03-18 — Python MVP Hardening Complete
 - Completed all 9 tasks for Python MVP Hardening spec on `feature/python-mvp-hardening` branch
 - Added runpy.run_module/run_path detection to PythonDynamicExecutionScanner (ast.Attribute check)

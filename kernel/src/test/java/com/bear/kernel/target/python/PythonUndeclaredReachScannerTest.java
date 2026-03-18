@@ -450,7 +450,7 @@ class PythonUndeclaredReachScannerTest {
         setupGovernedBlock(tempDir, "my-block", """
             import os
             import json
-            from pathlib import Path
+            import re
             
             def my_function():
                 return os.path.join("a", "b")
@@ -482,6 +482,211 @@ class PythonUndeclaredReachScannerTest {
         assertEquals(1, findings.size());
         assertTrue(findings.get(0).path().contains("_shared"));
         assertEquals("socket", findings.get(0).surface());
+    }
+
+    // ========== Database surfaces ==========
+
+    @Test
+    void detectsSqlite3Import(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import sqlite3\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("sqlite3", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsDbmImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import dbm\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("dbm", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsDbmGnuImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import dbm.gnu\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("dbm.gnu", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsFromSqlite3Import(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "from sqlite3 import connect\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("sqlite3", findings.get(0).surface());
+    }
+
+    @Test
+    void databaseNegative_importJsonNoFinding(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import json\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertTrue(findings.isEmpty(), "import json should not produce findings");
+    }
+
+    // ========== Filesystem module surfaces ==========
+
+    @Test
+    void detectsPathlibImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import pathlib\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("pathlib", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsFromShutilImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "from shutil import copy\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("shutil", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsTempfileImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import tempfile\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("tempfile", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsGlobImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import glob\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("glob", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsFnmatchImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import fnmatch\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("fnmatch", findings.get(0).surface());
+    }
+
+    @Test
+    void filesystemNegative_cleanFileNoFinding(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import math\nimport re\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertTrue(findings.isEmpty(), "clean file should not produce findings");
+    }
+
+    // ========== open / io.open call-site surfaces ==========
+
+    @Test
+    void detectsOpenCallSite(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "open(\"f.txt\")\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("open", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsIoOpenCallSite(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import io\nio.open(\"f.txt\")\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        // io is not in COVERED_MODULES, only io.open call-site is detected
+        assertEquals(1, findings.size());
+        assertEquals("io.open", findings.get(0).surface());
+    }
+
+    @Test
+    void openNegative_osPathJoinNoFinding(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import os\nos.path.join(\"a\", \"b\")\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertTrue(findings.isEmpty(), "os.path.join should not produce findings");
+    }
+
+    // ========== Messaging surfaces ==========
+
+    @Test
+    void detectsSmtplibImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import smtplib\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("smtplib", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsFromFtplibImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "from ftplib import FTP\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("ftplib", findings.get(0).surface());
+    }
+
+    @Test
+    void detectsImaplibImport(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import imaplib\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertEquals(1, findings.size());
+        assertEquals("imaplib", findings.get(0).surface());
+    }
+
+    @Test
+    void messagingNegative_cleanFileNoFinding(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", "import logging\n");
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertTrue(findings.isEmpty(), "import logging should not produce findings");
+    }
+
+    // ========== TYPE_CHECKING exclusion for new surfaces ==========
+
+    @Test
+    void typeCheckingExcludes_sqlite3(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            from typing import TYPE_CHECKING
+            if TYPE_CHECKING:
+                import sqlite3
+            """);
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertTrue(findings.isEmpty(), "sqlite3 inside TYPE_CHECKING should be excluded");
+    }
+
+    @Test
+    void typeCheckingExcludes_pathlib(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            from typing import TYPE_CHECKING
+            if TYPE_CHECKING:
+                import pathlib
+            """);
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertTrue(findings.isEmpty(), "pathlib inside TYPE_CHECKING should be excluded");
+    }
+
+    @Test
+    void typeCheckingExcludes_smtplib(@TempDir Path tempDir) throws IOException {
+        setupGovernedBlock(tempDir, "my-block", """
+            from typing import TYPE_CHECKING
+            if TYPE_CHECKING:
+                import smtplib
+            """);
+        List<UndeclaredReachFinding> findings = PythonUndeclaredReachScanner.scan(
+            tempDir, List.of(makeManifest("my-block")));
+        assertTrue(findings.isEmpty(), "smtplib inside TYPE_CHECKING should be excluded");
     }
 
     // ========== Helper methods ==========

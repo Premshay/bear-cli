@@ -1,9 +1,8 @@
 # Active
 - multi-target-foundation-phases
+- p3-multi-block-multi-module-composition-hardening
 
 # Ready Queue
-- p3-broader-boundary-escape-coverage
-- p3-multi-block-multi-module-composition-hardening
 - p3-capability-templates
 
 # Later Queue
@@ -34,3 +33,4 @@
 - p2-boundary-regression-suite
 - p2-ci-boundary-governance-and-telemetry
 - p3-target-adaptable-cli-preparation
+- p3-broader-boundary-escape-coverage
