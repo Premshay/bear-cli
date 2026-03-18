@@ -6,17 +6,17 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-18
+2026-03-19
 
 ## Current Focus
 
-Bugfix: app-module test target detection failures after multi-target expansion — complete. All 451 app tests pass (0 failures), kernel tests green. Test-infrastructure-only fix: added `TestTargetPins.pinJvm(Path)` helper + `.bear/target.id` pin files to BearCliTest and BearCliAgentModeTest. Spec at `.kiro/specs/bugfix-app-test-target-detection/` with prominent maintainer review flags for PR.
+PR #12 (Python MVP Hardening) and PR #13 (App Test Target Detection) both pushed and under review on `feature/multi-target-expansion`.
 
 ## Next Concrete Task
 
-Merge PR stack (P2 #11 then hardening #12, or merge #12 directly and close #11). Then begin Phase C (Node Target — Runtime Execution) spec creation, or advance P3 milestone items per `roadmap/board.md`.
+Monitor PR #12 and #13 for further review comments. Once both merge, advance Phase C (Node Target — Runtime Execution) or P3 milestone items per `roadmap/board.md`.
 
 ## Session Notes
 
-- **App test target detection bugfix complete**: 176 test failures from multi-target `TargetRegistry` introduction fixed. Added `TestTargetPins.pinJvm(Path)` to BearCliTest (167 methods + multi-block fixtures + sub-project roots) and BearCliAgentModeTest (16 methods + repo subdirs). Exit 64 (`TARGET_NOT_DETECTED`) confirmed correct per frozen exit-code contract. Bugfix spec has ⚠️ maintainer review flags for eventual PR. Throwaway scripts cleaned up.
-- **Copilot review fixes applied** (commit 1f158ab): UTF-8 charset for getBytes/InputStreamReader in 3 Python scanners, interrupt restore in PythonProjectVerificationRunner.isToolAvailable, containment guard bug in CheckCommandService. TypeScript import path issue deferred to Node Phase B.
+- **PR #13 Copilot review fixes** (23eb8e3): Narrowed `TestTargetPins.pinJvm` to `throws IOException`, updated spec docs (bugfix.md, design.md, tasks.md) to reference shared utility instead of per-class helpers, clarified kernel diffs are merge conflict resolutions. App tests green (451 pass).
+- **PR #13 prior review fixes** (945b975): Extracted shared `TestTargetPins.pinJvm()` utility, resolved inherited merge conflict markers in 4 kernel files. 451 app tests + kernel tests green.
