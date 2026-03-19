@@ -38,7 +38,8 @@ public final class BearCli {
         "fix", BearCliCommandHandlers::runFix,
         "check", BearCliCommandHandlers::runCheck,
         "unblock", BearCliCommandHandlers::runUnblock,
-        "pr-check", BearCliCommandHandlers::runPrCheck
+        "pr-check", BearCliCommandHandlers::runPrCheck,
+        "scaffold", BearCliCommandHandlers::runScaffold
     );
     private static final String PR_CHECK_BOUNDARY_MARKER = "pr-check: FAIL: BOUNDARY_EXPANSION_DETECTED";
     private static final String PR_CHECK_EXIT_ENVELOPE_ANOMALY = "PR_CHECK_EXIT_ENVELOPE_ANOMALY";
@@ -916,6 +917,8 @@ public final class BearCli {
         out.println("       bear unblock --project <path>");
         out.println("       bear pr-check <ir-file> --project <path> --base <ref> [--index <path>] [--collect=all] [--agent]");
         out.println("       bear pr-check --all --project <repoRoot> --base <ref> [--blocks <path>] [--only <csv>] [--strict-orphans] [--collect=all] [--agent]");
+        out.println("       bear scaffold --template <id> --block <name> [--project <path>]");
+        out.println("       bear scaffold --list");
         out.println("       bear --help");
     }
 
