@@ -10,13 +10,13 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Current Focus
 
-`p3-boundary-escape-coverage` complete.
+`p3-multi-block-multi-module-composition-hardening` complete.
 
 ## Next Concrete Task
 
-Execute tasks in `.kiro/specs/p3-multi-block-multi-module-composition-hardening/tasks.md` (or create spec if not yet created).
+Execute `p3-capability-templates` (next Ready Queue item from `roadmap/board.md`).
 
 ## Session Notes
 
-- **p3-boundary-escape-coverage implemented**: Extended `PythonUndeclaredReachScanner` with database (`sqlite3`, `dbm`/sub-modules), filesystem (`pathlib`, `shutil`, `tempfile`, `glob`, `fnmatch`), and messaging (`smtplib`, `smtpd`, `ftplib`, `imaplib`, `poplib`, `nntplib`, `telnetlib`) surfaces; added `open`/`io.open` call-site detection. Added 20 new kernel unit tests (all green). Closed app-layer Python seam parity gap: `pinPython` in `TestTargetPins`, `PythonSeamParityTest` (2 tests), `PythonAllowedDepsGuardTest` (5 tests). Updated `docs/context/python-known-gaps.md`. Full suite green (2m 6s, zero regressions).
-- **Roadmap**: `p3-broader-boundary-escape-coverage` → Completed; `p3-multi-block-multi-module-composition-hardening` promoted to Active.
+- **p3-multi-block-multi-module-composition-hardening implemented**: Added 3 multi-root unit tests to `BlockPortGraphResolverTest` (inboundWrapperFqcnsAreScopedToSourceRoot, inboundWrapperFqcnsForTargetRootAreEmpty, graphResolutionIsOrderIndependent) with shared `multiRootGraph()` helper. Created `MultiRootCompositionTest.java` with 5 `check --all` integration tests (blockSelectionIsLexicographicRegardlessOfIndexOrder, twoRootLayoutBothBlocksPass, twoRootLayoutOneRootDriftOtherPasses, twoRootLayoutRootTestStartDoneAreOrdered, checkAllIsIdempotentOnSameRepoState) and 2 `pr-check --all` integration tests (twoRootPrCheckDeltaLinesAreSorted, prCheckAllIsIdempotentOnSameRepoState). Full suite green, zero regressions, ContextDocsConsistencyTest green.
+- **Roadmap**: `p3-multi-block-multi-module-composition-hardening` → Completed; `p3-capability-templates` promoted to Active.
