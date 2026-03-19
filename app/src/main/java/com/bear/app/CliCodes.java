@@ -17,6 +17,8 @@ final class CliCodes {
 
     static final String USAGE_INVALID_ARGS = "USAGE_INVALID_ARGS";
     static final String USAGE_UNKNOWN_COMMAND = "USAGE_UNKNOWN_COMMAND";
+    static final String USAGE_UNKNOWN_TEMPLATE = "USAGE_UNKNOWN_TEMPLATE";
+    static final String BLOCK_ALREADY_EXISTS = "BLOCK_ALREADY_EXISTS";
     static final String IR_VALIDATION = "IR_VALIDATION";
     static final String INDEX_REQUIRED_MISSING = "INDEX_REQUIRED_MISSING";
     static final String NOT_SUPPORTED_YET = "NOT_SUPPORTED_YET";
