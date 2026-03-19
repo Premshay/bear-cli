@@ -175,7 +175,18 @@ final class ScaffoldCommandService {
             );
         }
 
-        // Step 6: emit IR
+        // Step 6: emit IR (check for pre-existing IR file first)
+        Path expectedIrPath = projectRoot.resolve("spec").resolve(blockName + ".ir.yaml");
+        if (Files.exists(expectedIrPath)) {
+            return scaffoldFailure(
+                    CliCodes.EXIT_USAGE,
+                    List.of("usage: " + CliCodes.BLOCK_ALREADY_EXISTS + ": IR file already exists: " + expectedIrPath),
+                    CliCodes.BLOCK_ALREADY_EXISTS,
+                    projectRoot.relativize(expectedIrPath).toString().replace('\\', '/'),
+                    "Remove the existing IR file or choose a different block name."
+            );
+        }
+
         TemplateParams params = new TemplateParams(blockName, target.targetId());
         TemplatePack pack;
         try {

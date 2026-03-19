@@ -61,9 +61,9 @@ final class BlocksYamlUpdater {
     }
 
     private static String buildEntry(String blockName, String irRelPath) {
-        return "- name: " + blockName + "\n"
-                + "  ir: " + irRelPath + "\n"
-                + "  projectRoot: .\n";
+        return "  - name: " + blockName + "\n"
+                + "    ir: " + irRelPath + "\n"
+                + "    projectRoot: .\n";
     }
 
     /** Thrown when the block name is already registered in bear.blocks.yaml. */

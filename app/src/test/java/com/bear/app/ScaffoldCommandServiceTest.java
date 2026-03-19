@@ -53,9 +53,9 @@ class ScaffoldCommandServiceTest {
         Files.writeString(indexPath, ""
                 + "version: v1\n"
                 + "blocks:\n"
-                + "- name: my-block\n"
-                + "  ir: spec/my-block.ir.yaml\n"
-                + "  projectRoot: .\n",
+                + "  - name: my-block\n"
+                + "    ir: spec/my-block.ir.yaml\n"
+                + "    projectRoot: .\n",
                 StandardCharsets.UTF_8);
 
         Result result = run("scaffold", "--template", "read-store", "--block", "my-block",
@@ -73,6 +73,24 @@ class ScaffoldCommandServiceTest {
         assertEquals(0, result.exitCode());
         assertTrue(result.stdout().contains("read-store"),
                 "stdout should contain 'read-store' but was: " + result.stdout());
+    }
+
+    @Test
+    void existingIrFileExitsUsage(@TempDir Path tempDir) throws Exception {
+        // Pre-create the IR file that scaffold would emit
+        Path specDir = tempDir.resolve("spec");
+        Files.createDirectories(specDir);
+        Files.writeString(specDir.resolve("my-block.ir.yaml"), "existing content", StandardCharsets.UTF_8);
+
+        // Pin target so scaffold gets past target resolution
+        TestTargetPins.pinJvm(tempDir);
+
+        Result result = run("scaffold", "--template", "read-store", "--block", "my-block",
+                "--project", tempDir.toString());
+
+        assertEquals(64, result.exitCode());
+        assertTrue(result.stderr().contains(CliCodes.BLOCK_ALREADY_EXISTS),
+                "stderr should contain BLOCK_ALREADY_EXISTS but was: " + result.stderr());
     }
 
     @Test
