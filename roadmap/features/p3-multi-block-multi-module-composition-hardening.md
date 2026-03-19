@@ -1,7 +1,7 @@
 ---
 id: p3-multi-block-multi-module-composition-hardening
 title: Multi-block and multi-module composition hardening
-status: queued
+status: completed
 priority: high
 commitment: committed
 milestone: P3
