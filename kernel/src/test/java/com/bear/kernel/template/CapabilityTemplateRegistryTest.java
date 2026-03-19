@@ -45,8 +45,7 @@ class CapabilityTemplateRegistryTest {
      * For each id in list(), find(id) must return a non-empty Optional whose id() equals the queried id.
      * Validates: Requirements 1.2
      *
-     * Note: with an empty registry this test is a no-op guard; it will exercise real templates
-     * once ReadStoreTemplate is registered in Task 2.
+     * Note: exercises all registered templates via round-trip lookup.
      */
     @Test
     void findKnownTemplateReturnsPresent() {

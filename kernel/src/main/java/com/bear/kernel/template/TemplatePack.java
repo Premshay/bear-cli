@@ -12,6 +12,6 @@ import java.util.List;
  */
 public record TemplatePack(
         Path irPath,               // spec/<block>.ir.yaml
-        Path implStubPath,         // src/main/java/blocks/<block>/impl/<Block>Impl.java
+        Path implStubPath,         // src/main/java/blocks/<block-tokens-as-path>/impl/<Block>Impl.java
         List<Path> generatedPaths  // populated after compile(); empty from emit()
 ) {}

@@ -8,7 +8,6 @@ import com.bear.kernel.template.CapabilityTemplate;
 import com.bear.kernel.template.CapabilityTemplateRegistry;
 import com.bear.kernel.template.TemplateParams;
 import com.bear.kernel.template.TemplatePack;
-import com.bear.kernel.target.TargetId;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -103,6 +102,11 @@ final class ScaffoldCommandService {
             return usageFailure("missing required flag: --block", "scaffold.args");
         }
 
+        // Step 1b: validate blockName format (prevent path traversal)
+        if (!blockName.matches("^[a-z][a-z0-9-]*$")) {
+            return usageFailure("invalid block name: '" + blockName + "' (must match [a-z][a-z0-9-]*)", "scaffold.args");
+        }
+
         // Step 2: resolve projectRoot
         Path projectRoot = projectArg != null
                 ? Path.of(projectArg).toAbsolutePath().normalize()
@@ -140,9 +144,9 @@ final class ScaffoldCommandService {
                 }
             } catch (BlockIndexValidationException e) {
                 return scaffoldFailure(
-                        CliCodes.EXIT_IO,
-                        List.of("io: " + CliCodes.IO_ERROR + ": malformed bear.blocks.yaml: " + e.getMessage()),
-                        CliCodes.IO_ERROR,
+                        CliCodes.EXIT_VALIDATION,
+                        List.of("validation: " + CliCodes.IR_VALIDATION + ": malformed bear.blocks.yaml: " + e.getMessage()),
+                        CliCodes.IR_VALIDATION,
                         BLOCKS_YAML,
                         "Fix bear.blocks.yaml and rerun `bear scaffold`."
                 );
@@ -172,7 +176,7 @@ final class ScaffoldCommandService {
         }
 
         // Step 6: emit IR
-        TemplateParams params = new TemplateParams(blockName, TargetId.JVM);
+        TemplateParams params = new TemplateParams(blockName, target.targetId());
         TemplatePack pack;
         try {
             pack = template.emit(params, projectRoot);
@@ -188,6 +192,17 @@ final class ScaffoldCommandService {
         }
 
         Path irPath = pack.irPath();
+
+        // Step 6b: check if IR file was actually written (guard against overwrite)
+        if (!Files.exists(irPath)) {
+            return scaffoldFailure(
+                    CliCodes.EXIT_IO,
+                    List.of("io: " + CliCodes.IO_ERROR + ": emitted IR file not found: " + irPath),
+                    CliCodes.IO_ERROR,
+                    projectRoot.relativize(irPath).toString().replace('\\', '/'),
+                    "Ensure the project directory is writable and rerun `bear scaffold`."
+            );
+        }
 
         // Step 7: parse and validate the emitted IR
         BearIr ir;
@@ -239,9 +254,9 @@ final class ScaffoldCommandService {
             );
         } catch (BlockIndexValidationException e) {
             return scaffoldFailure(
-                    CliCodes.EXIT_IO,
-                    List.of("io: " + CliCodes.IO_ERROR + ": malformed bear.blocks.yaml: " + e.getMessage()),
-                    CliCodes.IO_ERROR,
+                    CliCodes.EXIT_VALIDATION,
+                    List.of("validation: " + CliCodes.IR_VALIDATION + ": malformed bear.blocks.yaml: " + e.getMessage()),
+                    CliCodes.IR_VALIDATION,
                     BLOCKS_YAML,
                     "Fix bear.blocks.yaml and rerun `bear scaffold`."
             );

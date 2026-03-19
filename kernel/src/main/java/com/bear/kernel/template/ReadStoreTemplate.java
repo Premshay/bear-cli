@@ -41,8 +41,9 @@ public final class ReadStoreTemplate implements CapabilityTemplate {
         Path irPath = specDir.resolve(blockName + ".ir.yaml");
         Files.writeString(irPath, yaml, StandardCharsets.UTF_8);
 
+        String packagePath = blockName.replace('-', '/');
         Path implStubPath = projectRoot.resolve(
-                "src/main/java/blocks/" + blockName + "/impl/" + pascalName + "Impl.java");
+                "src/main/java/blocks/" + packagePath + "/impl/" + pascalName + "Impl.java");
 
         return new TemplatePack(irPath, implStubPath, List.of());
     }

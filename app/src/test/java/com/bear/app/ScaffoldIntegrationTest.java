@@ -30,7 +30,7 @@ class ScaffoldIntegrationTest {
     private static CliRunResult runCli(String[] args) {
         ByteArrayOutputStream stdoutBytes = new ByteArrayOutputStream();
         ByteArrayOutputStream stderrBytes = new ByteArrayOutputStream();
-        int exitCode = BearCli.run(args, new PrintStream(stdoutBytes), new PrintStream(stderrBytes));
+        int exitCode = BearCli.run(args, new PrintStream(stdoutBytes, false, StandardCharsets.UTF_8), new PrintStream(stderrBytes, false, StandardCharsets.UTF_8));
         return new CliRunResult(
             exitCode,
             stdoutBytes.toString(StandardCharsets.UTF_8),
@@ -257,14 +257,16 @@ class ScaffoldIntegrationTest {
             tempDir.resolve(".bear"),
             tempDir.resolve("bear.blocks.yaml")
         );
-        Files.walk(tempDir)
-            .filter(Files::isRegularFile)
-            .forEach(file -> {
-                boolean allowed = allowedRoots.stream().anyMatch(root ->
-                    file.startsWith(root) || file.equals(root));
-                assertTrue(allowed,
-                    "Unexpected file outside allowed trees: " + tempDir.relativize(file));
-            });
+        try (var fileStream = Files.walk(tempDir)) {
+            fileStream
+                .filter(Files::isRegularFile)
+                .forEach(file -> {
+                    boolean allowed = allowedRoots.stream().anyMatch(root ->
+                        file.startsWith(root) || file.equals(root));
+                    assertTrue(allowed,
+                        "Unexpected file outside allowed trees: " + tempDir.relativize(file));
+                });
+        }
     }
 
     /**
@@ -331,7 +333,9 @@ class ScaffoldIntegrationTest {
         assertTrue(Files.exists(genB), "build/generated/bear should exist in dir B");
 
         List<Path> filesA = new ArrayList<>();
-        Files.walk(genA).filter(Files::isRegularFile).sorted().forEach(filesA::add);
+        try (var walkStream = Files.walk(genA)) {
+            walkStream.filter(Files::isRegularFile).sorted().forEach(filesA::add);
+        }
         assertFalse(filesA.isEmpty(), "dir A should have generated files");
 
         for (Path fileA : filesA) {
