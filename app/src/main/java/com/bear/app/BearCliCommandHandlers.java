@@ -635,6 +635,10 @@ final class BearCliCommandHandlers {
         AgentCommandContext commandContext
     ) {
     }
+    static int runScaffold(String[] args, PrintStream out, PrintStream err) {
+        return ScaffoldCommandService.execute(args, out, err);
+    }
+
     private static int runFixAll(String[] args, PrintStream out, PrintStream err) {
         return FixAllCommandService.runFixAll(args, out, err);
     }
