@@ -1,6 +1,5 @@
 # Active
 - multi-target-foundation-phases
-- p3-capability-templates
 
 # Ready Queue
 
@@ -26,6 +25,7 @@
 - future-idea-families
 
 # Completed
+- p3-capability-templates
 - p3-multi-block-multi-module-composition-hardening
 - p2-bear-fix-generated-only
 - p2-generated-structural-tests
