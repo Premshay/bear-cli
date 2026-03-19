@@ -1,10 +1,8 @@
 # Active
 - multi-target-foundation-phases
+- p3-capability-templates
 
 # Ready Queue
-- p3-broader-boundary-escape-coverage
-- p3-multi-block-multi-module-composition-hardening
-- p3-capability-templates
 
 # Later Queue
 - p2-minimal-taste-invariants-rule-pack
@@ -28,9 +26,11 @@
 - future-idea-families
 
 # Completed
+- p3-multi-block-multi-module-composition-hardening
 - p2-bear-fix-generated-only
 - p2-generated-structural-tests
 - p2-declared-allowed-deps-containment
 - p2-boundary-regression-suite
 - p2-ci-boundary-governance-and-telemetry
 - p3-target-adaptable-cli-preparation
+- p3-broader-boundary-escape-coverage

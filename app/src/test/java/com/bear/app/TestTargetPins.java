@@ -28,4 +28,15 @@ final class TestTargetPins {
         Files.writeString(bearDir.resolve("target.id"),
                 TargetId.JVM.value() + "\n", StandardCharsets.UTF_8);
     }
+
+    /**
+     * Writes a {@code .bear/target.id} file containing {@code "python\n"} under
+     * the given project root, creating the {@code .bear/} directory if needed.
+     */
+    static void pinPython(Path projectRoot) throws IOException {
+        Path bearDir = projectRoot.resolve(".bear");
+        Files.createDirectories(bearDir);
+        Files.writeString(bearDir.resolve("target.id"),
+                TargetId.PYTHON.value() + "\n", StandardCharsets.UTF_8);
+    }
 }

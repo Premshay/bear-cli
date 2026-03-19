@@ -1,7 +1,7 @@
 ---
 id: p3-broader-boundary-escape-coverage
 title: Broader boundary-escape coverage
-status: queued
+status: completed
 priority: high
 commitment: committed
 milestone: P3

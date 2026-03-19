@@ -23,7 +23,12 @@ on direct call patterns and do not attempt full data-flow analysis.
 | `importlib.import_module(...)` | `PythonDynamicImportEnforcer` | `importlib.import_module` |
 | `__import__(...)` | `PythonDynamicImportEnforcer` | `__import__` |
 | `sys.path.append/insert(...)`, `sys.path = [...]` | `PythonDynamicImportEnforcer` | `sys.path` (append/insert/assignment only) |
-| Undeclared stdlib reach (socket, subprocess, etc.) | `PythonUndeclaredReachScanner` | module name |
+| Undeclared stdlib reach — network: `socket`, `http`, `urllib`, `subprocess`, `multiprocessing` | `PythonUndeclaredReachScanner` | module name |
+| Undeclared stdlib reach — database: `sqlite3`, `dbm`, `dbm.gnu`, `dbm.ndbm`, `dbm.dumb` | `PythonUndeclaredReachScanner` | module name |
+| Undeclared stdlib reach — filesystem: `pathlib`, `shutil`, `tempfile`, `glob`, `fnmatch` | `PythonUndeclaredReachScanner` | module name |
+| `open(...)` built-in call-site | `PythonUndeclaredReachScanner` | `open` |
+| `io.open(...)` call-site | `PythonUndeclaredReachScanner` | `io.open` |
+| Undeclared stdlib reach — messaging: `smtplib`, `smtpd`, `ftplib`, `imaplib`, `poplib`, `nntplib`, `telnetlib` | `PythonUndeclaredReachScanner` | module name |
 | Third-party imports in governed code | `PythonImportContainmentScanner` | import path |
 
 All scanners exclude `if TYPE_CHECKING:` blocks and test files (`test_*.py`, `*_test.py`).
