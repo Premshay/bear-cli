@@ -159,6 +159,17 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Key pattern: context transfer across sessions works well — picked up mid-task and completed cleanly
 - Verified: all 5 property tests (H1-H4, H7) pass with 110 iterations each
 
+### 2026-03-19 — P3 Multi-Block Multi-Module Composition Hardening Complete
+- Shipped 10 new tests across 2 test files covering multi-root `check --all` and `pr-check --all` composition behavior
+- `BlockPortGraphResolverTest`: 3 multi-root unit tests with shared `multiRootGraph()` helper for cross-root block-port edge resolution
+- `MultiRootCompositionTest`: 5 `check --all` + 2 `pr-check --all` integration tests exercising two-root layouts, drift isolation, idempotence, and deterministic ordering
+- Key discovery: block names in IR must canonicalize to match the index entry `name` field — mismatch causes validation failure via `BlockIdentityResolutionException`
+- Key discovery: when `check --all` has failures, block results render to stderr (not stdout) — tests must capture both streams
+- Key discovery: multi-root `pr-check` tests need `build.gradle` (or `gradlew`) in each module root for `JvmTargetDetector` to resolve the target; `TestTargetPins.pinJvm(repoRoot)` is a no-op for `--all` commands since `TargetRegistry.resolve()` checks per `projectRoot`, not `repoRoot` — the pin is present for safety but detection works via build files
+- Pattern confirmed: multi-root fixture setup follows the same `writeProjectWrapper` + `writeWorkingWithdrawImpl` pattern as single-root, just repeated per root directory
+- Pattern confirmed: git helpers (`initGitRepo`, `gitCommitAll`, `git`) copied from `TargetSeamParityTest` work cleanly for pr-check integration tests
+- No corrections received this session
+
 ---
 
 ## Usage Notes for AI Agents
