@@ -10,8 +10,7 @@ import java.util.Optional;
  */
 public final class CapabilityTemplateRegistry {
 
-    // ReadStoreTemplate will be added in Task 2; placeholder for now.
-    private static final List<CapabilityTemplate> TEMPLATES = List.of();
+    private static final List<CapabilityTemplate> TEMPLATES = List.of(new ReadStoreTemplate());
 
     private static final List<CapabilityTemplate> SORTED_TEMPLATES =
             TEMPLATES.stream()
