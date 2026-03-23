@@ -1,7 +1,7 @@
 ---
 id: p3-capability-templates
 title: Capability templates
-status: queued
+status: completed
 priority: high
 commitment: committed
 milestone: P3
