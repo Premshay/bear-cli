@@ -296,14 +296,24 @@ class ReactArtifactGeneratorTest {
     // --- Helper methods ---
 
     private BearIr createMinimalIr(String blockName) {
+        BearIr.Operation op = new BearIr.Operation(
+            "Default",
+            new BearIr.Contract(
+                List.of(new BearIr.Field("id", BearIr.FieldType.STRING)),
+                List.of(new BearIr.Field("id", BearIr.FieldType.STRING))
+            ),
+            new BearIr.Effects(List.of()),
+            null,
+            List.of()
+        );
         return new BearIr(
-            "1",
+            "v1",
             new BearIr.Block(
                 blockName,
                 BearIr.BlockKind.LOGIC,
-                List.of(),
-                null,
-                null,
+                List.of(op),
+                new BearIr.Effects(List.of()),
+                new BearIr.Impl(List.of()),
                 null,
                 List.of()
             )
@@ -317,19 +327,19 @@ class ReactArtifactGeneratorTest {
                 List.of(new BearIr.Field("user-id", BearIr.FieldType.STRING)),
                 List.of(new BearIr.Field("user-name", BearIr.FieldType.STRING))
             ),
-            null,
+            new BearIr.Effects(List.of()),
             null,
             List.of()
         );
 
         return new BearIr(
-            "1",
+            "v1",
             new BearIr.Block(
                 blockName,
                 BearIr.BlockKind.LOGIC,
                 List.of(op),
-                null,
-                null,
+                new BearIr.Effects(List.of()),
+                new BearIr.Impl(List.of()),
                 null,
                 List.of()
             )
@@ -345,14 +355,25 @@ class ReactArtifactGeneratorTest {
             null
         );
 
+        BearIr.Operation op = new BearIr.Operation(
+            "Default",
+            new BearIr.Contract(
+                List.of(new BearIr.Field("id", BearIr.FieldType.STRING)),
+                List.of(new BearIr.Field("id", BearIr.FieldType.STRING))
+            ),
+            new BearIr.Effects(List.of()),
+            null,
+            List.of()
+        );
+
         return new BearIr(
-            "1",
+            "v1",
             new BearIr.Block(
                 blockName,
                 BearIr.BlockKind.LOGIC,
-                List.of(),
+                List.of(op),
                 new BearIr.Effects(List.of(port)),
-                null,
+                new BearIr.Impl(List.of()),
                 null,
                 List.of()
             )

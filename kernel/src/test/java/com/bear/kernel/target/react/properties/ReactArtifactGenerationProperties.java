@@ -177,14 +177,14 @@ class ReactArtifactGenerationProperties {
 
     static Stream<Arguments> roundTripConfigurations() {
         String[] blockKeys = {"user-dashboard", "product-catalog", "auth", "order-management", "inventory"};
-        int[] opCounts = {0, 1, 2, 3, 5};
+        int[] opCounts = {1, 2, 3, 5};
         boolean[] effectOptions = {true, false};
         
         Stream.Builder<Arguments> builder = Stream.builder();
         int iteration = 0;
         
         // Generate 100+ iterations
-        for (int cycle = 0; cycle < 2; cycle++) {
+        for (int cycle = 0; cycle < 3; cycle++) {
             for (String blockKey : blockKeys) {
                 for (int opCount : opCounts) {
                     for (boolean hasEffects : effectOptions) {
@@ -249,14 +249,14 @@ class ReactArtifactGenerationProperties {
 
     static Stream<Arguments> wiringManifestConfigurations() {
         String[] blockKeys = {"user-dashboard", "product-catalog", "auth", "order-management", "inventory"};
-        int[] opCounts = {0, 1, 2, 3, 5};
+        int[] opCounts = {1, 2, 3, 5};
         boolean[] effectOptions = {true, false};
         
         Stream.Builder<Arguments> builder = Stream.builder();
         int iteration = 0;
         
         // Generate 100+ iterations
-        for (int cycle = 0; cycle < 2; cycle++) {
+        for (int cycle = 0; cycle < 3; cycle++) {
             for (String blockKey : blockKeys) {
                 for (int opCount : opCounts) {
                     for (boolean hasEffects : effectOptions) {
@@ -272,14 +272,24 @@ class ReactArtifactGenerationProperties {
     // --- Helper methods ---
 
     private BearIr createMinimalIr(String blockName) {
+        BearIr.Operation op = new BearIr.Operation(
+            "Default",
+            new BearIr.Contract(
+                List.of(new BearIr.Field("id", BearIr.FieldType.STRING)),
+                List.of(new BearIr.Field("id", BearIr.FieldType.STRING))
+            ),
+            new BearIr.Effects(List.of()),
+            null,
+            List.of()
+        );
         return new BearIr(
-            "1",
+            "v1",
             new BearIr.Block(
                 blockName,
                 BearIr.BlockKind.LOGIC,
-                List.of(),
-                null,
-                null,
+                List.of(op),
+                new BearIr.Effects(List.of()),
+                new BearIr.Impl(List.of()),
                 null,
                 List.of()
             )
@@ -295,13 +305,13 @@ class ReactArtifactGenerationProperties {
                     List.of(new BearIr.Field("input-" + i, BearIr.FieldType.STRING)),
                     List.of(new BearIr.Field("output-" + i, BearIr.FieldType.STRING))
                 ),
-                null,
+                new BearIr.Effects(List.of()),
                 null,
                 List.of()
             ));
         }
 
-        BearIr.Effects effects = null;
+        BearIr.Effects effects = new BearIr.Effects(List.of());
         if (hasEffects) {
             effects = new BearIr.Effects(List.of(
                 new BearIr.EffectPort(
@@ -315,13 +325,13 @@ class ReactArtifactGenerationProperties {
         }
 
         return new BearIr(
-            "1",
+            "v1",
             new BearIr.Block(
                 blockName,
                 BearIr.BlockKind.LOGIC,
                 operations,
                 effects,
-                null,
+                new BearIr.Impl(List.of()),
                 null,
                 List.of()
             )
