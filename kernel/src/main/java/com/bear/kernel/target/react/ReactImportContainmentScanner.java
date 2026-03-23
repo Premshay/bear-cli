@@ -25,9 +25,9 @@ public class ReactImportContainmentScanner {
     private final ReactImportBoundaryResolver resolver = new ReactImportBoundaryResolver();
 
     // Pattern to detect "use client" or "use server" as first statement
+    // Uses \A anchor to match only at file start (not line start with MULTILINE)
     private static final Pattern DIRECTIVE_PATTERN = Pattern.compile(
-        "^\\s*(?:/\\*[\\s\\S]*?\\*/\\s*|//[^\\n]*\\n\\s*)*['\"]use (client|server)['\"];?",
-        Pattern.MULTILINE
+        "\\A\\s*(?:/\\*[\\s\\S]*?\\*/\\s*|//[^\\n]*\\n\\s*)*['\"]use (client|server)['\"];?"
     );
 
     /**

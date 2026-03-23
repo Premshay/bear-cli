@@ -449,7 +449,7 @@ class ReactImportBoundaryResolverTest {
             // react-dom/client is a common import pattern
             var decision = resolver.resolve(
                 importingFile,
-                "react-dom",
+                "react-dom/client",
                 featureRoot,
                 projectRoot,
                 ReactProjectShape.VITE_REACT,

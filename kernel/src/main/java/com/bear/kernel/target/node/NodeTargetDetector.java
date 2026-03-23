@@ -58,6 +58,7 @@ public class NodeTargetDetector implements TargetDetector {
         }
 
         // Exclude React projects — they belong to ReactTargetDetector
+        // If project has react or react-dom, let ReactTargetDetector decide
         JsonNode deps = pkg.get("dependencies");
         if (deps != null && (deps.has("react") || deps.has("react-dom"))) {
             return DetectedTarget.none();

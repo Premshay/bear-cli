@@ -36,9 +36,12 @@ class ReactProjectVerificationRunnerTest {
     @Test
     void isPnpmAvailable_returnsBoolean() {
         // This test verifies isPnpmAvailable doesn't throw and returns a valid result
-        boolean available = ReactProjectVerificationRunner.isPnpmAvailable();
-        // Result depends on system - just verify it returns without error
-        assertTrue(available || !available, "isPnpmAvailable should return a boolean");
+        assertDoesNotThrow(() -> {
+            boolean available = ReactProjectVerificationRunner.isPnpmAvailable();
+            // Result depends on system - just verify it returns consistently
+            boolean available2 = ReactProjectVerificationRunner.isPnpmAvailable();
+            assertEquals(available, available2, "isPnpmAvailable should return consistent results");
+        }, "isPnpmAvailable should not throw");
     }
 
     @Test
