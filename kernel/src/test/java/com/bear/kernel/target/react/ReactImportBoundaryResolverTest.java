@@ -445,6 +445,23 @@ class ReactImportBoundaryResolverTest {
         }
 
         @Test
+        void rejectsAbsolutePathImports() {
+            var decision = resolver.resolve(
+                importingFile,
+                "/styles/globals.css",
+                featureRoot,
+                projectRoot,
+                ReactProjectShape.VITE_REACT,
+                sharedRoot,
+                generatedRoot
+            );
+
+            assertFalse(decision.isAllowed());
+            assertEquals("BOUNDARY_BYPASS", decision.code());
+            assertTrue(decision.reason().contains("Absolute path imports"));
+        }
+
+        @Test
         void allowsReactDomClientSubpath() {
             // react-dom/client is a common import pattern
             var decision = resolver.resolve(

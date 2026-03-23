@@ -55,6 +55,12 @@ public class ReactImportBoundaryResolver {
                 "URL imports are not supported in governed React code");
         }
 
+        // Handle absolute path imports — always fail
+        if (specifier.startsWith("/")) {
+            return BoundaryDecision.fail("BOUNDARY_BYPASS",
+                "Absolute path imports are not supported in governed React code");
+        }
+
         // Handle relative imports
         if (specifier.startsWith("./") || specifier.startsWith("../")) {
             return resolveRelative(importingFile, specifier, featureRoot, projectRoot, sharedRoot, generatedRoot);
