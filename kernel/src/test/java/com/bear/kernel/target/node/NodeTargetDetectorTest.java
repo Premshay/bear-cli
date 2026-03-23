@@ -104,12 +104,66 @@ class NodeTargetDetectorTest {
         assertEquals(TargetId.NODE, result.targetId());
     }
 
+    @Test
+    void reactProjectReturnsNone(@TempDir Path tempDir) throws IOException {
+        // React project with react/react-dom in dependencies — should return NONE
+        // to allow ReactTargetDetector to handle it
+        createPackageJsonWithReact(tempDir, "module", "pnpm@8.0.0");
+        Files.createFile(tempDir.resolve("pnpm-lock.yaml"));
+        Files.createFile(tempDir.resolve("tsconfig.json"));
+
+        DetectedTarget result = detector.detect(tempDir);
+
+        assertEquals(DetectionStatus.NONE, result.status());
+    }
+
+    @Test
+    void reactDomOnlyProjectReturnsNone(@TempDir Path tempDir) throws IOException {
+        // Project with only react-dom in dependencies — should return NONE
+        createPackageJsonWithReactDomOnly(tempDir, "module", "pnpm@8.0.0");
+        Files.createFile(tempDir.resolve("pnpm-lock.yaml"));
+        Files.createFile(tempDir.resolve("tsconfig.json"));
+
+        DetectedTarget result = detector.detect(tempDir);
+
+        assertEquals(DetectionStatus.NONE, result.status());
+    }
+
     private void createPackageJson(Path dir, String type, String packageManager) throws IOException {
         String content = """
             {
               "name": "test-project",
               "type": "%s",
               "packageManager": "%s"
+            }
+            """.formatted(type, packageManager);
+        Files.writeString(dir.resolve("package.json"), content);
+    }
+
+    private void createPackageJsonWithReact(Path dir, String type, String packageManager) throws IOException {
+        String content = """
+            {
+              "name": "test-project",
+              "type": "%s",
+              "packageManager": "%s",
+              "dependencies": {
+                "react": "^18.2.0",
+                "react-dom": "^18.2.0"
+              }
+            }
+            """.formatted(type, packageManager);
+        Files.writeString(dir.resolve("package.json"), content);
+    }
+
+    private void createPackageJsonWithReactDomOnly(Path dir, String type, String packageManager) throws IOException {
+        String content = """
+            {
+              "name": "test-project",
+              "type": "%s",
+              "packageManager": "%s",
+              "dependencies": {
+                "react-dom": "^18.2.0"
+              }
             }
             """.formatted(type, packageManager);
         Files.writeString(dir.resolve("package.json"), content);

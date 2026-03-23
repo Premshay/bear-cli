@@ -6,18 +6,18 @@ Long-form historical notes are archived in `docs/context/archive/archive-state-h
 
 ## Last Updated
 
-2026-03-19
+2026-03-23
 
 ## Current Focus
 
-`p3-capability-templates` complete.
+Phase R (React full pipeline) implementation complete. PR #20 open for review.
 
 ## Next Concrete Task
 
-Ready Queue is empty. Next candidate from Later Queue: `p2-minimal-taste-invariants-rule-pack`. Review `roadmap/board.md` and promote as appropriate before starting.
+Address PR #20 review comments, then merge to `feature/multi-target-expansion`. Next item: `p3-capability-templates` (Ready Queue in `roadmap/board.md`).
 
 ## Session Notes
 
-- **p3-multi-block-multi-module-composition-hardening implemented**: Added 3 multi-root unit tests to `BlockPortGraphResolverTest` (inboundWrapperFqcnsAreScopedToSourceRoot, inboundWrapperFqcnsForTargetRootAreEmpty, graphResolutionIsOrderIndependent) with shared `multiRootGraph()` helper. Created `MultiRootCompositionTest.java` with 5 `check --all` integration tests (blockSelectionIsLexicographicRegardlessOfIndexOrder, twoRootLayoutBothBlocksPass, twoRootLayoutOneRootDriftOtherPasses, twoRootLayoutRootTestStartDoneAreOrdered, checkAllIsIdempotentOnSameRepoState) and 2 `pr-check --all` integration tests (twoRootPrCheckDeltaLinesAreSorted, prCheckAllIsIdempotentOnSameRepoState). Full suite green, zero regressions, ContextDocsConsistencyTest green.
-- **p3-capability-templates implemented**: Added kernel template infrastructure (`CapabilityTemplate`, `TemplateParams`, `TemplatePack`, `CapabilityTemplateRegistry`), `ReadStoreTemplate` (emits v1 IR with PascalCase block name + camelCase port), `BlocksYamlUpdater` (append strategy), `ScaffoldCommandService` (10-step emit flow), and wired `bear scaffold` into `BearCli`. 8 integration tests in `ScaffoldIntegrationTest` covering happy path, file placement, compile-equivalence, stub preservation, pr-check boundary-expanding, and existing-command regression. Full suite green, zero regressions.
-- **Roadmap**: `p3-capability-templates` → Completed; Ready Queue empty.
+- **React target implementation complete (2026-03-20)**: Executed all 9 tasks from `.kiro/specs/react-target-scan-only/tasks.md`. Created 11 new classes in `com.bear.kernel.target.react` package. Updated `NodeTargetDetector` to return NONE for React projects. Updated `TargetRegistry` to include ReactTarget. Created 14 test fixtures under `fixtures/react/`. Full test suite green (5442+ tests, zero regressions).
+- **p3-multi-block-multi-module-composition-hardening implemented**: Added 3 multi-root unit tests to `BlockPortGraphResolverTest` with shared `multiRootGraph()` helper. Created `MultiRootCompositionTest.java` with 5 `check --all` and 2 `pr-check --all` integration tests. Full suite green.
+- **Roadmap**: `p3-multi-block-multi-module-composition-hardening` → Completed; `p3-capability-templates` promoted to Active.

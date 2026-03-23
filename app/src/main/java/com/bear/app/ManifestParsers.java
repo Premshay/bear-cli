@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 
 final class ManifestParsers {
     private static final String SHARED_GOVERNED_ROOT = "src/main/java/blocks/_shared";
+    private static final String REACT_SHARED_GOVERNED_ROOT = "src/shared";
 
     private ManifestParsers() {
     }
@@ -176,7 +177,7 @@ final class ManifestParsers {
         if (!blockRootSourceDir.equals(roots.get(0))) {
             throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
         }
-        if (!SHARED_GOVERNED_ROOT.equals(roots.get(1))) {
+        if (!SHARED_GOVERNED_ROOT.equals(roots.get(1)) && !REACT_SHARED_GOVERNED_ROOT.equals(roots.get(1))) {
             throw new ManifestParseException("INVALID_GOVERNED_SOURCE_ROOTS");
         }
         if (roots.size() > 2) {
