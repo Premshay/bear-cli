@@ -6,6 +6,8 @@ import com.bear.kernel.target.node.NodeTarget;
 import com.bear.kernel.target.node.NodeTargetDetector;
 import com.bear.kernel.target.python.PythonTarget;
 import com.bear.kernel.target.python.PythonTargetDetector;
+import com.bear.kernel.target.react.ReactTarget;
+import com.bear.kernel.target.react.ReactTargetDetector;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,12 +21,14 @@ public final class TargetRegistry {
         Map.of(
             TargetId.JVM, new JvmTarget(),
             TargetId.NODE, new NodeTarget(),
-            TargetId.PYTHON, new PythonTarget()
+            TargetId.PYTHON, new PythonTarget(),
+            TargetId.REACT, new ReactTarget()
         ),
         List.of(
             new JvmTargetDetector(),
             new NodeTargetDetector(),
-            new PythonTargetDetector()
+            new PythonTargetDetector(),
+            new ReactTargetDetector()
         )
     );
 

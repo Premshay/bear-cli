@@ -159,6 +159,27 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Key pattern: context transfer across sessions works well — picked up mid-task and completed cleanly
 - Verified: all 5 property tests (H1-H4, H7) pass with 110 iterations each
 
+### 2026-03-19 — P3 Capability Templates Complete
+- Shipped full `bear scaffold` command: kernel template infrastructure (`CapabilityTemplate` interface, `TemplateParams`/`TemplatePack` records, `CapabilityTemplateRegistry`), `ReadStoreTemplate`, app-layer `BlocksYamlUpdater` + `ScaffoldCommandService` + `ScaffoldResult`, and `BearCli`/`BearCliCommandHandlers` wiring
+- Key pattern — template emit + compile-equivalence: `ReadStoreTemplate.emit()` writes v1 IR to `spec/<blockName>.ir.yaml`; `ScaffoldCommandService` then parses+validates+compiles it via the same pipeline as `bear compile` — scaffold output is byte-identical to a manual compile of the same IR
+- Key pattern — `BlocksYamlUpdater` append strategy: reads existing `bear.blocks.yaml` with `BlockIndexParser` for duplicate-check, then appends raw YAML text rather than full re-serialization — preserves existing formatting and avoids YAML library dependency
+- Key pattern — PascalCase/camelCase split in IR: block `name` field uses PascalCase (e.g., `MyBlock`), port name uses camelCase (e.g., `myBlockStore`) — enforced in `ReadStoreTemplate` and validated by `ReadStoreTemplateTest`
+- Key pattern — `Map.of` entry limit: `BearCli.COMMAND_HANDLERS` uses `Map.of(...)` with 7 entries — within the 10-entry limit but worth noting for future command additions
+- No corrections received this session; context transfer across sessions worked cleanly
+
+### 2026-03-20 — React Target Full Pipeline Implementation Complete
+- Executed all 9 tasks from `.kiro/specs/react-target-scan-only/tasks.md` — full React target implementation shipped
+- Created 11 new classes in `com.bear.kernel.target.react`: `ReactProjectShape` (enum), `ReactTargetDetector`, `ReactTarget`, `ReactArtifactGenerator`, `ReactManifestGenerator`, `ReactImportSpecifierExtractor`, `ReactImportBoundaryResolver`, `ReactImportContainmentScanner`, `ReactApiBoundaryScanner`, `ReactProjectVerificationRunner`, `ReactPrCheckContributor`
+- Key pattern — sub-profile detection: `ReactTargetDetector` detects `vite-react` vs `nextjs-app-router` based on config file presence; `ReactImportBoundaryResolver` re-detects at scan time for alias resolution (avoids coupling registry to sub-profile state)
+- Key pattern — `@/*` alias resolution: Next.js sub-profile resolves `@/` to `./src/` for same-feature imports; Vite sub-profile rejects all `@/` aliases as BOUNDARY_BYPASS
+- Key pattern — API boundary scanning: `ReactApiBoundaryScanner` uses PARTIAL string matching (same approach as Python's dynamic execution scanner) — scans `.tsx` files only, excludes `.ts` service files and test files
+- Key pattern — project verification: `ReactProjectVerificationRunner` runs `pnpm exec tsc --noEmit -p tsconfig.json` with 300-second timeout; maps exit codes to PASSED/FAILED/BOOTSTRAP_IO/TIMEOUT
+- Key pattern — dependency governance: `ReactPrCheckContributor` computes byte-level delta for `package.json` and `pnpm-lock.yaml` between base/head snapshots; any diff → BOUNDARY_EXPANDING (exit 5)
+- Updated `NodeTargetDetector` to return NONE when `react` or `react-dom` in `package.json` dependencies — prevents ecosystem-family ambiguity
+- Created 14 test fixtures under `fixtures/react/` covering detection, containment, drift, API boundary, and pr-check scenarios
+- Full test suite green: 5442+ tests, zero regressions across JVM, Node, Python, React targets
+- No corrections received this session; spec-driven execution worked cleanly
+
 ### 2026-03-19 — P3 Multi-Block Multi-Module Composition Hardening Complete
 - Shipped 10 new tests across 2 test files covering multi-root `check --all` and `pr-check --all` composition behavior
 - `BlockPortGraphResolverTest`: 3 multi-root unit tests with shared `multiRootGraph()` helper for cross-root block-port edge resolution

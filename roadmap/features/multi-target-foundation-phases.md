@@ -1,7 +1,7 @@
 ---
 id: multi-target-foundation-phases
 title: Multi-target Foundation — Phases A, B, P, P2
-status: in-progress (Phase P2 complete)
+status: in-progress (Phase P2 complete, Phase C planned)
 priority: high
 commitment: committed
 milestone: P2
@@ -31,9 +31,11 @@ This document tracks the ACTIVE execution of Phases A, B, and P.
 Multi-target expansion follows a phased approach:
 - **Phase A**: Target detection and registry infrastructure (COMPLETE)
 - **Phase B**: Node target scan-only (COMPLETE)
-- **Phase P**: Python target scan-only (SPEC COMPLETE, IMPLEMENTATION PENDING)
+- **Phase P**: Python target scan-only (COMPLETE)
+- **Phase P2**: Python target full check pipeline (COMPLETE)
+- **Phase R**: React target full pipeline (IN PROGRESS)
 - **Phase C**: Node target runtime execution (PLANNED)
-- **Phase D+**: Additional targets (.NET, React) (PLANNED)
+- **Phase D+**: Additional targets (.NET) (PLANNED)
 
 ## Phase A: Target Detection and Registry (COMPLETE)
 
@@ -349,6 +351,93 @@ Completed on 2026-03-18. 13 tasks, 16 correctness properties validated.
 - `TYPE_CHECKING` block exclusion implemented in all Python AST scanners
 - Test files (`test_*.py`, `*_test.py`) excluded from scanning
 - `PythonProjectVerificationRunner` prefers `uv` over `poetry`, handles missing mypy gracefully
+
+## Phase R: React Target — Full Pipeline (COMPLETE)
+
+### Purpose
+Implement React target with full check pipeline: detection (Vite+React and Next.js App Router),
+artifact generation, import containment, API boundary signaling, project verification
+(`pnpm exec tsc --noEmit`), and dependency governance (`pr-check` lock-file delta).
+
+### Scope
+- `ReactTarget` implementing full `Target` interface
+- `ReactTargetDetector` supporting `vite-react` and `nextjs-app-router` sub-profiles
+- TypeScript artifact generation with React-flavored naming (`FeaturePorts.ts`, `FeatureLogic.ts`, `FeatureWrapper.ts`, `.tsx` impl skeleton)
+- Governed roots: `src/features/<blockKey>/`, `src/shared/`
+- Import containment scanning for `.ts`/`.tsx` files
+- `@/*` path alias resolution for Next.js sub-profile
+- `"use client"` / `"use server"` directive detection as governance signals
+- API boundary signaling: `fetch()`/`XMLHttpRequest` detection in `.tsx` files (PARTIAL)
+- Drift gate for generated artifacts
+- `impl.allowedDeps` unsupported guard (exit 64)
+- Project verification: `pnpm exec tsc --noEmit` (exit 4 on failure, exit 74 on tool missing)
+- Dependency governance: `package.json` + `pnpm-lock.yaml` delta → `BOUNDARY_EXPANDING` (exit 5)
+- `NodeTargetDetector` updated to return `NONE` when `react`/`react-dom` in dependencies
+
+### Status
+✅ COMPLETE
+
+Completed on 2026-03-20. 9 tasks, 23 correctness properties validated.
+
+### Deliverables
+
+**Implementation:**
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactProjectShape.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactTargetDetector.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactTarget.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactArtifactGenerator.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactManifestGenerator.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactImportSpecifierExtractor.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactImportBoundaryResolver.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactImportContainmentScanner.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactApiBoundaryScanner.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactProjectVerificationRunner.java`
+- `kernel/src/main/java/com/bear/kernel/target/react/ReactPrCheckContributor.java`
+
+**Tests:**
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactTargetDetectorTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactTargetTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactArtifactGeneratorTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactImportSpecifierExtractorTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactImportBoundaryResolverTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactImportContainmentScannerTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactApiBoundaryScannerTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactProjectVerificationRunnerTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactPrCheckContributorTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/ReactCheckIntegrationTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/properties/ReactDetectionProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/properties/ReactArtifactGenerationProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/properties/ReactGovernedRootsProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/properties/ReactImportContainmentProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/properties/ReactDriftGateProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/react/properties/ReactProjectVerificationProperties.java`
+
+**Fixtures:**
+- `kernel/src/test/resources/fixtures/react/vite-react-single-block/`
+- `kernel/src/test/resources/fixtures/react/vite-react-multi-block/`
+- `kernel/src/test/resources/fixtures/react/vite-react-with-shared/`
+- `kernel/src/test/resources/fixtures/react/nextjs-single-block/`
+- `kernel/src/test/resources/fixtures/react/nextjs-use-client/`
+- `kernel/src/test/resources/fixtures/react/invalid-workspace/`
+- `kernel/src/test/resources/fixtures/react/invalid-ambiguous-shape/`
+- `kernel/src/test/resources/fixtures/react/boundary-bypass-escape/`
+- `kernel/src/test/resources/fixtures/react/boundary-bypass-sibling/`
+- `kernel/src/test/resources/fixtures/react/boundary-bypass-bare-import/`
+- `kernel/src/test/resources/fixtures/react/boundary-bypass-fetch/`
+- `kernel/src/test/resources/fixtures/react/nextjs-alias-sibling/`
+- `kernel/src/test/resources/fixtures/react/check-project-verification-failure/`
+- `kernel/src/test/resources/fixtures/react/check-pr-check-boundary-expanding/`
+
+### Implementation Notes
+- Sub-profile detection at scan time avoids coupling registry to sub-profile state
+- `@/*` alias resolution: Next.js resolves to `./src/`, Vite rejects as BOUNDARY_BYPASS
+- API boundary scanner uses PARTIAL string matching (same approach as Python)
+- `ReactPrCheckContributor` uses byte-level comparison for dependency files
+
+### Spec Location
+- `.kiro/specs/react-target-scan-only/requirements.md`
+- `.kiro/specs/react-target-scan-only/design.md`
+- `.kiro/specs/react-target-scan-only/tasks.md`
 
 ## Phase C: Node Target — Runtime Execution (PLANNED)
 Add runtime execution capabilities to Node target: project verification, dynamic import

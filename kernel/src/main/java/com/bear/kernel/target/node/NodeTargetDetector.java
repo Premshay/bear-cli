@@ -23,17 +23,19 @@ public class NodeTargetDetector implements TargetDetector {
         }
 
         // Parse package.json (strict JSON) to check type and packageManager
+        JsonNode pkg;
         try {
-            JsonNode pkg = OBJECT_MAPPER.readTree(packageJson.toFile());
-            JsonNode typeNode = pkg.get("type");
-            if (typeNode == null || !"module".equals(typeNode.asText())) {
-                return DetectedTarget.none();
-            }
-            JsonNode pmNode = pkg.get("packageManager");
-            if (pmNode == null || !pmNode.asText().startsWith("pnpm")) {
-                return DetectedTarget.none();
-            }
+            pkg = OBJECT_MAPPER.readTree(packageJson.toFile());
         } catch (Exception e) {
+            return DetectedTarget.none();
+        }
+
+        JsonNode typeNode = pkg.get("type");
+        if (typeNode == null || !"module".equals(typeNode.asText())) {
+            return DetectedTarget.none();
+        }
+        JsonNode pmNode = pkg.get("packageManager");
+        if (pmNode == null || !pmNode.asText().startsWith("pnpm")) {
             return DetectedTarget.none();
         }
 
@@ -53,6 +55,12 @@ public class NodeTargetDetector implements TargetDetector {
         Path workspaceYaml = projectRoot.resolve("pnpm-workspace.yaml");
         if (Files.exists(workspaceYaml)) {
             return DetectedTarget.unsupported(TargetId.NODE, "pnpm workspace detected");
+        }
+
+        // Exclude React projects — they belong to ReactTargetDetector
+        JsonNode deps = pkg.get("dependencies");
+        if (deps != null && (deps.has("react") || deps.has("react-dom"))) {
+            return DetectedTarget.none();
         }
 
         return DetectedTarget.supported(TargetId.NODE, "Node project detected");
