@@ -4,16 +4,16 @@ Purpose: make GitHub Copilot PR reviews align with BEAR's deterministic governan
 
 ## Start Here (required read order)
 
-1. `/home/runner/work/bear-cli/bear-cli/AGENTS.md`
-2. `/home/runner/work/bear-cli/bear-cli/docs/context/CONTEXT_BOOTSTRAP.md`
+1. `AGENTS.md`
+2. `docs/context/CONTEXT_BOOTSTRAP.md`
 3. Task-routed canonical docs from the bootstrap map, especially:
-   - `/home/runner/work/bear-cli/bear-cli/docs/context/architecture.md`
-   - `/home/runner/work/bear-cli/bear-cli/docs/context/governance.md`
-   - `/home/runner/work/bear-cli/bear-cli/docs/context/ir-spec.md`
-   - `/home/runner/work/bear-cli/bear-cli/docs/public/commands-check.md`
-   - `/home/runner/work/bear-cli/bear-cli/docs/public/commands-pr-check.md`
-   - `/home/runner/work/bear-cli/bear-cli/docs/public/output-format.md`
-   - `/home/runner/work/bear-cli/bear-cli/docs/public/exit-codes.md`
+   - `docs/context/architecture.md`
+   - `docs/context/governance.md`
+   - `docs/context/ir-spec.md`
+   - `docs/public/commands-check.md`
+   - `docs/public/commands-pr-check.md`
+   - `docs/public/output-format.md`
+   - `docs/public/exit-codes.md`
 
 ## Architecture and Scope Guardrails
 
@@ -45,18 +45,18 @@ Purpose: make GitHub Copilot PR reviews align with BEAR's deterministic governan
 
 ## Important Files and Ownership
 
-- Canonical repo workflow guardrails: `/home/runner/work/bear-cli/bear-cli/AGENTS.md`
-- Context routing and session contracts: `/home/runner/work/bear-cli/bear-cli/docs/context/CONTEXT_BOOTSTRAP.md`
+- Canonical repo workflow guardrails: `AGENTS.md`
+- Context routing and session contracts: `docs/context/CONTEXT_BOOTSTRAP.md`
 - Architecture/governance/IR canon:
-  - `/home/runner/work/bear-cli/bear-cli/docs/context/architecture.md`
-  - `/home/runner/work/bear-cli/bear-cli/docs/context/governance.md`
-  - `/home/runner/work/bear-cli/bear-cli/docs/context/ir-spec.md`
+  - `docs/context/architecture.md`
+  - `docs/context/governance.md`
+  - `docs/context/ir-spec.md`
 - Public command and automation contracts:
-  - `/home/runner/work/bear-cli/bear-cli/docs/public/commands-check.md`
-  - `/home/runner/work/bear-cli/bear-cli/docs/public/commands-pr-check.md`
-  - `/home/runner/work/bear-cli/bear-cli/docs/public/output-format.md`
-  - `/home/runner/work/bear-cli/bear-cli/docs/public/exit-codes.md`
-  - `/home/runner/work/bear-cli/bear-cli/docs/public/PR_REVIEW.md`
+  - `docs/public/commands-check.md`
+  - `docs/public/commands-pr-check.md`
+  - `docs/public/output-format.md`
+  - `docs/public/exit-codes.md`
+  - `docs/public/PR_REVIEW.md`
 
 ## Expected Verification Signals for Code Changes
 
