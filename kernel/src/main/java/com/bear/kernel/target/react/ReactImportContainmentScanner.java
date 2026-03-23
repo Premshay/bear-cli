@@ -218,6 +218,7 @@ public class ReactImportContainmentScanner {
                 Path resolved = file.getParent().resolve(imp.specifier()).normalize();
                 
                 // Check if resolved path is within any feature root
+                boolean reachesFeature = false;
                 for (Path featureRoot : featureRoots) {
                     if (isWithinDirectory(resolved, featureRoot)) {
                         findings.add(new BoundaryBypassFinding(
@@ -226,8 +227,23 @@ public class ReactImportContainmentScanner {
                             "line " + imp.lineNumber() + ": import '" + imp.specifier() + 
                             "' — shared code cannot import from feature roots"
                         ));
+                        reachesFeature = true;
                         break;
                     }
+                }
+                if (reachesFeature) {
+                    continue;
+                }
+
+                // Also run standard boundary resolution so shared code can't escape to ungoverned areas
+                ReactImportBoundaryResolver.BoundaryDecision decision = resolver.resolve(
+                    file, imp.specifier(), sharedRoot, projectRoot, subProfile, sharedRoot, generatedRoot
+                );
+                if (!decision.isAllowed()) {
+                    findings.add(new BoundaryBypassFinding(
+                        decision.code(), relativePath,
+                        "line " + imp.lineNumber() + ": import '" + imp.specifier() + "' — " + decision.reason()
+                    ));
                 }
                 continue;
             }
@@ -249,6 +265,7 @@ public class ReactImportContainmentScanner {
                 Path resolved = projectRoot.resolve("src").resolve(pathAfterAlias).normalize();
 
                 // Check if resolved path is within any feature root
+                boolean reachesFeature = false;
                 for (Path featureRoot : featureRoots) {
                     if (isWithinDirectory(resolved, featureRoot)) {
                         findings.add(new BoundaryBypassFinding(
@@ -257,8 +274,23 @@ public class ReactImportContainmentScanner {
                             "line " + imp.lineNumber() + ": import '" + imp.specifier() + 
                             "' — shared code cannot import from feature roots"
                         ));
+                        reachesFeature = true;
                         break;
                     }
+                }
+                if (reachesFeature) {
+                    continue;
+                }
+
+                // Also check the resolved path is within shared or generated roots
+                if (!isWithinDirectory(resolved, sharedRoot) &&
+                    !isWithinDirectory(resolved, projectRoot.resolve("build/generated/bear"))) {
+                    findings.add(new BoundaryBypassFinding(
+                        "BOUNDARY_BYPASS",
+                        relativePath,
+                        "line " + imp.lineNumber() + ": import '" + imp.specifier() +
+                        "' — shared code @/ alias resolves outside governed roots"
+                    ));
                 }
                 continue;
             }

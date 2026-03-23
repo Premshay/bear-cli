@@ -362,12 +362,28 @@ class ReactTargetTest {
     // --- TargetRegistry integration tests ---
 
     @Test
-    void targetRegistry_containsReactTarget() {
+    void targetRegistry_containsReactTarget(@TempDir Path tempDir) throws Exception {
         TargetRegistry registry = TargetRegistry.defaultRegistry();
-        
-        // Create a minimal React project structure to test resolution
-        // This is tested more thoroughly in ReactTargetDetectorTest
         assertNotNull(registry);
+
+        // Verify React is wired in by resolving a minimal React fixture
+        Path fixture = tempDir.resolve("react-project");
+        Files.createDirectories(fixture);
+        Files.writeString(fixture.resolve("package.json"), """
+            {
+              "name": "test",
+              "type": "module",
+              "packageManager": "pnpm@9.0.0",
+              "dependencies": { "react": "^18.0.0", "react-dom": "^18.0.0" }
+            }
+            """);
+        Files.writeString(fixture.resolve("vite.config.ts"), "export default {}");
+        Files.writeString(fixture.resolve("pnpm-lock.yaml"), "lockfileVersion: '6.0'");
+        Files.writeString(fixture.resolve("tsconfig.json"), "{}");
+
+        Target resolved = registry.resolve(fixture);
+        assertEquals(TargetId.REACT, resolved.targetId(),
+            "React project should resolve to ReactTarget via defaultRegistry()");
     }
 
     // --- Helper methods ---

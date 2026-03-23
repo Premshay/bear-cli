@@ -207,8 +207,8 @@ public class ReactArtifactGenerator {
             String requestName = blockName + opName + "Request";
             String resultName = blockName + opName + "Result";
 
-            sb.append("  ").append(opName).append("(request: ").append(requestName)
-              .append(", ports: ").append(blockName).append("FeaturePorts): ")
+            sb.append("  ").append(opName).append("(_request: ").append(requestName)
+              .append(", _ports: ").append(blockName).append("FeaturePorts): ")
               .append(resultName).append(" {\n");
             sb.append("    // TODO: implement\n");
             sb.append("    throw new Error('Not implemented');\n");

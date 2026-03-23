@@ -119,7 +119,25 @@ public final class ReactProjectVerificationRunner {
         if (output == null) {
             return false;
         }
-        return output.contains(TSC_MODULE_NOT_FOUND) || output.contains(TSC_ERROR_TS2307);
+        String lower = output.toLowerCase(Locale.ROOT);
+
+        // Module-not-found errors referencing the TypeScript compiler itself
+        boolean moduleNotFoundForTypescript =
+            output.contains(TSC_MODULE_NOT_FOUND)
+                && (lower.contains("typescript/lib/tsc.js")
+                    || lower.contains("node_modules/.bin/tsc")
+                    || lower.contains("typescript'"));
+
+        // Shell/pnpm messages indicating the tsc command is missing
+        boolean tscCommandNotFound =
+            lower.contains("command \"tsc\" not found")
+                || lower.contains("command 'tsc' not found")
+                || lower.contains("unknown command \"tsc\"")
+                || lower.contains("unknown command 'tsc'")
+                || lower.contains("tsc: command not found")
+                || lower.contains("tsc is not recognized");
+
+        return moduleNotFoundForTypescript || tscCommandNotFound;
     }
 
     private static void destroyProcess(Process process) {
