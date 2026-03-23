@@ -183,9 +183,9 @@ public class ReactArtifactGenerator {
 
         String blockName = deriveBlockName(blockKey);
 
-        sb.append("import type { ").append(blockName).append("FeatureLogic } from '../../../build/generated/bear/types/")
+        sb.append("import type { ").append(blockName).append("FeatureLogic } from '../../../../build/generated/bear/types/")
           .append(blockKey).append("/").append(blockName).append("FeatureLogic';\n");
-        sb.append("import type { ").append(blockName).append("FeaturePorts } from '../../../build/generated/bear/types/")
+        sb.append("import type { ").append(blockName).append("FeaturePorts } from '../../../../build/generated/bear/types/")
           .append(blockKey).append("/").append(blockName).append("FeaturePorts';\n\n");
 
         // Generate request/result type imports
@@ -193,7 +193,7 @@ public class ReactArtifactGenerator {
             String requestName = blockName + op.name() + "Request";
             String resultName = blockName + op.name() + "Result";
             sb.append("import type { ").append(requestName).append(", ").append(resultName)
-              .append(" } from '../../../build/generated/bear/types/").append(blockKey)
+              .append(" } from '../../../../build/generated/bear/types/").append(blockKey)
               .append("/").append(blockName).append("FeatureLogic';\n");
         }
         sb.append("\n");

@@ -138,6 +138,10 @@ class ReactArtifactGeneratorTest {
         assertTrue(content.contains("User-owned"), "Should have user-owned header");
         assertTrue(content.contains("class UserDashboardFeatureImpl"), 
             "Should export impl class");
+        assertTrue(
+            content.contains("from '../../../../build/generated/bear/types/user-dashboard"),
+            "Should import generated types using correct relative path prefix"
+        );
     }
 
     @Test
