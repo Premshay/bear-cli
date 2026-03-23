@@ -169,7 +169,8 @@ public class ReactArtifactGenerator {
           .append(blockName).append("FeaturePorts';\n\n");
 
         sb.append("export function create").append(blockName).append("FeatureWrapper(\n");
-        sb.append("  impl: ").append(blockName).append("FeatureLogic\n");
+        sb.append("  impl: ").append(blockName).append("FeatureLogic,\n");
+        sb.append("  _ports: ").append(blockName).append("FeaturePorts\n");
         sb.append("): ").append(blockName).append("FeatureLogic {\n");
         sb.append("  return impl;\n");
         sb.append("}\n");
