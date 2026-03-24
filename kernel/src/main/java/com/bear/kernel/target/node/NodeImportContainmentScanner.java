@@ -40,7 +40,7 @@ public class NodeImportContainmentScanner {
                 }
             }
 
-            // Phase C: dynamic imports are enforced (exit 7, CODE=DYNAMIC_IMPORT_FORBIDDEN)
+            // Phase C: dynamic imports are enforced (exit 7, CODE=BOUNDARY_BYPASS, RULE=DYNAMIC_IMPORT_FORBIDDEN)
             List<NodeDynamicImportDetector.DynamicImport> dynamicImports =
                 dynamicDetector.detectDynamicImports(content);
             for (NodeDynamicImportDetector.DynamicImport di : dynamicImports) {

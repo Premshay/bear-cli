@@ -17,7 +17,7 @@
     - Valid manifest → all fields populated; `version` missing → `MISSING_KEY_version`; `blockKey` missing → `MISSING_KEY_blockKey`; `version="2"` → `UNSUPPORTED_WIRING_SCHEMA_VERSION`; malformed JSON → `MALFORMED_JSON`; empty `wrappers`/`ports` → `List.of()`
     - _Requirements: 1.1–1.6_
 
-  - [x] 1.3 Write `ManifestParsingProperties.java` (jqwik)
+  - [x] 1.3 Write `ManifestParsingProperties.java` (property-style tests)
     - **Property 1: Manifest parsing populates all fields** — Validates: Requirements 1.1, 1.2
     - **Property 2: Manifest round-trip stability** — Validates: Requirement 1.9
     - **Property 3: Malformed JSON rejected** — Validates: Requirement 1.5
@@ -72,7 +72,7 @@
     - `isTscMissing()` with `"Cannot find module"` + typescript reference → `true`; `"command \"tsc\" not found"` → `true`; normal tsc error → `false`; pnpm unavailable → `BOOTSTRAP_IO`; result phase always `"tsc"`
     - _Requirements: 4.1–4.8_
 
-  - [x] 3.3 Write `ProjectVerificationProperties.java` (jqwik)
+  - [x] 3.3 Write `ProjectVerificationProperties.java` (property-style tests)
     - **Property 7: BOOTSTRAP_IO on tsc-missing output patterns** — Validates: Requirement 4.5
     - **Property 19: `NodeProjectVerificationRunner` phase tag** — Validates: Requirement 4.9
 
@@ -107,7 +107,7 @@
     - File with `import('./other')` → `DYNAMIC_IMPORT_FORBIDDEN` finding; no dynamic imports → no such findings; 3 dynamic imports → 3 findings; static bypass + dynamic import → both findings present; `path` is repo-relative, `detail` contains specifier
     - _Requirements: 5.1–5.6_
 
-  - [x] 5.3 Write `DynamicImportEnforcementProperties.java` (jqwik)
+  - [x] 5.3 Write `DynamicImportEnforcementProperties.java` (property-style tests)
     - **Property 8: Dynamic import findings include path and specifier** — Validates: Requirements 5.1, 5.4
     - **Property 9: No dynamic import findings for clean files** — Validates: Requirement 5.2
     - **Property 10: All dynamic imports collected before reporting** — Validates: Requirement 5.6
@@ -131,7 +131,7 @@
     - `@/*` → `["./src/*"]` → resolves `@/foo/bar` to `projectRoot/src/foo/bar`; missing tsconfig → `Optional.empty()`; no `compilerOptions.paths` → `Optional.empty()`; multi-element array → first element only; only `#utils` entry → `Optional.empty()` for `@/` specifiers; second call reads file only once
     - _Requirements: 6.1, 6.6–6.10_
 
-  - [x] 6.3 Write `PathAliasResolutionProperties.java` (jqwik)
+  - [x] 6.3 Write `PathAliasResolutionProperties.java` (property-style tests)
     - **Property 11: `@/*` alias resolves to `src/` subtree** — Validates: Requirement 6.1
     - **Property 16: Non-`@/*` alias entries ignored** — Validates: Requirement 6.7
     - **Property 20: `NodePathAliasResolver` caches tsconfig read** — Validates: Requirement 6.10
@@ -206,7 +206,7 @@
   - **Verification:** Zero failures across all modules; all 22 correctness properties pass (100+ iterations each).
 
   - [x] 9.1 Run `./gradlew :kernel:test --no-daemon` and confirm zero failures
-    - Verify all 22 correctness properties pass (Properties 1–22, 100+ iterations each)
+    - Verify all 22 correctness properties pass
     - Confirm all existing Phase B Node tests pass without modification
     - _Requirements: 7.8_
 
