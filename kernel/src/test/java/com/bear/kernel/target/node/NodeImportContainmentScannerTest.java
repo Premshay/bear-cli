@@ -104,6 +104,98 @@ class NodeImportContainmentScannerTest {
         assertTrue(findings.isEmpty(), "test files should not be scanned");
     }
 
+    // --- Dynamic import enforcement tests (Phase C) ---
+
+    @Test
+    void dynamicImportProducesFinding(@TempDir Path tempDir) throws IOException {
+        Path blockRoot = Files.createDirectories(tempDir.resolve("src/blocks/user-auth"));
+        Files.writeString(blockRoot.resolve("index.ts"),
+            "const mod = import('./other');\n");
+
+        List<WiringManifest> manifests = List.of(makeManifest("user-auth"));
+        List<BoundaryBypassFinding> findings = NodeImportContainmentScanner.scan(tempDir, manifests);
+
+        assertFalse(findings.isEmpty());
+        assertTrue(findings.stream().anyMatch(f -> f.rule().equals("DYNAMIC_IMPORT_FORBIDDEN")));
+    }
+
+    @Test
+    void noDynamicImportsNoFindings(@TempDir Path tempDir) throws IOException {
+        Path blockRoot = Files.createDirectories(tempDir.resolve("src/blocks/user-auth"));
+        // Only static imports, no dynamic import()
+        Files.writeString(blockRoot.resolve("index.ts"),
+            "import { x } from './utils';\nconst y = 1;\n");
+        Files.writeString(blockRoot.resolve("utils.ts"), "export const x = 1;\n");
+
+        List<WiringManifest> manifests = List.of(makeManifest("user-auth"));
+        List<BoundaryBypassFinding> findings = NodeImportContainmentScanner.scan(tempDir, manifests);
+
+        assertTrue(findings.stream().noneMatch(f -> f.rule().equals("DYNAMIC_IMPORT_FORBIDDEN")),
+            "No DYNAMIC_IMPORT_FORBIDDEN findings expected for clean files");
+    }
+
+    @Test
+    void multipleDynamicImportsProduceMultipleFindings(@TempDir Path tempDir) throws IOException {
+        Path blockRoot = Files.createDirectories(tempDir.resolve("src/blocks/user-auth"));
+        Files.writeString(blockRoot.resolve("index.ts"),
+            """
+            const a = import('./a');
+            const b = import("./b");
+            const c = import('./c');
+            """);
+
+        List<WiringManifest> manifests = List.of(makeManifest("user-auth"));
+        List<BoundaryBypassFinding> findings = NodeImportContainmentScanner.scan(tempDir, manifests);
+
+        long dynamicCount = findings.stream()
+            .filter(f -> f.rule().equals("DYNAMIC_IMPORT_FORBIDDEN"))
+            .count();
+        assertEquals(3, dynamicCount, "Expected 3 DYNAMIC_IMPORT_FORBIDDEN findings");
+    }
+
+    @Test
+    void staticBypassAndDynamicImportBothReported(@TempDir Path tempDir) throws IOException {
+        Files.createDirectories(tempDir.resolve("src/blocks/user-auth"));
+        Files.createDirectories(tempDir.resolve("src/blocks/payment"));
+        Path blockRoot = tempDir.resolve("src/blocks/user-auth");
+
+        // File with both a static boundary bypass and a dynamic import
+        Files.writeString(blockRoot.resolve("index.ts"),
+            """
+            import { PaymentService } from '../payment/service';
+            const mod = import('./lazy-module');
+            """);
+
+        List<WiringManifest> manifests = List.of(makeManifest("user-auth"));
+        List<BoundaryBypassFinding> findings = NodeImportContainmentScanner.scan(tempDir, manifests);
+
+        assertTrue(findings.stream().anyMatch(f -> f.rule().equals("BOUNDARY_BYPASS")),
+            "Expected BOUNDARY_BYPASS finding for static import");
+        assertTrue(findings.stream().anyMatch(f -> f.rule().equals("DYNAMIC_IMPORT_FORBIDDEN")),
+            "Expected DYNAMIC_IMPORT_FORBIDDEN finding for dynamic import");
+    }
+
+    @Test
+    void dynamicImportFindingIncludesPathAndSpecifier(@TempDir Path tempDir) throws IOException {
+        Path blockRoot = Files.createDirectories(tempDir.resolve("src/blocks/user-auth"));
+        Files.writeString(blockRoot.resolve("loader.ts"),
+            "const mod = import('./my-module');\n");
+
+        List<WiringManifest> manifests = List.of(makeManifest("user-auth"));
+        List<BoundaryBypassFinding> findings = NodeImportContainmentScanner.scan(tempDir, manifests);
+
+        BoundaryBypassFinding finding = findings.stream()
+            .filter(f -> f.rule().equals("DYNAMIC_IMPORT_FORBIDDEN"))
+            .findFirst()
+            .orElseThrow();
+
+        // Path should be repo-relative
+        assertTrue(finding.path().contains("loader.ts"), "Path should contain filename");
+        assertTrue(finding.path().startsWith("src/blocks/"), "Path should be repo-relative");
+        // Detail should contain the specifier
+        assertTrue(finding.detail().contains("./my-module"), "Detail should contain specifier");
+    }
+
     private WiringManifest makeManifest(String blockKey) {
         return new WiringManifest(
             "1", blockKey, blockKey, blockKey + "Logic", blockKey + "Impl",

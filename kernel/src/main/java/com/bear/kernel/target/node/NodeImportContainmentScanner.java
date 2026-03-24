@@ -19,7 +19,10 @@ public class NodeImportContainmentScanner {
 
         NodeImportSpecifierExtractor extractor = new NodeImportSpecifierExtractor();
         NodeDynamicImportDetector dynamicDetector = new NodeDynamicImportDetector();
-        NodeImportBoundaryResolver resolver = new NodeImportBoundaryResolver();
+        // Phase C: construct one NodePathAliasResolver per scan and pass it to NodeImportBoundaryResolver
+        // The alias resolver caches tsconfig.json read for the duration of the scan
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolver = new NodeImportBoundaryResolver(aliasResolver);
 
         List<BoundaryBypassFinding> findings = new ArrayList<>();
         for (Path file : governedFiles) {
@@ -37,8 +40,16 @@ public class NodeImportContainmentScanner {
                 }
             }
 
-            // Dynamic imports: detect but don't fail in Phase B
-            dynamicDetector.detectDynamicImports(content);
+            // Phase C: dynamic imports are enforced (exit 7, CODE=BOUNDARY_BYPASS, RULE=DYNAMIC_IMPORT_FORBIDDEN)
+            List<NodeDynamicImportDetector.DynamicImport> dynamicImports =
+                dynamicDetector.detectDynamicImports(content);
+            for (NodeDynamicImportDetector.DynamicImport di : dynamicImports) {
+                findings.add(new BoundaryBypassFinding(
+                    "DYNAMIC_IMPORT_FORBIDDEN",
+                    projectRoot.relativize(file).toString(),
+                    "Dynamic import specifier: " + di.specifier()
+                ));
+            }
         }
 
         // Sort findings by file path

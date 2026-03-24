@@ -1,10 +1,10 @@
 # Active
-- multi-target-foundation-phases
+(empty)
 
 # Ready Queue
+- p2-minimal-taste-invariants-rule-pack
 
 # Later Queue
-- p2-minimal-taste-invariants-rule-pack
 - p3-maven-allowed-deps-containment
 - p3-optional-deterministic-policy-hooks
 
@@ -25,6 +25,7 @@
 - future-idea-families
 
 # Completed
+- multi-target-foundation-phases
 - p3-capability-templates
 - p3-multi-block-multi-module-composition-hardening
 - p2-bear-fix-generated-only

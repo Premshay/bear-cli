@@ -449,11 +449,11 @@ final class CheckCommandService {
                     "internal: INTERNAL_ERROR: CANDIDATE_WIRING_MANIFEST_INVALID:" + e.reasonCode()
                 );
             }
-            CheckResult baselineWiringValidation = validateWiringManifestSemantics(baselineWiringManifest, "build/generated/bear/" + wiringRelPath);
+            CheckResult baselineWiringValidation = validateWiringManifestSemantics(baselineWiringManifest, "build/generated/bear/" + wiringRelPath, target.targetId());
             if (baselineWiringValidation != null) {
                 return baselineWiringValidation;
             }
-            CheckResult candidateWiringValidation = validateWiringManifestSemantics(candidateWiringManifest, "build/generated/bear/" + wiringRelPath);
+            CheckResult candidateWiringValidation = validateWiringManifestSemantics(candidateWiringManifest, "build/generated/bear/" + wiringRelPath, target.targetId());
             if (candidateWiringValidation != null) {
                 return candidateWiringValidation;
             }
@@ -1133,8 +1133,8 @@ final class CheckCommandService {
         return ContainmentFailureClassifier.hasContainmentSignal(testResult, markerLine);
     }
 
-    private static CheckResult validateWiringManifestSemantics(WiringManifest manifest, String path) {
-        return CheckManifestValidation.validateWiringManifestSemantics(manifest, path);
+    private static CheckResult validateWiringManifestSemantics(WiringManifest manifest, String path, TargetId targetId) {
+        return CheckManifestValidation.validateWiringManifestSemantics(manifest, path, targetId);
     }
 
     private static boolean isManifestSemanticFieldError(ManifestParseException e) {

@@ -2,14 +2,38 @@ package com.bear.kernel.target.node;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
+import java.util.Optional;
 import java.util.Set;
 
 public class NodeImportBoundaryResolver {
+
+    private final NodePathAliasResolver aliasResolver;
+
+    /**
+     * Creates a resolver with no alias resolution support.
+     * Use this constructor for backward compatibility with existing tests.
+     */
+    public NodeImportBoundaryResolver() {
+        this.aliasResolver = null;
+    }
+
+    /**
+     * Creates a resolver with alias resolution support.
+     * The alias resolver is shared across all files in a single scan invocation.
+     */
+    public NodeImportBoundaryResolver(NodePathAliasResolver aliasResolver) {
+        this.aliasResolver = aliasResolver;
+    }
 
     /**
      * Resolves an import specifier and determines if it violates boundaries.
      */
     public BoundaryDecision resolve(Path importingFile, String specifier, Set<Path> governedRoots, Path projectRoot) {
+        // 0. @/* alias resolution (Phase C) - before bare specifier check
+        if (specifier.startsWith("@/")) {
+            return resolveAtSlashAlias(importingFile, specifier, governedRoots, projectRoot);
+        }
+
         // 1. Check for bare specifier (e.g., "lodash")
         if (isBareSpecifier(specifier)) {
             return BoundaryDecision.fail("BARE_PACKAGE_IMPORT");
@@ -124,5 +148,61 @@ public class NodeImportBoundaryResolver {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolves @/* alias specifiers using the configured alias resolver.
+     * 
+     * @/ specifier with alias configured: resolve to path, apply same boundary rules as relative imports
+     *   - same block → allowed
+     *   - _shared importing _shared → allowed
+     *   - _shared importing block → fail("SHARED_IMPORTS_BLOCK")
+     *   - block importing _shared → allowed
+     *   - generated dir → allowed
+     *   - otherwise → fail("BOUNDARY_BYPASS")
+     * @/ specifier with no alias configured → fail("BOUNDARY_BYPASS")
+     */
+    private BoundaryDecision resolveAtSlashAlias(Path importingFile, String specifier, Set<Path> governedRoots, Path projectRoot) {
+        // If no alias resolver configured, treat as boundary bypass
+        if (aliasResolver == null) {
+            return BoundaryDecision.fail("BOUNDARY_BYPASS");
+        }
+
+        Optional<Path> resolved = aliasResolver.resolve(specifier, projectRoot);
+        if (resolved.isEmpty()) {
+            // No alias configured or tsconfig missing → fail
+            return BoundaryDecision.fail("BOUNDARY_BYPASS");
+        }
+
+        Path target = resolved.get();
+
+        // Apply same boundary rules as relative imports:
+
+        // 1. Check if resolved path is within BEAR-generated directory
+        Path generatedDir = projectRoot.resolve("build/generated/bear");
+        if (target.startsWith(generatedDir)) {
+            return BoundaryDecision.allowed();
+        }
+
+        // 2. Check if resolved path is within same governed root as importing file
+        Path importingRoot = findGovernedRoot(importingFile, governedRoots);
+        if (importingRoot != null && target.startsWith(importingRoot)) {
+            return BoundaryDecision.allowed();
+        }
+
+        // 3. Enforce _shared import block rule for alias imports:
+        //    files under src/blocks/_shared cannot import other blocks via alias
+        Path sharedRoot = projectRoot.resolve("src/blocks/_shared");
+        if (importingFile.startsWith(sharedRoot) && !target.startsWith(sharedRoot)) {
+            return BoundaryDecision.fail("SHARED_IMPORTS_BLOCK");
+        }
+
+        // 4. Allow imports into _shared from other locations
+        if (target.startsWith(sharedRoot)) {
+            return BoundaryDecision.allowed();
+        }
+
+        // 5. All other cases are boundary bypass
+        return BoundaryDecision.fail("BOUNDARY_BYPASS");
     }
 }
