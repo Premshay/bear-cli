@@ -717,6 +717,53 @@ final class CheckCommandService {
                 );
             }
 
+            Set<String> tasteAllowlist = PolicyAllowlistParser.parseExactPathAllowlist(
+                projectRoot,
+                TasteInvariantScanner.TASTE_INVARIANTS_ALLOWLIST_PATH
+            );
+            List<BoundaryBypassFinding> tasteFindings = TasteInvariantScanner.scanTasteInvariants(
+                projectRoot,
+                tasteAllowlist
+            );
+            if (!tasteFindings.isEmpty()) {
+                List<BoundaryBypassFinding> selectedTasteFindings = collectAll
+                    ? List.copyOf(tasteFindings)
+                    : List.of(tasteFindings.get(0));
+                ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
+                for (BoundaryBypassFinding finding : selectedTasteFindings) {
+                    String line = "check: BOUNDARY_BYPASS: RULE="
+                        + finding.rule()
+                        + ": "
+                        + finding.path()
+                        + ": "
+                        + finding.detail();
+                    diagnostics.add(line);
+                    problems.add(AgentDiagnostics.problem(
+                        AgentDiagnostics.AgentCategory.GOVERNANCE,
+                        CliCodes.BOUNDARY_BYPASS,
+                        finding.rule(),
+                        null,
+                        AgentDiagnostics.AgentSeverity.ERROR,
+                        blockKey,
+                        finding.path(),
+                        null,
+                        finding.rule(),
+                        line,
+                        Map.of("identityKey", finding.path() + "|" + finding.rule() + "|" + finding.detail())
+                    ));
+                }
+                return checkFailure(
+                    CliCodes.EXIT_UNDECLARED_REACH,
+                    diagnostics,
+                    "BOUNDARY_BYPASS",
+                    CliCodes.BOUNDARY_BYPASS,
+                    selectedTasteFindings.get(0).path(),
+                    "Fix the generated zone layout violation or allowlist the path in `bear-policy/taste-invariants-allowlist.txt`, then rerun `bear check`.",
+                    diagnostics.get(diagnostics.size() - 1),
+                    problems
+                );
+            }
+
             ProjectTestResult testResult = target.runProjectVerification(
                 projectRoot,
                 considerContainmentSurfaces ? CONTAINMENT_ENTRYPOINT_PATH : null
