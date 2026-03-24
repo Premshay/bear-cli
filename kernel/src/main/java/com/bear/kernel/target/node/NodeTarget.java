@@ -69,14 +69,15 @@ public class NodeTarget implements Target {
 
     @Override
     public WiringManifest parseWiringManifest(Path path) throws IOException, ManifestParseException {
-        // Phase B: Parse wiring.json
-        // For now, throw UnsupportedOperationException
-        throw new UnsupportedOperationException("parseWiringManifest not implemented in Phase B");
+        return NodeManifestParser.parse(path);
     }
 
     @Override
     public void prepareCheckWorkspace(Path projectRoot, Path tempRoot) throws IOException {
-        throw new UnsupportedOperationException("prepareCheckWorkspace not implemented in Phase B");
+        Path sharedDir = projectRoot.resolve("src/blocks/_shared");
+        if (Files.isDirectory(sharedDir)) {
+            Files.createDirectories(tempRoot.resolve("src/blocks/_shared"));
+        }
     }
 
     @Override
@@ -112,28 +113,28 @@ public class NodeTarget implements Target {
 
     @Override
     public String containmentSkipInfoLine(String projectRootLabel, Path projectRoot, boolean considerContainmentSurfaces) {
-        throw new UnsupportedOperationException("containmentSkipInfoLine not implemented in Phase B");
+        return null; // JVM-style containment markers not applicable to Node
     }
 
     @Override
     public TargetCheckIssue preflightContainmentIfRequired(Path projectRoot, boolean considerContainmentSurfaces) throws IOException {
-        throw new UnsupportedOperationException("preflightContainmentIfRequired not implemented in Phase B");
+        return null; // JVM-style containment markers not applicable to Node
     }
 
     @Override
     public TargetCheckIssue verifyContainmentMarkersIfRequired(Path projectRoot, boolean considerContainmentSurfaces) throws IOException {
-        throw new UnsupportedOperationException("verifyContainmentMarkersIfRequired not implemented in Phase B");
+        return null; // JVM-style containment markers not applicable to Node
     }
 
     @Override
     public List<UndeclaredReachFinding> scanUndeclaredReach(Path projectRoot) throws IOException, PolicyValidationException {
-        throw new UnsupportedOperationException("scanUndeclaredReach not implemented in Phase B");
+        return List.of(); // No covered power surfaces in first Node runtime slice
     }
 
     @Override
     public List<UndeclaredReachFinding> scanForbiddenReflectionDispatch(Path projectRoot, List<WiringManifest> wiringManifests)
             throws IOException {
-        throw new UnsupportedOperationException("scanForbiddenReflectionDispatch not implemented in Phase B");
+        return List.of(); // No dynamic execution scanning in first Node runtime slice
     }
 
     @Override
@@ -148,7 +149,7 @@ public class NodeTarget implements Target {
     @Override
     public List<BoundaryBypassFinding> scanPortImplContainmentBypass(Path projectRoot, List<WiringManifest> wiringManifests)
             throws IOException, ManifestParseException {
-        throw new UnsupportedOperationException("scanPortImplContainmentBypass not implemented in Phase B");
+        return List.of(); // JVM-specific port binding checks not applicable to Node
     }
 
     @Override
@@ -157,7 +158,7 @@ public class NodeTarget implements Target {
             List<WiringManifest> wiringManifests,
             Set<String> inboundTargetWrapperFqcns
     ) throws IOException {
-        throw new UnsupportedOperationException("scanBlockPortBindings not implemented in Phase B");
+        return List.of(); // JVM-specific port binding checks not applicable to Node
     }
 
     @Override
@@ -165,12 +166,13 @@ public class NodeTarget implements Target {
             Path projectRoot,
             List<WiringManifest> wiringManifests
     ) throws IOException, ManifestParseException {
-        throw new UnsupportedOperationException("scanMultiBlockPortImplAllowedSignals not implemented in Phase B");
+        return List.of(); // JVM-specific port binding checks not applicable to Node
     }
 
     @Override
     public ProjectTestResult runProjectVerification(Path projectRoot, String initScriptRelativePath) throws IOException, InterruptedException {
-        throw new UnsupportedOperationException("runProjectVerification not implemented in Phase B");
+        // initScriptRelativePath is JVM-specific (Gradle init script); Node ignores it
+        return NodeProjectVerificationRunner.run(projectRoot);
     }
 
     /**

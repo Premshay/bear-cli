@@ -119,4 +119,226 @@ class NodeImportBoundaryResolverTest {
         Files.createDirectories(blockRoot.resolve("services"));
         return blockRoot;
     }
+
+    // -------------------------------------------------------------------------
+    // Phase C: @/* alias resolution tests
+    // Requirements: 6.2–6.5
+    // -------------------------------------------------------------------------
+
+    @Test
+    void atSlashAliasSameBlockPasses(@TempDir Path tempDir) throws IOException {
+        // Setup: tsconfig.json with @/* → ["./src/*"]
+        String tsconfig = """
+            {
+              "compilerOptions": {
+                "paths": {
+                  "@/*": ["./src/*"]
+                }
+              }
+            }
+            """;
+        Files.writeString(tempDir.resolve("tsconfig.json"), tsconfig);
+
+        Path blockRoot = createBlockStructure(tempDir, "my-block");
+        Files.createFile(blockRoot.resolve("foo.ts"));
+        Path importingFile = blockRoot.resolve("services/user-service.ts");
+
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolverWithAlias = new NodeImportBoundaryResolver(aliasResolver);
+
+        // @/blocks/my-block/foo with alias, same block → allowed()
+        BoundaryDecision decision = resolverWithAlias.resolve(
+            importingFile, "@/blocks/my-block/foo", Set.of(blockRoot), tempDir);
+
+        assertTrue(decision.pass(), "Same block @/ alias import should pass");
+    }
+
+    @Test
+    void atSlashAliasSiblingBlockFails(@TempDir Path tempDir) throws IOException {
+        // Setup: tsconfig.json with @/* → ["./src/*"]
+        String tsconfig = """
+            {
+              "compilerOptions": {
+                "paths": {
+                  "@/*": ["./src/*"]
+                }
+              }
+            }
+            """;
+        Files.writeString(tempDir.resolve("tsconfig.json"), tsconfig);
+
+        Path myBlockRoot = createBlockStructure(tempDir, "my-block");
+        Path otherBlockRoot = createBlockStructure(tempDir, "other-block");
+        Files.createFile(otherBlockRoot.resolve("foo.ts"));
+        Path importingFile = myBlockRoot.resolve("services/user-service.ts");
+
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolverWithAlias = new NodeImportBoundaryResolver(aliasResolver);
+
+        // @/blocks/other-block/foo with alias → fail("BOUNDARY_BYPASS")
+        BoundaryDecision decision = resolverWithAlias.resolve(
+            importingFile, "@/blocks/other-block/foo", Set.of(myBlockRoot, otherBlockRoot), tempDir);
+
+        assertFalse(decision.pass(), "Sibling block @/ alias import should fail");
+        assertEquals("BOUNDARY_BYPASS", decision.failureReason());
+    }
+
+    @Test
+    void atSlashAliasSharedPasses(@TempDir Path tempDir) throws IOException {
+        // Setup: tsconfig.json with @/* → ["./src/*"]
+        String tsconfig = """
+            {
+              "compilerOptions": {
+                "paths": {
+                  "@/*": ["./src/*"]
+                }
+              }
+            }
+            """;
+        Files.writeString(tempDir.resolve("tsconfig.json"), tsconfig);
+
+        Path blockRoot = createBlockStructure(tempDir, "my-block");
+        Path sharedRoot = Files.createDirectories(tempDir.resolve("src/blocks/_shared"));
+        Files.createFile(sharedRoot.resolve("utils.ts"));
+        Path importingFile = blockRoot.resolve("services/user-service.ts");
+
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolverWithAlias = new NodeImportBoundaryResolver(aliasResolver);
+
+        // @/blocks/_shared/utils with alias → allowed()
+        BoundaryDecision decision = resolverWithAlias.resolve(
+            importingFile, "@/blocks/_shared/utils", Set.of(blockRoot, sharedRoot), tempDir);
+
+        assertTrue(decision.pass(), "_shared @/ alias import should pass");
+    }
+
+    @Test
+    void atSlashAliasOutsidePathFails(@TempDir Path tempDir) throws IOException {
+        // Setup: tsconfig.json with @/* → ["./src/*"]
+        String tsconfig = """
+            {
+              "compilerOptions": {
+                "paths": {
+                  "@/*": ["./src/*"]
+                }
+              }
+            }
+            """;
+        Files.writeString(tempDir.resolve("tsconfig.json"), tsconfig);
+
+        Path blockRoot = createBlockStructure(tempDir, "my-block");
+        // Create an outside path (not in blocks)
+        Files.createDirectories(tempDir.resolve("src/outside"));
+        Files.createFile(tempDir.resolve("src/outside/path.ts"));
+        Path importingFile = blockRoot.resolve("services/user-service.ts");
+
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolverWithAlias = new NodeImportBoundaryResolver(aliasResolver);
+
+        // @/outside/path with alias → fail("BOUNDARY_BYPASS")
+        BoundaryDecision decision = resolverWithAlias.resolve(
+            importingFile, "@/outside/path", Set.of(blockRoot), tempDir);
+
+        assertFalse(decision.pass(), "Outside path @/ alias import should fail");
+        assertEquals("BOUNDARY_BYPASS", decision.failureReason());
+    }
+
+    @Test
+    void atSlashAliasNoAliasConfiguredFails(@TempDir Path tempDir) throws IOException {
+        // Setup: tsconfig.json with NO @/* alias (only other aliases)
+        String tsconfig = """
+            {
+              "compilerOptions": {
+                "paths": {
+                  "#utils": ["./src/utils/*"]
+                }
+              }
+            }
+            """;
+        Files.writeString(tempDir.resolve("tsconfig.json"), tsconfig);
+
+        Path blockRoot = createBlockStructure(tempDir, "my-block");
+        Path importingFile = blockRoot.resolve("services/user-service.ts");
+
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolverWithAlias = new NodeImportBoundaryResolver(aliasResolver);
+
+        // @/foo with no @/* alias configured → fail("BOUNDARY_BYPASS")
+        BoundaryDecision decision = resolverWithAlias.resolve(
+            importingFile, "@/foo", Set.of(blockRoot), tempDir);
+
+        assertFalse(decision.pass(), "@/ import with no @/* alias should fail");
+        assertEquals("BOUNDARY_BYPASS", decision.failureReason());
+    }
+
+    @Test
+    void atSlashAliasMissingTsconfigFails(@TempDir Path tempDir) throws IOException {
+        // No tsconfig.json created
+        Path blockRoot = createBlockStructure(tempDir, "my-block");
+        Path importingFile = blockRoot.resolve("services/user-service.ts");
+
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolverWithAlias = new NodeImportBoundaryResolver(aliasResolver);
+
+        // @/foo with missing tsconfig → fail("BOUNDARY_BYPASS")
+        BoundaryDecision decision = resolverWithAlias.resolve(
+            importingFile, "@/foo", Set.of(blockRoot), tempDir);
+
+        assertFalse(decision.pass(), "@/ import with missing tsconfig should fail");
+        assertEquals("BOUNDARY_BYPASS", decision.failureReason());
+    }
+
+    @Test
+    void atSlashAliasNoResolverFails(@TempDir Path tempDir) throws IOException {
+        // Setup: tsconfig.json with @/* → ["./src/*"]
+        String tsconfig = """
+            {
+              "compilerOptions": {
+                "paths": {
+                  "@/*": ["./src/*"]
+                }
+              }
+            }
+            """;
+        Files.writeString(tempDir.resolve("tsconfig.json"), tsconfig);
+
+        Path blockRoot = createBlockStructure(tempDir, "my-block");
+        Path importingFile = blockRoot.resolve("services/user-service.ts");
+
+        // Use resolver without alias resolver (backward compatibility)
+        // @/foo with no alias resolver → fail("BOUNDARY_BYPASS")
+        BoundaryDecision decision = resolver.resolve(
+            importingFile, "@/foo", Set.of(blockRoot), tempDir);
+
+        assertFalse(decision.pass(), "@/ import with no alias resolver should fail");
+        assertEquals("BOUNDARY_BYPASS", decision.failureReason());
+    }
+
+    @Test
+    void atSlashAliasToGeneratedDirPasses(@TempDir Path tempDir) throws IOException {
+        // Setup: tsconfig.json with @/* → ["./*"] (maps to project root)
+        String tsconfig = """
+            {
+              "compilerOptions": {
+                "paths": {
+                  "@/*": ["./*"]
+                }
+              }
+            }
+            """;
+        Files.writeString(tempDir.resolve("tsconfig.json"), tsconfig);
+
+        Path blockRoot = createBlockStructure(tempDir, "my-block");
+        Files.createDirectories(tempDir.resolve("build/generated/bear/types/my-block"));
+        Path importingFile = blockRoot.resolve("services/user-service.ts");
+
+        NodePathAliasResolver aliasResolver = new NodePathAliasResolver();
+        NodeImportBoundaryResolver resolverWithAlias = new NodeImportBoundaryResolver(aliasResolver);
+
+        // @/build/generated/bear/types/my-block/generated with alias → allowed()
+        BoundaryDecision decision = resolverWithAlias.resolve(
+            importingFile, "@/build/generated/bear/types/my-block/generated", Set.of(blockRoot), tempDir);
+
+        assertTrue(decision.pass(), "Generated dir @/ alias import should pass");
+    }
 }

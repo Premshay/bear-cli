@@ -1,0 +1,5 @@
+{
+  "name": "check-clean",
+  "type": "module",
+  "packageManager": "pnpm@8.0.0"
+}

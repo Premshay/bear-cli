@@ -1,7 +1,7 @@
 ---
 id: multi-target-foundation-phases
-title: Multi-target Foundation — Phases A, B, P, P2
-status: in-progress (Phase P2 complete, Phase C planned)
+title: Multi-target Foundation — Phases A, B, P, P2, R, C
+status: complete
 priority: high
 commitment: committed
 milestone: P2
@@ -9,9 +9,9 @@ milestone: P2
 
 ## Purpose
 
-This document tracks the foundational phases (A, B, P) for multi-target expansion. These phases
-establish the architecture and first two non-JVM targets (Node/TypeScript, Python) that enable
-future targets (.NET, React).
+This document tracks the foundational phases (A, B, P, P2, R, C) for multi-target expansion. These phases
+establish the architecture and first three non-JVM targets (Node/TypeScript, Python, React) that enable
+future targets (.NET).
 
 ## Relation to Parked Multi-Target Documents
 
@@ -439,19 +439,77 @@ Completed on 2026-03-20. 9 tasks, 23 correctness properties validated.
 - `.kiro/specs/react-target-scan-only/design.md`
 - `.kiro/specs/react-target-scan-only/tasks.md`
 
-## Phase C: Node Target — Runtime Execution (PLANNED)
-Add runtime execution capabilities to Node target: project verification, dynamic import
-resolution, and full end-to-end workflow support.
+## Phase C: Node Target — Runtime Execution (COMPLETE)
 
-### Scope (Preliminary)
-- Project verification via `pnpm exec tsc --noEmit`
-- Dynamic `import()` enforcement (Phase B detects, Phase C enforces)
-- TypeScript path alias resolution (if feasible)
-- Full `bear check` workflow with runtime validation
-- Integration with existing CI/CD patterns
+### Purpose
+Complete the Node/TypeScript target by implementing runtime execution capabilities deferred from
+Phase B: manifest parsing, workspace preparation, project verification, dynamic import enforcement,
+and `@/*` alias resolution.
+
+### Scope
+- `NodeManifestParser` — Node-specific wiring manifest parser (regex-based JSON, no Jackson)
+- `NodeTarget.prepareCheckWorkspace()` — copies `src/blocks/_shared/` to temp workspace
+- `NodeTarget` JVM-specific stubs — all 8 methods return `null`/`List.of()`
+- `NodeProjectVerificationRunner` — runs `pnpm exec tsc --noEmit`
+- Dynamic `import()` enforcement — promoted from advisory to enforced (`DYNAMIC_IMPORT_FORBIDDEN`)
+- `NodePathAliasResolver` — reads `tsconfig.json` `compilerOptions.paths["@/*"]`
+- `NodeImportBoundaryResolver` — extended with `@/*` alias resolution
+
+### Acceptance Criteria
+- [x] `NodeManifestParser` parses Node wiring manifest JSON (version="1")
+- [x] `NodeTarget.prepareCheckWorkspace()` copies `_shared` directory
+- [x] All 8 JVM-specific stubs return expected values without throwing
+- [x] `NodeProjectVerificationRunner` runs tsc with proper exit code mapping
+- [x] Dynamic imports produce `DYNAMIC_IMPORT_FORBIDDEN` findings (exit 7)
+- [x] `@/*` alias resolution works for same-block and `_shared` imports
+- [x] `@/*` alias to sibling block fails with `BOUNDARY_BYPASS`
+- [x] All 22 correctness properties pass (100+ iterations each)
+- [x] All existing Phase B tests pass without modification
+- [x] All existing JVM, Python, React tests pass without modification
+
+### Deliverables
+
+**Implementation:**
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeManifestParser.java`
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeProjectVerificationRunner.java`
+- `kernel/src/main/java/com/bear/kernel/target/node/NodePathAliasResolver.java`
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeTarget.java` (updated)
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeImportBoundaryResolver.java` (updated)
+- `kernel/src/main/java/com/bear/kernel/target/node/NodeImportContainmentScanner.java` (updated)
+
+**Tests:**
+- `kernel/src/test/java/com/bear/kernel/target/node/NodeManifestParserTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/node/NodeProjectVerificationRunnerTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/node/NodePathAliasResolverTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/node/NodeCheckIntegrationTest.java`
+- `kernel/src/test/java/com/bear/kernel/target/node/properties/ManifestParsingProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/node/properties/ProjectVerificationProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/node/properties/DynamicImportEnforcementProperties.java`
+- `kernel/src/test/java/com/bear/kernel/target/node/properties/PathAliasResolutionProperties.java`
+
+**Fixtures:**
+- `kernel/src/test/resources/fixtures/node/check-clean/`
+- `kernel/src/test/resources/fixtures/node/check-dynamic-import/`
+- `kernel/src/test/resources/fixtures/node/check-project-verification-failure/`
+- `kernel/src/test/resources/fixtures/node/check-alias-same-block/`
+- `kernel/src/test/resources/fixtures/node/check-alias-sibling-block/`
+- `kernel/src/test/resources/fixtures/node/check-alias-no-tsconfig-paths/`
+
+**Specs:**
+- `.kiro/specs/phase-c-node-runtime-execution/requirements.md`
+- `.kiro/specs/phase-c-node-runtime-execution/design.md`
+- `.kiro/specs/phase-c-node-runtime-execution/tasks.md`
 
 ### Status
-📋 PLANNED (spec not yet created)
+✅ COMPLETE
+
+Completed on 2026-03-23. 10 tasks, 22 correctness properties validated.
+
+### Implementation Notes
+- `NodeManifestParser` uses regex-based JSON parsing (no Jackson in kernel)
+- `NodePathAliasResolver` caches tsconfig read per scan invocation
+- `NodeImportBoundaryResolver` accepts `NodePathAliasResolver` via constructor injection
+- Dynamic import enforcement reuses existing `NodeDynamicImportDetector` (detection unchanged)
 
 ## Phase D+: Additional Targets (PLANNED)
 

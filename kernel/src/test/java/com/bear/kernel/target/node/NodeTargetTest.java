@@ -65,25 +65,81 @@ class NodeTargetTest {
     }
 
     @Test
-    void stubMethodsThrowUnsupportedOperationException() {
+    void stubMethodsReturnExpectedValues() throws Exception {
         NodeTarget target = new NodeTarget();
 
-        assertThrows(UnsupportedOperationException.class, () -> target.prepareCheckWorkspace(Path.of("."), Path.of(".")));
-        assertThrows(UnsupportedOperationException.class, () -> target.containmentSkipInfoLine("test", Path.of("."), false));
-        assertThrows(UnsupportedOperationException.class, () -> target.preflightContainmentIfRequired(Path.of("."), false));
-        assertThrows(UnsupportedOperationException.class, () -> target.verifyContainmentMarkersIfRequired(Path.of("."), false));
-        assertThrows(UnsupportedOperationException.class, () -> target.scanUndeclaredReach(Path.of(".")));
-        assertThrows(UnsupportedOperationException.class, () -> target.scanForbiddenReflectionDispatch(Path.of("."), java.util.List.of()));
-        assertThrows(UnsupportedOperationException.class, () -> target.scanPortImplContainmentBypass(Path.of("."), java.util.List.of()));
-        assertThrows(UnsupportedOperationException.class, () -> target.scanBlockPortBindings(Path.of("."), java.util.List.of(), java.util.Set.of()));
-        assertThrows(UnsupportedOperationException.class, () -> target.scanMultiBlockPortImplAllowedSignals(Path.of("."), java.util.List.of()));
-        assertThrows(UnsupportedOperationException.class, () -> target.runProjectVerification(Path.of("."), "init.js"));
+        // JVM-specific stubs return null
+        assertNull(target.containmentSkipInfoLine("test", Path.of("."), false));
+        assertNull(target.preflightContainmentIfRequired(Path.of("."), false));
+        assertNull(target.verifyContainmentMarkersIfRequired(Path.of("."), false));
+
+        // JVM-specific stubs return List.of()
+        assertEquals(java.util.List.of(), target.scanUndeclaredReach(Path.of(".")));
+        assertEquals(java.util.List.of(), target.scanForbiddenReflectionDispatch(Path.of("."), java.util.List.of()));
+        assertEquals(java.util.List.of(), target.scanPortImplContainmentBypass(Path.of("."), java.util.List.of()));
+        assertEquals(java.util.List.of(), target.scanBlockPortBindings(Path.of("."), java.util.List.of(), java.util.Set.of()));
+        assertEquals(java.util.List.of(), target.scanMultiBlockPortImplAllowedSignals(Path.of("."), java.util.List.of()));
     }
 
     @Test
-    void parseWiringManifestThrowsUnsupportedOperationException() throws Exception {
+    void runProjectVerificationReturnsResultWithTscPhase(@TempDir Path tempDir) throws Exception {
         NodeTarget target = new NodeTarget();
-        assertThrows(UnsupportedOperationException.class, () -> target.parseWiringManifest(Path.of("test.wiring.json")));
+        // Run verification - it will return BOOTSTRAP_IO if pnpm is not available,
+        // but the phase should always be "tsc" regardless of the outcome
+        var result = target.runProjectVerification(tempDir, "init.js");
+        assertEquals("tsc", result.phase(), "runProjectVerification should return result with phase='tsc'");
+    }
+
+    // --- prepareCheckWorkspace tests ---
+
+    @Test
+    void prepareCheckWorkspace_withShared_createsDirectoryInTempRoot(@TempDir Path projectRoot, @TempDir Path tempRoot) throws IOException {
+        NodeTarget target = new NodeTarget();
+        
+        // Create _shared directory in project root
+        Path sharedDir = Files.createDirectories(projectRoot.resolve("src/blocks/_shared"));
+        Files.writeString(sharedDir.resolve("utils.ts"), "// shared utils\n");
+        
+        target.prepareCheckWorkspace(projectRoot, tempRoot);
+        
+        assertTrue(Files.isDirectory(tempRoot.resolve("src/blocks/_shared")),
+            "prepareCheckWorkspace should create src/blocks/_shared in tempRoot when present in projectRoot");
+    }
+
+    @Test
+    void prepareCheckWorkspace_withoutShared_noErrorNoDirectory(@TempDir Path projectRoot, @TempDir Path tempRoot) throws IOException {
+        NodeTarget target = new NodeTarget();
+        
+        // No _shared directory in project root
+        Files.createDirectories(projectRoot.resolve("src/blocks/my-block"));
+        
+        // Should not throw
+        target.prepareCheckWorkspace(projectRoot, tempRoot);
+        
+        assertFalse(Files.exists(tempRoot.resolve("src/blocks/_shared")),
+            "prepareCheckWorkspace should not create _shared directory when absent in projectRoot");
+    }
+
+    @Test
+    void parseWiringManifestParsesNodeManifest(@TempDir Path tempDir) throws Exception {
+        NodeTarget target = new NodeTarget();
+        String json = """
+            {
+              "version": "1",
+              "blockKey": "user-auth",
+              "targetId": "node",
+              "generatedPackage": "build/generated/bear/types/user-auth",
+              "implPackage": "src/blocks/user-auth/impl"
+            }
+            """;
+        Path manifestPath = tempDir.resolve("test.wiring.json");
+        Files.writeString(manifestPath, json);
+
+        WiringManifest manifest = target.parseWiringManifest(manifestPath);
+
+        assertEquals("1", manifest.schemaVersion());
+        assertEquals("user-auth", manifest.blockKey());
+        assertEquals("node", manifest.entrypointFqcn());
     }
 
     // --- Governed Roots: single block ---
