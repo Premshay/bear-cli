@@ -203,6 +203,16 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Pattern confirmed: git helpers (`initGitRepo`, `gitCommitAll`, `git`) copied from `TargetSeamParityTest` work cleanly for pr-check integration tests
 - No corrections received this session
 
+### 2026-03-24 — P2 Minimal Taste-Invariants Rule Pack Complete
+- Shipped `TasteInvariantScanner` with 6 deterministic rules: surface naming, wiring naming, zone sprawl, source structure, source file type, forbidden dependency
+- Scanner follows `HygieneScanner` pattern (final class, private constructor, static methods, reuses `BoundaryBypassFinding` record)
+- Key pattern — zone sprawl known categories: `surfaces`, `wiring`, `src`, `gradle`, `config`, `.staging` — the last two discovered during full-suite regression (legitimate dirs from `JvmTarget.compile()`)
+- Key pattern — source file type validation: suffix-based matching (`Logic.java`, `_*.java`, `Bear*.java`) instead of block-name reconstruction — multi-segment package names (e.g., `com.bear.generated.my.block`) broke prefix-based approach
+- Key pattern — property tests without jqwik: project uses JUnit 5 `@ParameterizedTest` + `@MethodSource` with `Random` fixed seeds for reproducibility (jqwik is not in dependencies)
+- Two regressions found and fixed during full suite verification — both were legitimate generated paths not in the initial known-categories/validation logic
+- No corrections received this session; spec-driven execution with Kiro subagent delegation worked cleanly
+- Ready Queue is now empty after this feature; next work requires Later Queue promotion
+
 ---
 
 ## Usage Notes for AI Agents

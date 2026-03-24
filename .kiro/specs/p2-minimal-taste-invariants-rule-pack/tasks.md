@@ -303,18 +303,18 @@ Docs to update:
 
   - Commit: `test(taste-invariants): add property-based tests for correctness properties`
 
-- [-] 6. Full test suite verification
+- [x] 6. Full test suite verification
   - Read: `docs/context/start-here.md` — session close protocol requires docs guard test
   - Depends on: Tasks 1-5 (all implementation and tests complete)
 
-  - [-] 6.1 Run `./gradlew test --no-daemon` and verify zero regressions across all modules
+  - [x] 6.1 Run `./gradlew test --no-daemon` and verify zero regressions across all modules
     - Pay particular attention to `TasteInvariantScannerTest`, `TasteInvariantScannerProperties`, and existing governance tests
 
-  - [~] 6.2 Run `./gradlew --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest` to confirm docs are within budget before updating state.md
+  - [x] 6.2 Run `./gradlew --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest` to confirm docs are within budget before updating state.md
 
   - Commit: no commit needed (verification only); if any fixes were required, commit with: `fix(taste-invariants): <description of what was fixed>`
 
-- [ ] 7. Session-end: update partner model, project state, and roadmap
+- [-] 7. Session-end: update partner model, project state, and roadmap
   - Read: `.agent/skills/session-end/SKILL.md` — follow the BEAR-specific section (no devlogs; update `state.md` and `partner_model.md`)
   - Read: `docs/context/start-here.md` — session close protocol checklist
   - Read: `.agent/Knowledge/partner_model.md` — add a dated calibration note for this session
@@ -323,20 +323,20 @@ Docs to update:
   - Read: `roadmap/board.md` — update status
   - Depends on: Task 6 (full suite green)
 
-  - [~] 7.1 If `docs/context/state.md` Session Notes is approaching the `ContextDocsConsistencyTest` cap, move the oldest session notes to `docs/context/archive/archive-state-history.md` before adding new notes
+  - [x] 7.1 If `docs/context/state.md` Session Notes is approaching the `ContextDocsConsistencyTest` cap, move the oldest session notes to `docs/context/archive/archive-state-history.md` before adding new notes
     - Read: `docs/context/state.md` — check current Session Notes length
     - Read: `docs/context/archive/archive-state-history.md` — append oldest notes at the end
 
-  - [~] 7.2 Update `docs/context/state.md`: set `Last Updated` to today's date, `Current Focus` to `p2-minimal-taste-invariants-rule-pack complete`, `Next Concrete Task` to next queued item from `roadmap/board.md`, add a brief session note summarizing what shipped
+  - [x] 7.2 Update `docs/context/state.md`: set `Last Updated` to today's date, `Current Focus` to `p2-minimal-taste-invariants-rule-pack complete`, `Next Concrete Task` to next queued item from `roadmap/board.md`, add a brief session note summarizing what shipped
     - Read: `roadmap/board.md` — identify next item in Ready Queue
 
-  - [~] 7.3 Update `.agent/Knowledge/partner_model.md`: add a dated entry under Calibration Notes summarizing what shipped this session, any new patterns observed (e.g., taste-invariant scanner pattern, zone sprawl detection), and any corrections received
+  - [x] 7.3 Update `.agent/Knowledge/partner_model.md`: add a dated entry under Calibration Notes summarizing what shipped this session, any new patterns observed (e.g., taste-invariant scanner pattern, zone sprawl detection), and any corrections received
     - Read: `.agent/Knowledge/partner_model.md` — add entry below the most recent dated section
 
-  - [~] 7.4 Update `roadmap/board.md`: move `p2-minimal-taste-invariants-rule-pack` from Active to Completed; promote next Ready Queue item to Active if applicable
+  - [x] 7.4 Update `roadmap/board.md`: move `p2-minimal-taste-invariants-rule-pack` from Active to Completed; promote next Ready Queue item to Active if applicable
     - Read: `roadmap/board.md` — move item between sections
 
-  - [~] 7.5 Run `./gradlew --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest` to confirm docs are still within budget after updates
+  - [x] 7.5 Run `./gradlew --no-daemon :app:test --tests com.bear.app.ContextDocsConsistencyTest` to confirm docs are still within budget after updates
 
   - Commit: `chore: session-end — update state, partner model, and roadmap for taste-invariants rule pack`
   - Push: push all commits to the feature branch after this final commit
