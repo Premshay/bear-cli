@@ -62,24 +62,24 @@ final class TasteInvariantScanner {
 
         Path surfacesDir = generatedBearRoot.resolve("surfaces");
         if (Files.isDirectory(surfacesDir)) {
-            findings.addAll(validateSurfaceNaming(projectRoot, surfacesDir));
+            findings.addAll(validateSurfaceNaming(projectRoot, surfacesDir, allowlist));
         }
 
         Path wiringDir = generatedBearRoot.resolve("wiring");
         if (Files.isDirectory(wiringDir)) {
-            findings.addAll(validateWiringNaming(projectRoot, wiringDir));
+            findings.addAll(validateWiringNaming(projectRoot, wiringDir, allowlist));
         }
 
         findings.addAll(detectZoneSprawl(projectRoot, generatedBearRoot, allowlist));
 
         Path srcRoot = generatedBearRoot.resolve("src/main/java");
         if (Files.isDirectory(srcRoot)) {
-            findings.addAll(validateSourceStructure(projectRoot, srcRoot));
+            findings.addAll(validateSourceStructure(projectRoot, srcRoot, allowlist));
             Path generatedPkgRoot = srcRoot.resolve("com/bear/generated");
             if (Files.isDirectory(generatedPkgRoot)) {
-                findings.addAll(validateSourceFileTypes(projectRoot, srcRoot, generatedPkgRoot));
+                findings.addAll(validateSourceFileTypes(projectRoot, srcRoot, generatedPkgRoot, allowlist));
             }
-            findings.addAll(detectForbiddenDependencies(projectRoot, srcRoot));
+            findings.addAll(detectForbiddenDependencies(projectRoot, srcRoot, allowlist));
         }
 
         findings.sort(Comparator.comparing(BoundaryBypassFinding::path)
@@ -91,7 +91,7 @@ final class TasteInvariantScanner {
     // ── Rule 1: Surface Naming Validation ──────────────────────────────────────
 
     private static List<BoundaryBypassFinding> validateSurfaceNaming(
-        Path projectRoot, Path surfacesDir
+        Path projectRoot, Path surfacesDir, Set<String> allowlist
     ) throws IOException {
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
         try (Stream<Path> entries = Files.list(surfacesDir)) {
@@ -103,6 +103,9 @@ final class TasteInvariantScanner {
                 String filename = entry.getFileName().toString();
                 if (!SURFACE_PATTERN.matcher(filename).matches()) {
                     String relPath = projectRoot.relativize(entry).toString().replace('\\', '/');
+                    if (allowlist.contains(relPath)) {
+                        continue;
+                    }
                     findings.add(new BoundaryBypassFinding(
                         GENERATED_SURFACE_NAMING_VIOLATION,
                         relPath,
@@ -117,7 +120,7 @@ final class TasteInvariantScanner {
     // ── Rule 2: Wiring Naming Validation ───────────────────────────────────────
 
     private static List<BoundaryBypassFinding> validateWiringNaming(
-        Path projectRoot, Path wiringDir
+        Path projectRoot, Path wiringDir, Set<String> allowlist
     ) throws IOException {
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
         try (Stream<Path> entries = Files.list(wiringDir)) {
@@ -129,6 +132,9 @@ final class TasteInvariantScanner {
                 String filename = entry.getFileName().toString();
                 if (!WIRING_PATTERN.matcher(filename).matches()) {
                     String relPath = projectRoot.relativize(entry).toString().replace('\\', '/');
+                    if (allowlist.contains(relPath)) {
+                        continue;
+                    }
                     findings.add(new BoundaryBypassFinding(
                         GENERATED_WIRING_NAMING_VIOLATION,
                         relPath,
@@ -211,7 +217,7 @@ final class TasteInvariantScanner {
     // ── Rule 4: Source Structure Validation ─────────────────────────────────────
 
     private static List<BoundaryBypassFinding> validateSourceStructure(
-        Path projectRoot, Path srcRoot
+        Path projectRoot, Path srcRoot, Set<String> allowlist
     ) throws IOException {
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
         try (Stream<Path> entries = Files.walk(srcRoot)) {
@@ -226,6 +232,10 @@ final class TasteInvariantScanner {
                 }
                 String relFromSrc = srcRoot.relativize(entry).toString().replace('\\', '/');
                 String fullRelPath = GENERATED_BEAR_ROOT + "/src/main/java/" + relFromSrc;
+
+                if (allowlist.contains(fullRelPath)) {
+                    continue;
+                }
 
                 if (!relFromSrc.startsWith(EXPECTED_PREFIX)) {
                     findings.add(new BoundaryBypassFinding(
@@ -263,7 +273,7 @@ final class TasteInvariantScanner {
     // ── Rule 5: Source File Type Validation ─────────────────────────────────────
 
     private static List<BoundaryBypassFinding> validateSourceFileTypes(
-        Path projectRoot, Path srcRoot, Path generatedPkgRoot
+        Path projectRoot, Path srcRoot, Path generatedPkgRoot, Set<String> allowlist
     ) throws IOException {
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
         try (Stream<Path> entries = Files.walk(generatedPkgRoot)) {
@@ -286,6 +296,10 @@ final class TasteInvariantScanner {
                 String blockDir = parts[0];
                 String relFromSrc = srcRoot.relativize(entry).toString().replace('\\', '/');
                 String fullRelPath = GENERATED_BEAR_ROOT + "/src/main/java/" + relFromSrc;
+
+                if (allowlist.contains(fullRelPath)) {
+                    continue;
+                }
 
                 if ("runtime".equals(blockDir)) {
                     if (!filename.startsWith("Bear")) {
@@ -312,7 +326,7 @@ final class TasteInvariantScanner {
     // ── Rule 6: Forbidden Dependency Detection ─────────────────────────────────
 
     private static List<BoundaryBypassFinding> detectForbiddenDependencies(
-        Path projectRoot, Path srcRoot
+        Path projectRoot, Path srcRoot, Set<String> allowlist
     ) throws IOException {
         ArrayList<BoundaryBypassFinding> findings = new ArrayList<>();
         try (Stream<Path> entries = Files.walk(srcRoot)) {
@@ -328,6 +342,10 @@ final class TasteInvariantScanner {
 
                 String relFromSrc = srcRoot.relativize(entry).toString().replace('\\', '/');
                 String fullRelPath = GENERATED_BEAR_ROOT + "/src/main/java/" + relFromSrc;
+
+                if (allowlist.contains(fullRelPath)) {
+                    continue;
+                }
 
                 List<String> lines = Files.readAllLines(entry, StandardCharsets.UTF_8);
                 for (String line : lines) {
@@ -411,35 +429,4 @@ final class TasteInvariantScanner {
         return false;
     }
 
-    private static boolean isExpectedBlockFile(String filename, String blockName) {
-        // {Block}Logic.java
-        if (filename.equals(blockName + "Logic.java")) {
-            return true;
-        }
-        // {Block}_{Op}.java (wrapper) — must start with Block_ and have uppercase after _
-        if (filename.startsWith(blockName + "_") && filename.endsWith(".java")) {
-            String afterPrefix = filename.substring((blockName + "_").length());
-            String withoutExt = afterPrefix.substring(0, afterPrefix.length() - ".java".length());
-            if (!withoutExt.isEmpty() && Character.isUpperCase(withoutExt.charAt(0))) {
-                // Check it's not a BlockClient — those are handled separately
-                if (withoutExt.endsWith("BlockClient")) {
-                    return true; // {Block}_{Port}BlockClient.java
-                }
-                // Plain wrapper: {Block}_{Op}.java
-                return Pattern.matches("[A-Z][A-Za-z0-9]*", withoutExt);
-            }
-        }
-        // BearValue.java (shared value type)
-        if ("BearValue.java".equals(filename)) {
-            return true;
-        }
-        return false;
-    }
-
-    private static String capitalize(String s) {
-        if (s == null || s.isEmpty()) {
-            return s;
-        }
-        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
-    }
 }

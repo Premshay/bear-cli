@@ -314,7 +314,7 @@ Docs to update:
 
   - Commit: no commit needed (verification only); if any fixes were required, commit with: `fix(taste-invariants): <description of what was fixed>`
 
-- [-] 7. Session-end: update partner model, project state, and roadmap
+- [x] 7. Session-end: update partner model, project state, and roadmap
   - Read: `.agent/skills/session-end/SKILL.md` — follow the BEAR-specific section (no devlogs; update `state.md` and `partner_model.md`)
   - Read: `docs/context/start-here.md` — session close protocol checklist
   - Read: `.agent/Knowledge/partner_model.md` — add a dated calibration note for this session

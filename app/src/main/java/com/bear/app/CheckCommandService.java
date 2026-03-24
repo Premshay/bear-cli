@@ -731,7 +731,7 @@ final class CheckCommandService {
                     : List.of(tasteFindings.get(0));
                 ArrayList<AgentDiagnostics.AgentProblem> problems = new ArrayList<>();
                 for (BoundaryBypassFinding finding : selectedTasteFindings) {
-                    String line = "check: BOUNDARY_BYPASS: RULE="
+                    String line = "check: TASTE_INVARIANT: RULE="
                         + finding.rule()
                         + ": "
                         + finding.path()
@@ -740,7 +740,7 @@ final class CheckCommandService {
                     diagnostics.add(line);
                     problems.add(AgentDiagnostics.problem(
                         AgentDiagnostics.AgentCategory.GOVERNANCE,
-                        CliCodes.BOUNDARY_BYPASS,
+                        CliCodes.UNDECLARED_REACH,
                         finding.rule(),
                         null,
                         AgentDiagnostics.AgentSeverity.ERROR,
@@ -755,8 +755,8 @@ final class CheckCommandService {
                 return checkFailure(
                     CliCodes.EXIT_UNDECLARED_REACH,
                     diagnostics,
-                    "BOUNDARY_BYPASS",
-                    CliCodes.BOUNDARY_BYPASS,
+                    "UNDECLARED_REACH",
+                    CliCodes.UNDECLARED_REACH,
                     selectedTasteFindings.get(0).path(),
                     "Fix the generated zone layout violation or allowlist the path in `bear-policy/taste-invariants-allowlist.txt`, then rerun `bear check`.",
                     diagnostics.get(diagnostics.size() - 1),
