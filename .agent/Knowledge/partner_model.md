@@ -167,6 +167,18 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Key pattern — `Map.of` entry limit: `BearCli.COMMAND_HANDLERS` uses `Map.of(...)` with 7 entries — within the 10-entry limit but worth noting for future command additions
 - No corrections received this session; context transfer across sessions worked cleanly
 
+### 2026-03-23 — Phase C Node Runtime Execution Complete
+- Executed all 10 tasks from `.kiro/specs/phase-c-node-runtime-execution/tasks.md` — full Node runtime execution shipped
+- Created 3 new classes: `NodeManifestParser` (regex-based JSON parsing), `NodeProjectVerificationRunner` (pnpm exec tsc --noEmit), `NodePathAliasResolver` (tsconfig.json @/* paths)
+- Updated `NodeImportBoundaryResolver` with @/* alias resolution (constructor injection pattern)
+- Updated `NodeImportContainmentScanner` to enforce dynamic imports (`DYNAMIC_IMPORT_FORBIDDEN`)
+- Replaced all 8 JVM-specific stubs in `NodeTarget` with null/List.of() returns
+- Created 6 new integration test fixtures: `check-clean`, `check-dynamic-import`, `check-project-verification-failure`, `check-alias-same-block`, `check-alias-sibling-block`, `check-alias-no-tsconfig-paths`
+- Key pattern — alias resolver injection: `NodePathAliasResolver` passed via constructor to `NodeImportBoundaryResolver`; scanner creates one resolver per scan for caching
+- Key pattern — manifest field mapping: Node JSON fields map to `WiringManifest` record with semantic reuse (e.g., `targetId` → `entrypointFqcn`)
+- All 22 correctness properties pass; full test suite green (kernel + app)
+- No corrections received this session; spec-driven execution worked cleanly
+
 ### 2026-03-20 — React Target Full Pipeline Implementation Complete
 - Executed all 9 tasks from `.kiro/specs/react-target-scan-only/tasks.md` — full React target implementation shipped
 - Created 11 new classes in `com.bear.kernel.target.react`: `ReactProjectShape` (enum), `ReactTargetDetector`, `ReactTarget`, `ReactArtifactGenerator`, `ReactManifestGenerator`, `ReactImportSpecifierExtractor`, `ReactImportBoundaryResolver`, `ReactImportContainmentScanner`, `ReactApiBoundaryScanner`, `ReactProjectVerificationRunner`, `ReactPrCheckContributor`
