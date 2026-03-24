@@ -2,7 +2,7 @@
 (empty)
 
 # Ready Queue
-- p2-minimal-taste-invariants-rule-pack
+(empty)
 
 # Later Queue
 - p3-maven-allowed-deps-containment
@@ -25,6 +25,7 @@
 - future-idea-families
 
 # Completed
+- p2-minimal-taste-invariants-rule-pack
 - multi-target-foundation-phases
 - p3-capability-templates
 - p3-multi-block-multi-module-composition-hardening

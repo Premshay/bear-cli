@@ -1,7 +1,7 @@
 ---
 id: p2-minimal-taste-invariants-rule-pack
 title: Minimal taste-invariants rule pack
-status: queued
+status: completed
 priority: medium
 commitment: committed
 milestone: P2

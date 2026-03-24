@@ -167,6 +167,18 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Key pattern — `Map.of` entry limit: `BearCli.COMMAND_HANDLERS` uses `Map.of(...)` with 7 entries — within the 10-entry limit but worth noting for future command additions
 - No corrections received this session; context transfer across sessions worked cleanly
 
+### 2026-03-23 — Phase C Node Runtime Execution Complete
+- Executed all 10 tasks from `.kiro/specs/phase-c-node-runtime-execution/tasks.md` — full Node runtime execution shipped
+- Created 3 new classes: `NodeManifestParser` (regex-based JSON parsing), `NodeProjectVerificationRunner` (pnpm exec tsc --noEmit), `NodePathAliasResolver` (tsconfig.json @/* paths)
+- Updated `NodeImportBoundaryResolver` with @/* alias resolution (constructor injection pattern)
+- Updated `NodeImportContainmentScanner` to enforce dynamic imports (`DYNAMIC_IMPORT_FORBIDDEN`)
+- Replaced all 8 JVM-specific stubs in `NodeTarget` with null/List.of() returns
+- Created 6 new integration test fixtures: `check-clean`, `check-dynamic-import`, `check-project-verification-failure`, `check-alias-same-block`, `check-alias-sibling-block`, `check-alias-no-tsconfig-paths`
+- Key pattern — alias resolver injection: `NodePathAliasResolver` passed via constructor to `NodeImportBoundaryResolver`; scanner creates one resolver per scan for caching
+- Key pattern — manifest field mapping: Node JSON fields map to `WiringManifest` record with semantic reuse (e.g., `targetId` → `entrypointFqcn`)
+- All 22 correctness properties pass; full test suite green (kernel + app)
+- No corrections received this session; spec-driven execution worked cleanly
+
 ### 2026-03-20 — React Target Full Pipeline Implementation Complete
 - Executed all 9 tasks from `.kiro/specs/react-target-scan-only/tasks.md` — full React target implementation shipped
 - Created 11 new classes in `com.bear.kernel.target.react`: `ReactProjectShape` (enum), `ReactTargetDetector`, `ReactTarget`, `ReactArtifactGenerator`, `ReactManifestGenerator`, `ReactImportSpecifierExtractor`, `ReactImportBoundaryResolver`, `ReactImportContainmentScanner`, `ReactApiBoundaryScanner`, `ReactProjectVerificationRunner`, `ReactPrCheckContributor`
@@ -190,6 +202,16 @@ Don't just suggest updates — make them. Specific observations beat generic one
 - Pattern confirmed: multi-root fixture setup follows the same `writeProjectWrapper` + `writeWorkingWithdrawImpl` pattern as single-root, just repeated per root directory
 - Pattern confirmed: git helpers (`initGitRepo`, `gitCommitAll`, `git`) copied from `TargetSeamParityTest` work cleanly for pr-check integration tests
 - No corrections received this session
+
+### 2026-03-24 — P2 Minimal Taste-Invariants Rule Pack Complete
+- Shipped `TasteInvariantScanner` with 6 deterministic rules: surface naming, wiring naming, zone sprawl, source structure, source file type, forbidden dependency
+- Scanner follows `HygieneScanner` pattern (final class, private constructor, static methods, reuses `BoundaryBypassFinding` record)
+- Key pattern — zone sprawl known categories: `surfaces`, `wiring`, `src`, `gradle`, `config`, `.staging` — the last two discovered during full-suite regression (legitimate dirs from `JvmTarget.compile()`)
+- Key pattern — source file type validation: suffix-based matching (`Logic.java`, `_*.java`, `Bear*.java`) instead of block-name reconstruction — multi-segment package names (e.g., `com.bear.generated.my.block`) broke prefix-based approach
+- Key pattern — property tests without jqwik: project uses JUnit 5 `@ParameterizedTest` + `@MethodSource` with `Random` fixed seeds for reproducibility (jqwik is not in dependencies)
+- Two regressions found and fixed during full suite verification — both were legitimate generated paths not in the initial known-categories/validation logic
+- No corrections received this session; spec-driven execution with Kiro subagent delegation worked cleanly
+- Ready Queue is now empty after this feature; next work requires Later Queue promotion
 
 ---
 
