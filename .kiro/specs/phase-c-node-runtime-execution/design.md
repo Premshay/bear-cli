@@ -378,27 +378,32 @@ parse result across multiple `resolve()` calls within a single scan.
 Error envelope (frozen from Phase A):
 ```
 <error details>
-CODE=<error_code>
+CODE=BOUNDARY_BYPASS
 PATH=<file_path>
+RULE=<specific_rule>
 REMEDIATION=<remediation_message>
 ```
 
-Phase C adds one new error code:
+All containment findings use `CODE=BOUNDARY_BYPASS` in the error envelope. The specific rule
+is available via `BoundaryBypassFinding.rule()` and appears in the `RULE=` diagnostic line.
 
-| Category      | Code                       | Exit | Remediation                                      |
+Phase C adds one new rule for containment findings:
+
+| Category      | Rule                       | Exit | Remediation                                      |
 |---------------|----------------------------|------|--------------------------------------------------|
 | Containment   | `DYNAMIC_IMPORT_FORBIDDEN` | `7`  | Replace `import()` with a static `import` statement |
 
-All existing Phase B error codes are unchanged:
+All existing Phase B rules are unchanged:
 
-| Category      | Code                | Exit | Remediation                              |
-|---------------|---------------------|------|------------------------------------------|
-| Containment   | `BOUNDARY_BYPASS`   | `7`  | Remove or relocate the import            |
-| Containment   | `BARE_PACKAGE_IMPORT` | `7` | Remove bare import from governed code   |
-| Containment   | `ALIAS_IMPORT`      | `7`  | Use relative imports instead             |
-| Verification  | (tsc failure)       | `4`  | Fix TypeScript type errors               |
-| Tool missing  | (pnpm/tsc absent)   | `74` | Install pnpm and TypeScript              |
-| Drift         | `DRIFT_DETECTED`    | `5`  | Run `bear compile`                       |
+| Category      | Rule                  | Exit | Remediation                              |
+|---------------|-----------------------|------|------------------------------------------|
+| Containment   | `BOUNDARY_BYPASS`     | `7`  | Remove or relocate the import            |
+| Containment   | `BARE_PACKAGE_IMPORT` | `7`  | Remove bare import from governed code    |
+| Containment   | `ALIAS_IMPORT`        | `7`  | Use relative imports instead             |
+| Containment   | `SHARED_IMPORTS_BLOCK`| `7`  | _shared cannot import block code         |
+| Verification  | (tsc failure)         | `4`  | Fix TypeScript type errors               |
+| Tool missing  | (pnpm/tsc absent)     | `74` | Install pnpm and TypeScript              |
+| Drift         | `DRIFT_DETECTED`      | `5`  | Run `bear compile`                       |
 
 **Error handling rules:**
 - `NodeManifestParser` throws `ManifestParseException` (checked); caller maps to structured error.

@@ -115,12 +115,14 @@ pipeline).
 
 #### Acceptance Criteria
 
-1. WHEN a governed `.ts` file contains a `import(...)` expression, THE NodeImportContainmentScanner SHALL report a finding with exit `7` and `CODE=DYNAMIC_IMPORT_FORBIDDEN`.
+1. WHEN a governed `.ts` file contains a `import(...)` expression, THE NodeImportContainmentScanner SHALL report a `BoundaryBypassFinding` with `rule()` equal to `DYNAMIC_IMPORT_FORBIDDEN` (exit `7`, `CODE=BOUNDARY_BYPASS` in error envelope).
 2. WHEN a governed `.ts` file contains no `import(...)` expressions, THE NodeImportContainmentScanner SHALL report no dynamic import findings for that file.
 3. THE NodeImportContainmentScanner SHALL detect dynamic imports using the existing `NodeDynamicImportDetector` and promote detections from advisory to enforced findings.
 4. THE NodeImportContainmentScanner SHALL include the repo-relative file path and the dynamic import specifier in each `DYNAMIC_IMPORT_FORBIDDEN` finding.
 5. WHEN a file contains both a static boundary bypass and a dynamic import, THE NodeImportContainmentScanner SHALL report both findings independently.
 6. THE NodeImportContainmentScanner SHALL collect all dynamic import violations before reporting (no early exit on first violation).
+
+Note: All containment findings use `CODE=BOUNDARY_BYPASS` in the error envelope. The specific rule (e.g., `DYNAMIC_IMPORT_FORBIDDEN`) is available via `BoundaryBypassFinding.rule()` and appears in the `RULE=` diagnostic line.
 
 ---
 

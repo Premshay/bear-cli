@@ -155,7 +155,9 @@ public class NodeImportBoundaryResolver {
      * 
      * @/ specifier with alias configured: resolve to path, apply same boundary rules as relative imports
      *   - same block → allowed
-     *   - _shared → allowed
+     *   - _shared importing _shared → allowed
+     *   - _shared importing block → fail("SHARED_IMPORTS_BLOCK")
+     *   - block importing _shared → allowed
      *   - generated dir → allowed
      *   - otherwise → fail("BOUNDARY_BYPASS")
      * @/ specifier with no alias configured → fail("BOUNDARY_BYPASS")
@@ -188,13 +190,19 @@ public class NodeImportBoundaryResolver {
             return BoundaryDecision.allowed();
         }
 
-        // 3. Check if resolved path is within _shared
+        // 3. Enforce _shared import block rule for alias imports:
+        //    files under src/blocks/_shared cannot import other blocks via alias
         Path sharedRoot = projectRoot.resolve("src/blocks/_shared");
+        if (importingFile.startsWith(sharedRoot) && !target.startsWith(sharedRoot)) {
+            return BoundaryDecision.fail("SHARED_IMPORTS_BLOCK");
+        }
+
+        // 4. Allow imports into _shared from other locations
         if (target.startsWith(sharedRoot)) {
             return BoundaryDecision.allowed();
         }
 
-        // 4. All other cases are boundary bypass
+        // 5. All other cases are boundary bypass
         return BoundaryDecision.fail("BOUNDARY_BYPASS");
     }
 }

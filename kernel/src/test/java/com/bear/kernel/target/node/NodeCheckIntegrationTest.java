@@ -22,6 +22,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * - 0: success (clean project, alias to same block)
  * - 4: project verification failure (tsc type error)
  * - 7: boundary bypass (dynamic import, alias to sibling block, no tsconfig paths)
+ *
+ * Note: All containment findings use CODE=BOUNDARY_BYPASS in the error envelope.
+ * The specific rule (e.g., DYNAMIC_IMPORT_FORBIDDEN, BOUNDARY_BYPASS) is available
+ * via BoundaryBypassFinding.rule() and appears in the RULE= diagnostic line.
  */
 class NodeCheckIntegrationTest {
 
