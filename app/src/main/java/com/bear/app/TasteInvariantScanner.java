@@ -31,8 +31,8 @@ final class TasteInvariantScanner {
     private static final Pattern SURFACE_PATTERN = Pattern.compile("^[a-z][a-z0-9-]*\\.surface\\.json$");
     private static final Pattern WIRING_PATTERN = Pattern.compile("^[a-z][a-z0-9-]*\\.wiring\\.json$");
     private static final Pattern BLOCK_KEY_PATTERN = Pattern.compile("^[a-z][a-z0-9-]*$");
-    private static final Pattern IMPORT_PATTERN = Pattern.compile("^import\\s+([a-zA-Z0-9_.]+);");
-    private static final Pattern FORBIDDEN_IMPORT_PATTERN = Pattern.compile("^blocks\\.[a-z][a-z0-9_]*\\.impl\\.");
+    private static final Pattern IMPORT_PATTERN = Pattern.compile("^import\\s+(?:static\\s+)?([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z0-9_*]+)*);");
+    private static final Pattern FORBIDDEN_IMPORT_PATTERN = Pattern.compile("^blocks\\.[a-z][a-z0-9_]*\\.impl\\.(?:[A-Za-z0-9_]+|\\*)");
     private static final Pattern ALLOWED_SHARED_PURE = Pattern.compile("^blocks\\._shared\\.pure\\.");
     private static final Pattern ALLOWED_SHARED_STATE = Pattern.compile("^blocks\\._shared\\.state\\.");
     private static final Set<String> KNOWN_CATEGORIES = Set.of("surfaces", "wiring", "src", "gradle", "config", ".staging");

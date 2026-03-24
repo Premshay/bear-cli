@@ -234,6 +234,50 @@ class TasteInvariantScannerTest {
         assertTrue(depFindings.get(0).detail().contains("blocks.myblock.impl.SomeClass"));
     }
 
+    // ── 4.12b Positive: forbidden static import ───────────────────────────────
+
+    @Test
+    void forbiddenStaticImportDetected(@TempDir Path tempDir) throws Exception {
+        createGeneratedZone(tempDir);
+        Path blockPkg = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/myblock");
+        Files.createDirectories(blockPkg);
+        Files.writeString(blockPkg.resolve("MyblockLogic.java"),
+                "package com.bear.generated.myblock;\n"
+                + "import static blocks.myblock.impl.SomeClass.CONSTANT;\n"
+                + "public class MyblockLogic {}");
+
+        List<BoundaryBypassFinding> findings =
+                TasteInvariantScanner.scanTasteInvariants(tempDir, Set.of());
+
+        List<BoundaryBypassFinding> depFindings = findings.stream()
+                .filter(f -> f.rule().equals(TasteInvariantScanner.GENERATED_FORBIDDEN_DEPENDENCY))
+                .toList();
+        assertEquals(1, depFindings.size());
+        assertTrue(depFindings.get(0).detail().contains("blocks.myblock.impl.SomeClass.CONSTANT"));
+    }
+
+    // ── 4.12c Positive: forbidden wildcard import ───────────────────────────────
+
+    @Test
+    void forbiddenWildcardImportDetected(@TempDir Path tempDir) throws Exception {
+        createGeneratedZone(tempDir);
+        Path blockPkg = tempDir.resolve("build/generated/bear/src/main/java/com/bear/generated/myblock");
+        Files.createDirectories(blockPkg);
+        Files.writeString(blockPkg.resolve("MyblockLogic.java"),
+                "package com.bear.generated.myblock;\n"
+                + "import blocks.myblock.impl.*;\n"
+                + "public class MyblockLogic {}");
+
+        List<BoundaryBypassFinding> findings =
+                TasteInvariantScanner.scanTasteInvariants(tempDir, Set.of());
+
+        List<BoundaryBypassFinding> depFindings = findings.stream()
+                .filter(f -> f.rule().equals(TasteInvariantScanner.GENERATED_FORBIDDEN_DEPENDENCY))
+                .toList();
+        assertEquals(1, depFindings.size());
+        assertTrue(depFindings.get(0).detail().contains("blocks.myblock.impl.*"));
+    }
+
     // ── 4.13 Negative: allowed imports ──────────────────────────────────────────
 
     @Test
